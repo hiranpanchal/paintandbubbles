@@ -577,11 +577,13 @@ document.addEventListener('keydown', e => {
 
 // ---- HELPERS ----
 async function apiFetch(url, opts = {}) {
-  // Automatically inject the auth token whenever it is available
   const autoAuth = authToken ? { Authorization: `Bearer ${authToken}` } : {};
+  // Destructure headers out of opts so the ...restOpts spread below
+  // doesn't override the merged headers object with opts.headers again
+  const { headers: extraHeaders, ...restOpts } = opts;
   const res = await fetch(url, {
-    headers: { 'Content-Type': 'application/json', ...autoAuth, ...opts.headers },
-    ...opts
+    headers: { 'Content-Type': 'application/json', ...autoAuth, ...extraHeaders },
+    ...restOpts
   });
   if (res.status === 401) { handleUnauth(); throw Object.assign(new Error('Unauthorised'), { status: 401 }); }
   const data = await res.json();
