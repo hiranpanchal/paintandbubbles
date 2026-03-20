@@ -659,6 +659,8 @@ function renderDesignPanel() {
           <div class="design-card-body">
             <div class="dz-label">Logo</div>
             ${renderDropZone('logo_url', s.logo_url)}
+            <div class="dz-label" style="margin-top:20px">Hero Background Image</div>
+            ${renderDropZone('hero_image_url', s.hero_image_url)}
             <div class="dz-label" style="margin-top:20px">About Section Image</div>
             ${renderDropZone('about_image_url', s.about_image_url)}
           </div>
@@ -764,11 +766,11 @@ function renderDesignPanel() {
 function renderColorField(key, label, value) {
   return `
     <div class="color-field">
-      <div class="color-swatch-wrap">
+      <label class="color-swatch-wrap" for="ds-${key}" title="Click to change colour">
         <div class="color-swatch" id="swatch-${key}" style="background:${escHtml(value)}"></div>
-        <input type="color" id="ds-${key}" value="${escHtml(value)}" class="color-picker-input"
-               oninput="onColorInput('${key}', this.value)">
-      </div>
+      </label>
+      <input type="color" id="ds-${key}" value="${escHtml(value)}" class="color-picker-input"
+             oninput="onColorInput('${key}', this.value)">
       <div class="color-field-info">
         <div class="color-field-label">${label}</div>
         <div class="color-field-hex" id="hex-${key}">${value}</div>

@@ -46,6 +46,14 @@ async function applyDesignSettings() {
       if (fb) fb.style.display = 'none';
     }
 
+    // Hero background image (events page hero)
+    if (s.hero_image_url) {
+      const hero = document.querySelector('.events-page-hero');
+      if (hero) {
+        hero.style.background = `linear-gradient(135deg, rgba(44,15,24,0.82) 0%, rgba(107,45,66,0.72) 45%, rgba(196,116,138,0.55) 100%), url(${s.hero_image_url}) center/cover no-repeat`;
+      }
+    }
+
     // Footer tagline
     if (s.footer_tagline) {
       const el = document.querySelector('.footer-tagline');

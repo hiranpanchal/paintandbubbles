@@ -108,6 +108,7 @@ if (settingsCount.count === 0) {
     color_bg:                  '#FDF8F9',
     color_text_dark:           '#2C2028',
     logo_url:                  '',
+    hero_image_url:            '',
     about_image_url:           '',
   };
   const upsert = db.prepare('INSERT OR IGNORE INTO site_settings (key, value) VALUES (?, ?)');

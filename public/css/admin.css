@@ -819,10 +819,9 @@ body {
 .color-field:last-child { border-bottom: none; }
 
 .color-swatch-wrap {
-  position: relative;
-  width: 42px;
-  height: 42px;
+  cursor: pointer;
   flex-shrink: 0;
+  display: block;
 }
 
 .color-swatch {
@@ -830,20 +829,21 @@ body {
   height: 42px;
   border-radius: 10px;
   border: 1.5px solid var(--border);
-  cursor: pointer;
-  transition: transform var(--transition);
+  transition: transform var(--transition), box-shadow var(--transition);
 }
-.color-swatch:hover { transform: scale(1.08); }
+.color-swatch-wrap:hover .color-swatch {
+  transform: scale(1.08);
+  box-shadow: 0 0 0 3px rgba(196,116,138,0.25);
+}
 
 .color-picker-input {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0;
-  cursor: pointer;
+  width: 0;
+  height: 0;
   padding: 0;
-  border: none;
+  border: 0;
+  opacity: 0;
+  position: absolute;
+  pointer-events: none;
 }
 
 .color-field-info { flex: 1; }
