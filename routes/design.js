@@ -43,12 +43,16 @@ router.post('/settings', requireAdmin, (req, res) => {
     INSERT INTO site_settings (key, value) VALUES (?, ?)
     ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')
   `);
-  const saveAll = db.transaction(settings => {
-    for (const [key, value] of Object.entries(settings)) {
+  db.exec('BEGIN');
+  try {
+    for (const [key, value] of Object.entries(req.body)) {
       upsert.run(key, value ?? '');
     }
-  });
-  saveAll(req.body);
+    db.exec('COMMIT');
+  } catch (e) {
+    db.exec('ROLLBACK');
+    throw e;
+  }
   const rows = db.prepare('SELECT key, value FROM site_settings').all();
   const settings = {};
   rows.forEach(r => (settings[r.key] = r.value));
