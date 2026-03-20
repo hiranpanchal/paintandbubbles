@@ -1011,14 +1011,25 @@ function renderColorField(key, label, value) {
       </label>
       <div class="color-field-info">
         <div class="color-field-label">${label}</div>
-        <div class="color-field-hex" id="hex-${key}">${value}</div>
+        <input type="text" class="color-hex-input" id="hex-${key}" value="${escHtml(value)}"
+               maxlength="7" spellcheck="false" placeholder="#000000"
+               oninput="onHexInput('${key}', this.value)">
       </div>
     </div>`;
 }
 
 function onColorInput(key, value) {
   document.getElementById(`swatch-${key}`).style.background = value;
-  document.getElementById(`hex-${key}`).textContent = value;
+  document.getElementById(`hex-${key}`).value = value;
+}
+
+function onHexInput(key, raw) {
+  // Auto-prepend # if missing
+  let hex = raw.startsWith('#') ? raw : '#' + raw;
+  if (/^#[0-9A-Fa-f]{6}$/.test(hex)) {
+    document.getElementById(`swatch-${key}`).style.background = hex;
+    document.getElementById(`ds-${key}`).value = hex;
+  }
 }
 
 // ---- DROP ZONES ----

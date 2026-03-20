@@ -924,11 +924,24 @@ body {
   color: var(--text-dark);
 }
 
-.color-field-hex {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-light);
+.color-hex-input {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-mid);
   font-family: monospace;
+  letter-spacing: 0.04em;
+  width: 96px;
+  padding: 5px 10px;
+  border: 1.5px solid var(--border);
+  border-radius: 7px;
+  background: var(--rose-50);
+  outline: none;
+  transition: border-color var(--transition), color var(--transition);
+}
+.color-hex-input:focus {
+  border-color: var(--rose);
+  color: var(--text-dark);
+  background: white;
 }
 
 /* ---- ICON PICKER ---- */
