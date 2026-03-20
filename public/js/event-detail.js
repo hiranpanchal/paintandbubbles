@@ -1,19 +1,37 @@
 /* =============================================
-   PAINT & BUBBLES — EVENTS PAGE
-   Full event listing with search, filter, calendar
+   PAINT & BUBBLES — EVENT DETAIL PAGE
    ============================================= */
 
 let stripe = null;
+let currentEvent = null;
 let currentBookingState = {};
-let calendarInstance = null;
-let searchTimer = null;
 
 // ---- INIT ----
 document.addEventListener('DOMContentLoaded', async () => {
   await applyDesignSettings();
-  await Promise.all([loadCategories(), loadEvents()]);
   fetchStripePK();
+
+  const id = getEventIdFromUrl();
+  if (!id) {
+    showError('Event not found.');
+    return;
+  }
+
+  try {
+    const event = await apiFetch(`/api/events/${id}`);
+    currentEvent = event;
+    document.title = `${event.title} — Paint & Bubbles`;
+    renderEventDetail(event);
+  } catch {
+    showError('This event could not be found.');
+  }
 });
+
+function getEventIdFromUrl() {
+  const parts = window.location.pathname.split('/');
+  const id = parseInt(parts[parts.length - 1]);
+  return isNaN(id) ? null : id;
+}
 
 // ---- APPLY DESIGN SETTINGS ----
 async function applyDesignSettings() {
@@ -22,7 +40,6 @@ async function applyDesignSettings() {
     if (!res.ok) return;
     const s = await res.json();
 
-    // CSS variable overrides
     const vars = [];
     if (s.color_rose)       vars.push(`--rose: ${s.color_rose}`);
     if (s.color_rose_deep)  vars.push(`--rose-deep: ${s.color_rose_deep}`);
@@ -31,30 +48,18 @@ async function applyDesignSettings() {
     if (s.color_text_dark)  vars.push(`--text-dark: ${s.color_text_dark}`);
     if (vars.length) {
       const st = document.createElement('style');
-      st.id = 'design-vars';
       st.textContent = `:root { ${vars.join('; ')} }`;
       document.head.appendChild(st);
     }
 
-    // Logo
     if (s.logo_url) {
       document.querySelectorAll('.logo-img').forEach(img => {
-        img.src = s.logo_url;
-        img.style.display = '';
+        img.src = s.logo_url; img.style.display = '';
       });
       const fb = document.getElementById('logo-fallback');
       if (fb) fb.style.display = 'none';
     }
 
-    // Hero background image (events page hero)
-    if (s.hero_image_url) {
-      const hero = document.querySelector('.events-page-hero');
-      if (hero) {
-        hero.style.background = `linear-gradient(135deg, rgba(44,15,24,0.82) 0%, rgba(107,45,66,0.72) 45%, rgba(196,116,138,0.55) 100%), url(${s.hero_image_url}) center/cover no-repeat`;
-      }
-    }
-
-    // Footer tagline
     if (s.footer_tagline) {
       const el = document.querySelector('.footer-tagline');
       if (el) el.textContent = s.footer_tagline;
@@ -72,203 +77,218 @@ async function fetchStripePK() {
   } catch {}
 }
 
-// ---- CATEGORIES ----
-async function loadCategories() {
-  try {
-    const events = await apiFetch('/api/events');
-    const cats = [...new Set(events.map(e => e.category).filter(Boolean))].sort();
-    const sel = document.getElementById('category-filter');
-    cats.forEach(cat => {
-      const opt = document.createElement('option');
-      opt.value = cat;
-      opt.textContent = cat;
-      sel.appendChild(opt);
-    });
-  } catch {}
-}
-
-// ---- LOAD EVENTS ----
-async function loadEvents() {
-  const grid = document.getElementById('events-grid');
-  grid.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Loading events…</p></div>';
-
-  const search   = document.getElementById('search-input')?.value.trim() || '';
-  const category = document.getElementById('category-filter')?.value || '';
-  const dateFrom = document.getElementById('date-from')?.value || '';
-
-  const params = new URLSearchParams();
-  if (search)   params.set('search', search);
-  if (category) params.set('category', category);
-  if (dateFrom) params.set('from', dateFrom);
-
-  try {
-    const events = await apiFetch('/api/events?' + params.toString());
-    const label  = document.getElementById('events-count-label');
-
-    if (events.length === 0) {
-      if (label) label.textContent = 'No events found';
-      grid.innerHTML = `<div class="empty-state"><h3>No events found</h3><p>Try adjusting your search or filters.</p></div>`;
-      return;
-    }
-
-    if (label) label.textContent = `${events.length} Event${events.length !== 1 ? 's' : ''}`;
-    grid.innerHTML = events.map(renderEventCard).join('');
-  } catch {
-    grid.innerHTML = `<div class="empty-state"><h3>Failed to load events</h3><p>Please try refreshing the page.</p></div>`;
-  }
-}
-
-// ---- DEBOUNCED SEARCH ----
-function debouncedSearch() {
-  clearTimeout(searchTimer);
-  searchTimer = setTimeout(loadEvents, 350);
-}
-
-// ---- VIEW TOGGLE ----
-function showView(view) {
-  const eventsSection  = document.getElementById('view-events');
-  const calSection     = document.getElementById('view-calendar');
-  const btnEvents      = document.getElementById('nav-events');
-  const btnCalendar    = document.getElementById('nav-calendar');
-
-  if (view === 'events') {
-    eventsSection.classList.remove('hidden');
-    calSection.classList.add('hidden');
-    btnEvents.classList.add('active');
-    btnCalendar.classList.remove('active');
-  } else {
-    eventsSection.classList.add('hidden');
-    calSection.classList.remove('hidden');
-    btnEvents.classList.remove('active');
-    btnCalendar.classList.add('active');
-    if (!calendarInstance) initCalendar();
-  }
-}
-
-// ---- FULLCALENDAR ----
-async function initCalendar() {
-  let allEvents = [];
-  try { allEvents = await apiFetch('/api/events'); } catch {}
-
-  const calEvents = allEvents.map(e => ({
-    id:    e.id,
-    title: e.title,
-    start: e.date,
-    backgroundColor: e.spots_remaining <= 0 ? '#9E8E96' : '#C4748A',
-    borderColor:     e.spots_remaining <= 0 ? '#9E8E96' : '#A85D72',
-    extendedProps: e
-  }));
-
-  calendarInstance = new FullCalendar.Calendar(document.getElementById('calendar'), {
-    initialView:   'dayGridMonth',
-    headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,listWeek' },
-    events: calEvents,
-    eventClick(info) {
-      openEvent(info.event.id);
-    },
-    height: 'auto'
-  });
-
-  calendarInstance.render();
-}
-
-// ---- RENDER EVENT CARD ----
-function renderEventCard(event) {
-  const price = event.price_pence === 0
-    ? '<span class="event-price event-price-free">Free</span>'
-    : `<span class="event-price">£${(event.price_pence / 100).toFixed(2)}</span>`;
+// ---- RENDER EVENT DETAIL ----
+function renderEventDetail(event) {
   const spotsLeft = event.spots_remaining;
   const isSoldOut = spotsLeft <= 0;
-  const isLow     = spotsLeft > 0 && spotsLeft <= 3;
-
-  const spotsHtml = isSoldOut
-    ? '<span class="event-spots" style="color:var(--coral);font-weight:700;">Sold out</span>'
-    : isLow
-    ? `<span class="event-spots low">${spotsLeft} spot${spotsLeft > 1 ? 's' : ''} left!</span>`
-    : `<span class="event-spots">${spotsLeft} spots left</span>`;
-
-  const imageHtml = event.image_url
-    ? `<img src="${escHtml(event.image_url)}" alt="${escHtml(event.title)}">`
-    : '';
-
-  return `
-    <div class="event-card" onclick="window.location.href='/events/${event.id}'" style="cursor:pointer">
-      <div class="event-card-image">
-        ${imageHtml}
-        <span class="event-card-category">${escHtml(event.category)}</span>
-        ${isSoldOut ? '<div class="event-card-sold-out">Sold Out</div>' : ''}
-      </div>
-      <div class="event-card-body">
-        <h3 class="event-card-title">${escHtml(event.title)}</h3>
-        <div class="event-card-meta">
-          <div class="event-meta-item">${formatDate(event.date)} at ${event.time}</div>
-          <div class="event-meta-item">${escHtml(event.location)}</div>
-        </div>
-        <div class="event-card-footer">
-          ${price}
-          ${spotsHtml}
-        </div>
-      </div>
-    </div>`;
-}
-
-// ---- OPEN EVENT DETAIL ----
-async function openEvent(id) {
-  try {
-    const event = await apiFetch(`/api/events/${id}`);
-    showEventModal(event);
-  } catch {
-    alert('Failed to load event details.');
-  }
-}
-
-function showEventModal(event) {
-  const spotsLeft = event.spots_remaining;
-  const isSoldOut = spotsLeft <= 0;
+  const isLowStock = spotsLeft > 0 && spotsLeft <= 5;
   const price = event.price_pence === 0 ? 'Free' : `£${(event.price_pence / 100).toFixed(2)}`;
-  const duration = event.duration_minutes >= 60
-    ? `${Math.floor(event.duration_minutes / 60)}h${event.duration_minutes % 60 ? ' ' + (event.duration_minutes % 60) + 'm' : ''}`
-    : `${event.duration_minutes}m`;
+  const duration = formatDuration(event.duration_minutes);
 
-  const imageHtml = event.image_url
-    ? `<img src="${escHtml(event.image_url)}" alt="${escHtml(event.title)}">`
-    : '';
+  const heroBg = event.image_url
+    ? `style="background: linear-gradient(to bottom, rgba(28,10,18,0.65) 0%, rgba(28,10,18,0.45) 60%, rgba(28,10,18,0.75) 100%), url(${escHtml(event.image_url)}) center/cover no-repeat;"`
+    : `style="background: linear-gradient(135deg, var(--rose-dark) 0%, var(--rose-deep) 50%, var(--rose) 100%);"`;
 
-  document.getElementById('event-modal-body').innerHTML = `
-    <div class="event-detail-image">${imageHtml}</div>
-    <div class="event-detail-body">
-      <span class="event-detail-category">${escHtml(event.category)}</span>
-      <h2 class="event-detail-title">${escHtml(event.title)}</h2>
-      <div class="event-detail-meta">
-        <div class="detail-meta-item"><div><div class="detail-meta-label">Date</div><div class="detail-meta-value">${formatDate(event.date)}</div></div></div>
-        <div class="detail-meta-item"><div><div class="detail-meta-label">Time</div><div class="detail-meta-value">${event.time} (${duration})</div></div></div>
-        <div class="detail-meta-item"><div><div class="detail-meta-label">Location</div><div class="detail-meta-value">${escHtml(event.location)}</div></div></div>
-        <div class="detail-meta-item"><div><div class="detail-meta-label">Availability</div>
-          <div class="detail-meta-value" style="color:${isSoldOut ? 'var(--coral)' : spotsLeft <= 3 ? 'var(--amber)' : 'var(--green)'}">
-            ${isSoldOut ? 'Sold out' : `${spotsLeft} spot${spotsLeft > 1 ? 's' : ''} left`}
-          </div></div></div>
-      </div>
-      <p class="event-detail-desc">${escHtml(event.description || '')}</p>
-      <div class="event-detail-footer">
-        <div>
-          <div style="font-size:12px;color:var(--text-light);margin-bottom:2px;">Price per person</div>
-          <div style="font-size:28px;font-weight:900;color:var(--rose-deep)">${price}</div>
+  const spotsColor = isSoldOut ? 'var(--coral)' : isLowStock ? 'var(--amber)' : 'var(--green)';
+  const spotsText  = isSoldOut
+    ? 'Sold out'
+    : isLowStock
+    ? `Only ${spotsLeft} spot${spotsLeft > 1 ? 's' : ''} left!`
+    : `${spotsLeft} spots available`;
+
+  document.getElementById('event-detail-root').innerHTML = `
+
+    <!-- HERO -->
+    <div class="ed-hero" ${heroBg}>
+      <div class="container">
+        <div class="ed-breadcrumb">
+          <a href="/events">← All Events</a>
         </div>
-        <button class="btn btn-primary" ${isSoldOut ? 'disabled' : ''} onclick="openBooking(${event.id})">
-          ${isSoldOut ? 'Sold Out' : 'Book Now →'}
-        </button>
+        <span class="ed-category">${escHtml(event.category)}</span>
+        <h1 class="ed-title">${escHtml(event.title)}</h1>
+        <div class="ed-hero-meta">
+          <div class="ed-hero-meta-item">
+            <svg viewBox="0 0 20 20" fill="none"><rect x="3" y="4" width="14" height="14" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 8h14M7 4v2M13 4v2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            ${formatDate(event.date)}
+          </div>
+          <div class="ed-hero-meta-item">
+            <svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.5"/><path d="M10 6v4l3 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            ${event.time} &nbsp;·&nbsp; ${duration}
+          </div>
+          <div class="ed-hero-meta-item">
+            <svg viewBox="0 0 20 20" fill="none"><path d="M10 2C7.24 2 5 4.24 5 7c0 4.25 5 11 5 11s5-6.75 5-11c0-2.76-2.24-5-5-5z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><circle cx="10" cy="7" r="2" stroke="currentColor" stroke-width="1.5"/></svg>
+            ${escHtml(event.location)}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TWO-COLUMN LAYOUT -->
+    <div class="container">
+      <div class="ed-layout">
+
+        <!-- LEFT: Details -->
+        <div class="ed-main">
+
+          <!-- Description -->
+          <div class="ed-section">
+            <h2 class="ed-section-title">About this event</h2>
+            <div class="ed-description">${escHtml(event.description || 'Join us for a wonderful creative experience. All skill levels welcome!')}</div>
+          </div>
+
+          <!-- What's included -->
+          <div class="ed-section">
+            <h2 class="ed-section-title">What's included</h2>
+            <ul class="ed-included-list">
+              <li>
+                <svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="1.5"/><path d="M6.5 10l2.5 2.5 4-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                All materials and tools provided
+              </li>
+              <li>
+                <svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="1.5"/><path d="M6.5 10l2.5 2.5 4-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Step-by-step instructor guidance
+              </li>
+              <li>
+                <svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="1.5"/><path d="M6.5 10l2.5 2.5 4-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Drinks included throughout the session
+              </li>
+              <li>
+                <svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="1.5"/><path d="M6.5 10l2.5 2.5 4-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Small group setting — max ${event.capacity} people
+              </li>
+              <li>
+                <svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="1.5"/><path d="M6.5 10l2.5 2.5 4-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Take your finished creation home
+              </li>
+            </ul>
+          </div>
+
+          <!-- Good to know -->
+          <div class="ed-section">
+            <h2 class="ed-section-title">Good to know</h2>
+            <div class="ed-know-grid">
+              <div class="ed-know-item">
+                <div class="ed-know-icon">
+                  <svg viewBox="0 0 20 20" fill="none"><path d="M10 2a6 6 0 1 0 0 12A6 6 0 0 0 10 2zM4 18a6 6 0 0 1 12 0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                </div>
+                <div>
+                  <div class="ed-know-label">Skill level</div>
+                  <div class="ed-know-value">All levels welcome</div>
+                </div>
+              </div>
+              <div class="ed-know-item">
+                <div class="ed-know-icon">
+                  <svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.5"/><path d="M10 6v4l3 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                </div>
+                <div>
+                  <div class="ed-know-label">Duration</div>
+                  <div class="ed-know-value">${duration}</div>
+                </div>
+              </div>
+              <div class="ed-know-item">
+                <div class="ed-know-icon">
+                  <svg viewBox="0 0 20 20" fill="none"><path d="M17 10a7 7 0 1 1-14 0 7 7 0 0 1 14 0z" stroke="currentColor" stroke-width="1.5"/><path d="M10 7v3l2 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                </div>
+                <div>
+                  <div class="ed-know-label">Group size</div>
+                  <div class="ed-know-value">Up to ${event.capacity} people</div>
+                </div>
+              </div>
+              <div class="ed-know-item">
+                <div class="ed-know-icon">
+                  <svg viewBox="0 0 20 20" fill="none"><path d="M10 3l1.8 4.8H17l-4.2 3.1 1.6 4.8L10 13l-4.4 2.7 1.6-4.8L3 7.8h5.2L10 3z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+                </div>
+                <div>
+                  <div class="ed-know-label">Experience</div>
+                  <div class="ed-know-value">No experience needed</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Location -->
+          <div class="ed-section">
+            <h2 class="ed-section-title">Location</h2>
+            <div class="ed-location-card">
+              <div class="ed-location-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
+              </div>
+              <div class="ed-location-info">
+                <div class="ed-location-name">${escHtml(event.location)}</div>
+                <a class="ed-location-link"
+                   href="https://maps.google.com/?q=${encodeURIComponent(event.location)}"
+                   target="_blank" rel="noopener">
+                  View on Google Maps →
+                </a>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- RIGHT: Booking card -->
+        <div class="ed-sidebar">
+          <div class="ed-booking-card" id="booking-card">
+            <div class="ed-booking-price">
+              ${event.price_pence === 0
+                ? '<span class="ed-price-free">Free</span>'
+                : `<span class="ed-price-amount">${price}</span><span class="ed-price-label">per person</span>`}
+            </div>
+
+            <div class="ed-booking-details">
+              <div class="ed-booking-detail-row">
+                <svg viewBox="0 0 20 20" fill="none"><rect x="3" y="4" width="14" height="14" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 8h14M7 4v2M13 4v2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                <span>${formatDate(event.date)}</span>
+              </div>
+              <div class="ed-booking-detail-row">
+                <svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.5"/><path d="M10 6v4l3 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                <span>${event.time} &nbsp;·&nbsp; ${duration}</span>
+              </div>
+              <div class="ed-booking-detail-row">
+                <svg viewBox="0 0 20 20" fill="none"><path d="M10 2C7.24 2 5 4.24 5 7c0 4.25 5 11 5 11s5-6.75 5-11c0-2.76-2.24-5-5-5z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><circle cx="10" cy="7" r="2" stroke="currentColor" stroke-width="1.5"/></svg>
+                <span>${escHtml(event.location)}</span>
+              </div>
+            </div>
+
+            <div class="ed-availability" style="color:${spotsColor}">
+              <svg viewBox="0 0 20 20" fill="none"><path d="M13 7a3 3 0 11-6 0 3 3 0 016 0zM4 17a8 8 0 0112 0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+              ${spotsText}
+            </div>
+
+            ${isSoldOut
+              ? `<button class="btn btn-full" disabled style="background:var(--border);color:var(--text-light);cursor:not-allowed;padding:16px;border-radius:var(--radius);font-weight:700;font-size:16px;border:none;">Sold Out</button>`
+              : `<button class="btn btn-primary btn-full ed-book-btn" onclick="openBooking()">Book Now →</button>`
+            }
+
+            <p class="ed-booking-note">No payment taken until the next step</p>
+          </div>
+        </div>
+
       </div>
     </div>`;
+}
 
-  openModal('event-modal');
-  currentBookingState.event = event;
+function formatDuration(mins) {
+  if (!mins) return '';
+  if (mins < 60) return `${mins} min`;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return m ? `${h}h ${m}m` : `${h} hour${h > 1 ? 's' : ''}`;
+}
+
+function showError(msg) {
+  document.getElementById('event-detail-root').innerHTML = `
+    <div class="container" style="padding:80px 0;text-align:center;">
+      <h2 style="color:var(--text-dark);margin-bottom:12px;">Oops!</h2>
+      <p style="color:var(--text-light);margin-bottom:24px;">${msg}</p>
+      <a href="/events" class="btn btn-primary">Browse All Events</a>
+    </div>`;
 }
 
 // ---- BOOKING FLOW ----
-async function openBooking(eventId) {
-  closeModal('event-modal');
-  const event = currentBookingState.event || await apiFetch(`/api/events/${eventId}`);
-  currentBookingState.event    = event;
+function openBooking() {
+  if (!currentEvent) return;
+  currentBookingState.event    = currentEvent;
   currentBookingState.quantity = 1;
   showBookingStep1();
   openModal('booking-modal');
@@ -469,7 +489,6 @@ async function submitPayment() {
     });
     closeModal('booking-modal');
     showConfirmation(currentBookingState.booking, currentBookingState.customer, currentBookingState.event);
-    loadEvents();
   } catch {
     alert('Payment taken but confirmation failed. Please contact us with your booking reference.');
   }
@@ -491,7 +510,7 @@ function showConfirmation(booking, customer, event) {
         <div class="confirm-detail-row"><span>Tickets</span><span>${booking.quantity}</span></div>
         <div class="confirm-detail-row"><span>Total Paid</span><span style="color:var(--green);font-weight:700;">${total}</span></div>
       </div>
-      <button class="btn btn-primary" onclick="closeModal('confirm-modal')">Done</button>
+      <a href="/events" class="btn btn-primary">Browse More Events</a>
     </div>`;
 
   openModal('confirm-modal');
@@ -500,10 +519,9 @@ function showConfirmation(booking, customer, event) {
 // ---- MODALS ----
 function openModal(id)  { document.getElementById(id).classList.remove('hidden'); document.body.style.overflow = 'hidden'; }
 function closeModal(id) { document.getElementById(id).classList.add('hidden');    document.body.style.overflow = ''; }
-function closeEventModal(e)   { if (e.target.id === 'event-modal')   closeModal('event-modal'); }
 function closeBookingModal(e) { if (e.target.id === 'booking-modal') closeModal('booking-modal'); }
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') ['event-modal','booking-modal','confirm-modal'].forEach(closeModal);
+  if (e.key === 'Escape') ['booking-modal','confirm-modal'].forEach(closeModal);
 });
 
 // ---- HELPERS ----
@@ -515,7 +533,7 @@ async function apiFetch(url, opts = {}) {
 }
 
 function formatDate(str) {
-  return new Date(str + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+  return new Date(str + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 }
 
 function escHtml(str) {
