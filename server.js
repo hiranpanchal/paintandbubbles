@@ -1,0 +1,38 @@
+require('dotenv').config();
+const express = require('express');
+const path = require('path');
+const cors = require('cors');
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Stripe webhook needs raw body — must be before json middleware
+app.use('/api/payments/webhook', express.raw({ type: 'application/json' }));
+
+app.use(cors());
+app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Routes
+app.use('/api/admin',   require('./routes/admin'));
+app.use('/api/events',  require('./routes/events'));
+app.use('/api/bookings',  require('./routes/bookings'));
+app.use('/api/customers', require('./routes/customers'));
+app.use('/api/payments',  require('./routes/payments'));
+app.use('/api/design',    require('./routes/design'));
+
+// Serve frontend for all non-API routes
+app.get('/admin',  (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
+app.get('/events', (req, res) => res.sendFile(path.join(__dirname, 'public', 'events.html')));
+app.get('*',       (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+
+// Global error handler
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ error: 'Internal server error' });
+});
+
+app.listen(PORT, () => {
+  console.log(`Paint & Bubbles running at http://localhost:${PORT}`);
+  console.log(`Admin dashboard: http://localhost:${PORT}/admin`);
+});

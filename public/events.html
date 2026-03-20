@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>All Events — Paint &amp; Bubbles</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://js.stripe.com/v3/"></script>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="site-header">
+  <div class="container header-inner">
+    <a href="/" class="logo">
+      <img src="/logo.png" alt="Paint &amp; Bubbles" class="logo-img"
+           onerror="this.style.display='none';document.getElementById('logo-fallback').style.display='block'">
+      <span class="logo-text" id="logo-fallback" style="display:none">Paint <span class="logo-and">&amp;</span> Bubbles</span>
+    </a>
+    <nav class="main-nav">
+      <button class="nav-btn" onclick="window.location.href='/'">Home</button>
+      <button class="nav-btn active" onclick="window.location.href='/events'">Events</button>
+    </nav>
+    <a href="/admin" class="btn btn-ghost btn-sm">Admin</a>
+  </div>
+</header>
+
+<!-- PAGE HERO + SEARCH -->
+<section class="events-page-hero">
+  <div class="container">
+    <div class="events-page-header">
+      <div>
+        <h1 class="events-page-title">All Events</h1>
+        <p class="events-page-sub">Find your next creative experience</p>
+      </div>
+    </div>
+    <!-- Search Bar -->
+    <div class="search-bar">
+      <div class="search-field">
+        <input type="text" id="search-input" placeholder="Search events…" oninput="debouncedSearch()">
+      </div>
+      <div class="search-field">
+        <select id="category-filter" onchange="loadEvents()">
+          <option value="">All categories</option>
+        </select>
+      </div>
+      <div class="search-field">
+        <input type="date" id="date-from" onchange="loadEvents()">
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- EVENTS GRID -->
+<section class="events-section">
+  <div class="container">
+    <div class="section-header">
+      <h2 class="section-title" id="events-count-label">Upcoming Events</h2>
+    </div>
+    <div class="events-grid" id="events-grid">
+      <div class="loading-state">
+        <div class="spinner"></div>
+        <p>Loading events…</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="site-footer">
+  <div class="container footer-inner">
+    <div class="footer-brand">Paint &amp; Bubbles</div>
+    <p class="footer-tagline">Creative events for everyone</p>
+  </div>
+</footer>
+
+<!-- EVENT MODAL -->
+<div class="modal-overlay hidden" id="event-modal" onclick="closeEventModal(event)">
+  <div class="modal" id="event-modal-content">
+    <button class="modal-close" onclick="closeModal('event-modal')">✕</button>
+    <div id="event-modal-body"></div>
+  </div>
+</div>
+
+<!-- BOOKING MODAL -->
+<div class="modal-overlay hidden" id="booking-modal" onclick="closeBookingModal(event)">
+  <div class="modal modal-lg" id="booking-modal-content">
+    <button class="modal-close" onclick="closeModal('booking-modal')">✕</button>
+    <div id="booking-modal-body"></div>
+  </div>
+</div>
+
+<!-- CONFIRMATION MODAL -->
+<div class="modal-overlay hidden" id="confirm-modal">
+  <div class="modal" id="confirm-modal-content">
+    <div id="confirm-modal-body"></div>
+  </div>
+</div>
+
+<script src="/js/events.js"></script>
+</body>
+</html>

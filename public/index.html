@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Paint &amp; Bubbles — Creative Events</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://js.stripe.com/v3/"></script>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="site-header">
+  <div class="container header-inner">
+    <a href="/" class="logo">
+      <img src="/logo.png" alt="Paint &amp; Bubbles" class="logo-img"
+           onerror="this.style.display='none';document.getElementById('logo-fallback').style.display='block'">
+      <span class="logo-text" id="logo-fallback" style="display:none">Paint <span class="logo-and">&amp;</span> Bubbles</span>
+    </a>
+    <nav class="main-nav">
+      <button class="nav-btn active" onclick="window.location.href='/'">Home</button>
+      <button class="nav-btn" onclick="window.location.href='/events'">Events</button>
+    </nav>
+    <a href="/admin" class="btn btn-ghost btn-sm">Admin</a>
+  </div>
+</header>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="container">
+    <div class="hero-content">
+      <div class="hero-badge">Creative Experiences</div>
+      <h1 class="hero-title">Paint, Create <span class="hero-highlight">&amp; Celebrate</span></h1>
+      <p class="hero-sub">Discover unique painting and craft events in Brighton. All materials provided. Drinks included. Just bring yourself!</p>
+      <div class="hero-actions">
+        <a href="/events" class="btn btn-primary">Browse All Events</a>
+        <a href="#about" class="btn btn-outline-white">About Us</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ABOUT US -->
+<section class="about-section" id="about">
+  <div class="container">
+    <div class="about-inner">
+      <div class="about-text">
+        <p class="about-label">About Us</p>
+        <h2 class="about-title">Where creativity meets good company</h2>
+        <p class="about-body">Paint &amp; Bubbles is Brighton's favourite creative events studio. We host relaxed, fun painting and craft sessions for all skill levels — whether you're a total beginner or a seasoned artist, you'll leave with something you're proud of and a smile on your face.</p>
+        <p class="about-body">Every event includes all the materials you need, a welcoming space, and drinks to keep the creativity flowing. No experience necessary — just show up, let loose, and enjoy the ride.</p>
+        <div class="about-pillars">
+          <div class="about-pillar">
+            <div class="about-pillar-title">All levels welcome</div>
+            <div class="about-pillar-text">From first-timers to seasoned creatives</div>
+          </div>
+          <div class="about-pillar">
+            <div class="about-pillar-title">Everything included</div>
+            <div class="about-pillar-text">Materials, guidance and drinks provided</div>
+          </div>
+          <div class="about-pillar">
+            <div class="about-pillar-title">Small groups</div>
+            <div class="about-pillar-text">Intimate sessions for a personal experience</div>
+          </div>
+        </div>
+      </div>
+      <div class="about-image">
+        <div class="about-image-inner">
+          <img src="/about.jpg" alt="Paint and Bubbles studio"
+               onerror="this.parentElement.classList.add('about-image-placeholder')">
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- UPCOMING EVENTS (latest 2) -->
+<section class="events-section">
+  <div class="container">
+    <div class="section-header">
+      <h2 class="section-title">Upcoming Events</h2>
+      <a href="/events" class="view-all-link">View all events →</a>
+    </div>
+    <div class="events-grid" id="events-grid">
+      <div class="loading-state">
+        <div class="spinner"></div>
+        <p>Loading events…</p>
+      </div>
+    </div>
+    <div class="events-cta">
+      <a href="/events" class="btn btn-primary">See All Events</a>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="site-footer">
+  <div class="container footer-inner">
+    <div class="footer-brand">Paint &amp; Bubbles</div>
+    <p class="footer-tagline">Creative events for everyone</p>
+  </div>
+</footer>
+
+<!-- EVENT MODAL -->
+<div class="modal-overlay hidden" id="event-modal" onclick="closeEventModal(event)">
+  <div class="modal" id="event-modal-content">
+    <button class="modal-close" onclick="closeModal('event-modal')">✕</button>
+    <div id="event-modal-body"></div>
+  </div>
+</div>
+
+<!-- BOOKING MODAL -->
+<div class="modal-overlay hidden" id="booking-modal" onclick="closeBookingModal(event)">
+  <div class="modal modal-lg" id="booking-modal-content">
+    <button class="modal-close" onclick="closeModal('booking-modal')">✕</button>
+    <div id="booking-modal-body"></div>
+  </div>
+</div>
+
+<!-- CONFIRMATION MODAL -->
+<div class="modal-overlay hidden" id="confirm-modal">
+  <div class="modal" id="confirm-modal-content">
+    <div id="confirm-modal-body"></div>
+  </div>
+</div>
+
+<script src="/js/app.js"></script>
+</body>
+</html>
