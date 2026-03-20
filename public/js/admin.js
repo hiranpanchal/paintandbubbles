@@ -234,15 +234,21 @@ function renderEventsTable(events) {
 }
 
 function openEventForm(eventId = null) {
-  const title = eventId ? 'Edit Event' : 'Add Event';
-  document.getElementById('event-form-title').textContent = title;
+  document.getElementById('event-form-title').textContent = eventId ? 'Edit Event' : 'Add Event';
 
   if (eventId) {
-    apiFetch(`/api/events/${eventId}`).then(event => renderEventForm(event)).catch(() => toast('Failed to load event', 'error'));
+    // Show spinner immediately so the modal has content when it opens —
+    // otherwise the empty body lets clicks reach the overlay and close it
+    document.getElementById('event-form-body').innerHTML =
+      '<div class="loading-state" style="padding:40px 0"><div class="spinner"></div></div>';
+    openAdminModal('event-form-modal');
+    apiFetch(`/api/events/${eventId}`)
+      .then(event => renderEventForm(event))
+      .catch(() => { closeAdminModal('event-form-modal'); toast('Failed to load event', 'error'); });
   } else {
     renderEventForm(null);
+    openAdminModal('event-form-modal');
   }
-  openAdminModal('event-form-modal');
 }
 
 function renderEventForm(event = null) {
