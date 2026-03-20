@@ -808,25 +808,48 @@ function renderDesignPanel() {
   const s = designSettings;
 
   document.getElementById('content-design').innerHTML = `
-    <div class="design-layout">
 
-      <!-- LEFT COL: Images + Colours -->
-      <div class="design-col">
+    <!-- Tab Nav -->
+    <div class="design-tabs-nav">
+      <button class="design-tab-btn active" onclick="switchDesignTab('images')" data-tab="images">
+        <svg viewBox="0 0 20 20" fill="none"><rect x="2" y="4" width="16" height="13" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M2 13l4-4 3 3 3-3 6 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Images
+      </button>
+      <button class="design-tab-btn" onclick="switchDesignTab('colours')" data-tab="colours">
+        <svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.5"/><path d="M10 3c1.5 2 3 3.5 3 5.5a3 3 0 01-6 0C7 6.5 8.5 5 10 3z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+        Colours
+      </button>
+      <button class="design-tab-btn" onclick="switchDesignTab('content')" data-tab="content">
+        <svg viewBox="0 0 20 20" fill="none"><path d="M4 6h12M4 10h8M4 14h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        Content
+      </button>
+      <button class="design-tab-btn" onclick="switchDesignTab('trust')" data-tab="trust">
+        <svg viewBox="0 0 20 20" fill="none"><path d="M10 2l1.8 4.8H17l-4.2 3.1 1.6 4.8L10 12l-4.4 2.7 1.6-4.8L3 6.8h5.2L10 2z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+        Trust Cards
+      </button>
+    </div>
 
-        <!-- Images -->
+    <!-- IMAGES TAB -->
+    <div class="design-tab-panel" id="dtab-images">
+      <div class="design-images-grid">
         <div class="design-card">
-          <div class="design-card-header"><h3 class="design-card-title">Images</h3></div>
-          <div class="design-card-body">
-            <div class="dz-label">Logo</div>
-            ${renderDropZone('logo_url', s.logo_url)}
-            <div class="dz-label" style="margin-top:20px">Hero Background Image</div>
-            ${renderDropZone('hero_image_url', s.hero_image_url)}
-            <div class="dz-label" style="margin-top:20px">About Section Image</div>
-            ${renderDropZone('about_image_url', s.about_image_url)}
-          </div>
+          <div class="design-card-header"><h3 class="design-card-title">Logo</h3></div>
+          <div class="design-card-body">${renderDropZone('logo_url', s.logo_url)}</div>
         </div>
+        <div class="design-card">
+          <div class="design-card-header"><h3 class="design-card-title">Hero Background</h3></div>
+          <div class="design-card-body">${renderDropZone('hero_image_url', s.hero_image_url)}</div>
+        </div>
+        <div class="design-card">
+          <div class="design-card-header"><h3 class="design-card-title">About Section Image</h3></div>
+          <div class="design-card-body">${renderDropZone('about_image_url', s.about_image_url)}</div>
+        </div>
+      </div>
+    </div>
 
-        <!-- Brand Colours -->
+    <!-- COLOURS TAB -->
+    <div class="design-tab-panel hidden" id="dtab-colours">
+      <div class="design-centred-wrap">
         <div class="design-card">
           <div class="design-card-header"><h3 class="design-card-title">Brand Colours</h3></div>
           <div class="design-card-body">
@@ -837,13 +860,13 @@ function renderDesignPanel() {
             ${renderColorField('color_text_dark', 'Heading Text',    s.color_text_dark || '#2C2028')}
           </div>
         </div>
-
       </div>
+    </div>
 
-      <!-- RIGHT COL: Content -->
-      <div class="design-col">
+    <!-- CONTENT TAB -->
+    <div class="design-tab-panel hidden" id="dtab-content">
+      <div class="design-centred-wrap">
 
-        <!-- Hero -->
         <div class="design-card">
           <div class="design-card-header"><h3 class="design-card-title">Hero Section</h3></div>
           <div class="design-card-body">
@@ -884,7 +907,6 @@ function renderDesignPanel() {
           </div>
         </div>
 
-        <!-- About -->
         <div class="design-card">
           <div class="design-card-header"><h3 class="design-card-title">About Section</h3></div>
           <div class="design-card-body">
@@ -903,7 +925,6 @@ function renderDesignPanel() {
           </div>
         </div>
 
-        <!-- Footer -->
         <div class="design-card">
           <div class="design-card-header"><h3 class="design-card-title">Footer</h3></div>
           <div class="design-card-body">
@@ -914,34 +935,47 @@ function renderDesignPanel() {
           </div>
         </div>
 
-        <!-- Trust Cards -->
-        <div class="design-card">
-          <div class="design-card-header"><h3 class="design-card-title">Trust Cards</h3></div>
-          <div class="design-card-body">
-            ${[1,2,3,4].map(i => `
-              <div ${i < 4 ? 'style="margin-bottom:24px;padding-bottom:24px;border-bottom:1px solid var(--border);"' : ''}>
-                <div class="trust-card-edit-num">Card ${i}</div>
-                ${renderIconPicker(i, s[`trust_${i}_icon`] || '')}
-                <div class="form-row" style="margin-top:12px;">
-                  <div class="form-group">
-                    <label>Title</label>
-                    <input type="text" id="ds-trust_${i}_title" value="${escHtml(s[`trust_${i}_title`] || '')}">
-                  </div>
-                  <div class="form-group">
-                    <label>Subtitle</label>
-                    <input type="text" id="ds-trust_${i}_sub" value="${escHtml(s[`trust_${i}_sub`] || '')}">
-                  </div>
-                </div>
-              </div>`).join('')}
-          </div>
-        </div>
-
-        <button class="btn btn-primary btn-full" onclick="saveDesign()" id="design-save-btn">Save All Changes</button>
-
       </div>
+    </div>
+
+    <!-- TRUST CARDS TAB -->
+    <div class="design-tab-panel hidden" id="dtab-trust">
+      <div class="trust-cards-grid">
+        ${[1,2,3,4].map(i => `
+          <div class="design-card">
+            <div class="design-card-header">
+              <h3 class="design-card-title">Card ${i}</h3>
+            </div>
+            <div class="design-card-body">
+              ${renderIconPicker(i, s[`trust_${i}_icon`] || '')}
+              <div class="form-group" style="margin-top:14px;">
+                <label>Title</label>
+                <input type="text" id="ds-trust_${i}_title" value="${escHtml(s[`trust_${i}_title`] || '')}">
+              </div>
+              <div class="form-group">
+                <label>Subtitle</label>
+                <input type="text" id="ds-trust_${i}_sub" value="${escHtml(s[`trust_${i}_sub`] || '')}">
+              </div>
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>
+
+    <!-- SAVE BAR -->
+    <div class="design-save-bar">
+      <button class="btn btn-primary" onclick="saveDesign()" id="design-save-btn">Save All Changes</button>
     </div>`;
 
   initDropZones();
+}
+
+function switchDesignTab(tab) {
+  document.querySelectorAll('.design-tab-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === tab);
+  });
+  document.querySelectorAll('.design-tab-panel').forEach(panel => {
+    panel.classList.toggle('hidden', panel.id !== `dtab-${tab}`);
+  });
 }
 
 // ---- ICON PICKER ----

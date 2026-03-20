@@ -651,17 +651,87 @@ body {
    DESIGN TAB
    ============================================= */
 
-.design-layout {
+/* ---- Tab Nav ---- */
+.design-tabs-nav {
+  display: flex;
+  gap: 4px;
+  background: var(--rose-50);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 5px;
+  margin-bottom: 24px;
+  width: fit-content;
+}
+
+.design-tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 18px;
+  border: none;
+  background: none;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-light);
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition);
+  white-space: nowrap;
+}
+.design-tab-btn svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+.design-tab-btn:hover {
+  background: white;
+  color: var(--text-dark);
+}
+.design-tab-btn.active {
+  background: white;
+  color: var(--rose-deep);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ---- Tab Panels ---- */
+.design-tab-panel {
+  animation: fadeIn 0.15s ease;
+}
+@keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+/* ---- Images grid (3 across) ---- */
+.design-images-grid {
   display: grid;
-  grid-template-columns: 380px 1fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: 20px;
   align-items: start;
 }
 
-.design-col {
+/* ---- Centred wrap (colours + content) ---- */
+.design-centred-wrap {
+  max-width: 680px;
   display: flex;
   flex-direction: column;
   gap: 20px;
+}
+
+/* ---- Trust cards grid (2×2) ---- */
+.trust-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+/* ---- Save bar ---- */
+.design-save-bar {
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+.design-save-bar .btn {
+  min-width: 200px;
 }
 
 /* Design Cards */
@@ -924,12 +994,14 @@ body {
 }
 
 /* Responsive */
-@media (max-width: 1100px) {
-  .design-layout { grid-template-columns: 1fr; }
+@media (max-width: 900px) {
+  .design-images-grid { grid-template-columns: 1fr 1fr; }
+  .trust-cards-grid   { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 768px) {
-  .design-layout { grid-template-columns: 1fr; }
-  .dz-inner { flex-direction: column; text-align: center; }
-  .dz-info { align-items: center; }
+  .design-tabs-nav    { width: 100%; flex-wrap: wrap; }
+  .design-images-grid { grid-template-columns: 1fr; }
+  .dz-inner           { flex-direction: column; text-align: center; }
+  .dz-info            { align-items: center; }
 }
