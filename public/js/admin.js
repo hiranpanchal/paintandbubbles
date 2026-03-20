@@ -766,11 +766,11 @@ function renderDesignPanel() {
 function renderColorField(key, label, value) {
   return `
     <div class="color-field">
-      <label class="color-swatch-wrap" for="ds-${key}" title="Click to change colour">
+      <label class="color-swatch-wrap" title="Click to change colour">
         <div class="color-swatch" id="swatch-${key}" style="background:${escHtml(value)}"></div>
+        <input type="color" id="ds-${key}" value="${escHtml(value)}" class="color-picker-input"
+               oninput="onColorInput('${key}', this.value)">
       </label>
-      <input type="color" id="ds-${key}" value="${escHtml(value)}" class="color-picker-input"
-             oninput="onColorInput('${key}', this.value)">
       <div class="color-field-info">
         <div class="color-field-label">${label}</div>
         <div class="color-field-hex" id="hex-${key}">${value}</div>
