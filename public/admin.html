@@ -77,6 +77,10 @@
         <svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.5"/><path d="M10 3c1.5 2 3 3.5 3 5.5a3 3 0 01-6 0C7 6.5 8.5 5 10 3z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M7 13.5c1-.5 2-.5 3 0s2 .5 3 0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
         Design
       </button>
+      <button class="sidebar-item" id="tab-faq" onclick="switchTab('faq')">
+        <svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.5"/><path d="M10 14v-.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M10 11c0-1.5 2-1.5 2-3a2 2 0 10-4 0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        FAQ
+      </button>
     </nav>
 
     <div class="sidebar-footer">
@@ -185,6 +189,11 @@
       <div class="loading-state"><div class="spinner"></div></div>
     </div>
 
+    <!-- FAQ TAB -->
+    <div class="tab-content hidden" id="content-faq">
+      <div class="loading-state"><div class="spinner"></div></div>
+    </div>
+
   </div>
 </div>
 
@@ -196,6 +205,17 @@
       <button class="modal-close" onclick="closeAdminModal('event-form-modal')">✕</button>
     </div>
     <div class="modal-body" id="event-form-body"></div>
+  </div>
+</div>
+
+<!-- FAQ FORM MODAL -->
+<div class="modal-overlay hidden" id="faq-form-modal" onclick="if(event.target.id==='faq-form-modal')closeAdminModal('faq-form-modal')">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <h2 id="faq-form-title">Add FAQ</h2>
+      <button class="modal-close" onclick="closeAdminModal('faq-form-modal')">✕</button>
+    </div>
+    <div class="modal-body" id="faq-form-body"></div>
   </div>
 </div>
 

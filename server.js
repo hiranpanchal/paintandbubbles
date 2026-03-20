@@ -20,10 +20,12 @@ app.use('/api/bookings',  require('./routes/bookings'));
 app.use('/api/customers', require('./routes/customers'));
 app.use('/api/payments',  require('./routes/payments'));
 app.use('/api/design',    require('./routes/design'));
+app.use('/api/faqs',      require('./routes/faqs'));
 
 // Serve frontend for all non-API routes
 app.get('/admin',  (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
 app.get('/events', (req, res) => res.sendFile(path.join(__dirname, 'public', 'events.html')));
+app.get('/faq',    (req, res) => res.sendFile(path.join(__dirname, 'public', 'faq.html')));
 app.get('*',       (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
 // Global error handler

@@ -115,7 +115,7 @@ async function loadUpcomingEvents() {
 
   try {
     const events = await apiFetch('/api/events');
-    const upcoming = events.slice(0, 2);
+    const upcoming = events.slice(0, 3);
 
     if (upcoming.length === 0) {
       grid.innerHTML = `<div class="empty-state"><h3>No upcoming events</h3><p>Check back soon for new events.</p></div>`;

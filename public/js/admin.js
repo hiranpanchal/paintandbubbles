@@ -74,7 +74,7 @@ function switchTab(tab) {
   document.getElementById(`content-${tab}`).classList.remove('hidden');
   document.getElementById(`tab-${tab}`).classList.add('active');
 
-  const titles = { overview: 'Overview', events: 'Events', bookings: 'Bookings', customers: 'Customers', payments: 'Payments', design: 'Design' };
+  const titles = { overview: 'Overview', events: 'Events', bookings: 'Bookings', customers: 'Customers', payments: 'Payments', design: 'Design', faq: 'FAQ' };
   document.getElementById('page-title').textContent = titles[tab] || tab;
 
   // Close sidebar on mobile
@@ -89,6 +89,7 @@ function switchTab(tab) {
   else if (tab === 'customers') loadAdminCustomers();
   else if (tab === 'payments') loadAdminPayments();
   else if (tab === 'design') loadDesign();
+  else if (tab === 'faq')    loadAdminFAQs();
 }
 
 function toggleSidebar() {
@@ -626,6 +627,147 @@ function toast(msg, type = '') {
   el.textContent = msg;
   document.body.appendChild(el);
   setTimeout(() => el.remove(), 3500);
+}
+
+// =============================================
+// FAQ TAB
+// =============================================
+
+async function loadAdminFAQs() {
+  const el = document.getElementById('content-faq');
+  el.innerHTML = '<div class="loading-state"><div class="spinner"></div></div>';
+  try {
+    const faqs = await apiFetch('/api/faqs/all');
+    renderFAQTab(faqs);
+  } catch {
+    toast('Failed to load FAQs', 'error');
+  }
+}
+
+function renderFAQTab(faqs) {
+  const el = document.getElementById('content-faq');
+  el.innerHTML = `
+    <div class="toolbar">
+      <p style="font-size:13px;color:var(--text-light);font-weight:600;">${faqs.length} question${faqs.length !== 1 ? 's' : ''}</p>
+      <button class="btn btn-primary btn-sm" onclick="openFAQForm()">+ Add Question</button>
+    </div>
+    <div class="card">
+      ${faqs.length === 0
+        ? '<div class="empty-state"><p>No FAQs yet. Add your first question!</p></div>'
+        : `<table class="data-table">
+            <thead><tr>
+              <th>Question</th>
+              <th>Status</th>
+              <th>Order</th>
+              <th>Actions</th>
+            </tr></thead>
+            <tbody>${faqs.map(f => `
+              <tr id="faq-row-${f.id}">
+                <td>
+                  <div style="font-weight:700;margin-bottom:3px;">${escHtml(f.question)}</div>
+                  <div style="font-size:12px;color:var(--text-light);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:400px;">${escHtml(f.answer)}</div>
+                </td>
+                <td>
+                  <button class="badge ${f.is_active ? 'badge-green' : 'badge-gray'}"
+                          onclick="toggleFAQActive(${f.id}, ${f.is_active})"
+                          style="cursor:pointer;border:none;">
+                    ${f.is_active ? 'Visible' : 'Hidden'}
+                  </button>
+                </td>
+                <td>
+                  <div style="display:flex;gap:4px;">
+                    <button class="btn btn-xs btn-ghost" onclick="reorderFAQ(${f.id},'up')" title="Move up">↑</button>
+                    <button class="btn btn-xs btn-ghost" onclick="reorderFAQ(${f.id},'down')" title="Move down">↓</button>
+                  </div>
+                </td>
+                <td>
+                  <div class="actions">
+                    <button class="btn btn-ghost btn-xs" onclick="openFAQForm(${f.id})">Edit</button>
+                    <button class="btn btn-xs" style="background:#fee2e2;color:#dc2626;border:none" onclick="deleteFAQ(${f.id})">Delete</button>
+                  </div>
+                </td>
+              </tr>`).join('')}
+            </tbody>
+          </table>`}
+    </div>`;
+}
+
+function openFAQForm(id = null) {
+  document.getElementById('faq-form-title').textContent = id ? 'Edit Question' : 'Add Question';
+  if (id) {
+    apiFetch(`/api/faqs/all`).then(faqs => {
+      const faq = faqs.find(f => f.id === id);
+      renderFAQForm(faq);
+    });
+  } else {
+    renderFAQForm(null);
+  }
+  openAdminModal('faq-form-modal');
+}
+
+function renderFAQForm(faq = null) {
+  document.getElementById('faq-form-body').innerHTML = `
+    <div class="form-group">
+      <label>Question *</label>
+      <input type="text" id="ff-question" value="${escHtml(faq?.question || '')}" placeholder="e.g. Do I need any experience?">
+    </div>
+    <div class="form-group">
+      <label>Answer *</label>
+      <textarea id="ff-answer" rows="5" placeholder="Type your answer here…">${escHtml(faq?.answer || '')}</textarea>
+    </div>
+    <div style="display:flex;gap:12px;margin-top:4px;">
+      <button class="btn btn-ghost btn-full" onclick="closeAdminModal('faq-form-modal')">Cancel</button>
+      <button class="btn btn-primary btn-full" onclick="saveFAQ(${faq?.id || 'null'})">${faq ? 'Save Changes' : 'Add Question'}</button>
+    </div>`;
+}
+
+async function saveFAQ(id) {
+  const question = document.getElementById('ff-question').value.trim();
+  const answer   = document.getElementById('ff-answer').value.trim();
+  if (!question || !answer) { toast('Please fill in both fields', 'error'); return; }
+
+  try {
+    if (id) {
+      await apiFetch(`/api/faqs/${id}`, { method: 'PUT', body: JSON.stringify({ question, answer }) });
+      toast('FAQ updated!', 'success');
+    } else {
+      await apiFetch('/api/faqs', { method: 'POST', body: JSON.stringify({ question, answer }) });
+      toast('FAQ added!', 'success');
+    }
+    closeAdminModal('faq-form-modal');
+    loadAdminFAQs();
+  } catch (err) {
+    toast(err.message || 'Failed to save FAQ', 'error');
+  }
+}
+
+async function toggleFAQActive(id, current) {
+  try {
+    await apiFetch(`/api/faqs/${id}`, { method: 'PUT', body: JSON.stringify({ is_active: current ? 0 : 1 }) });
+    loadAdminFAQs();
+  } catch {
+    toast('Failed to update FAQ', 'error');
+  }
+}
+
+async function reorderFAQ(id, direction) {
+  try {
+    await apiFetch('/api/faqs/reorder', { method: 'PATCH', body: JSON.stringify({ id, direction }) });
+    loadAdminFAQs();
+  } catch {
+    toast('Failed to reorder', 'error');
+  }
+}
+
+async function deleteFAQ(id) {
+  if (!confirm('Delete this FAQ?')) return;
+  try {
+    await apiFetch(`/api/faqs/${id}`, { method: 'DELETE' });
+    toast('FAQ deleted', 'success');
+    loadAdminFAQs();
+  } catch {
+    toast('Failed to delete FAQ', 'error');
+  }
 }
 
 // =============================================

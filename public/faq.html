@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FAQ — Paint &amp; Bubbles</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="site-header">
+  <div class="container header-inner">
+    <a href="/" class="logo">
+      <img src="/logo.png" alt="Paint &amp; Bubbles" class="logo-img"
+           onerror="this.style.display='none';document.getElementById('logo-fallback').style.display='block'">
+      <span class="logo-text" id="logo-fallback" style="display:none">Paint <span class="logo-and">&amp;</span> Bubbles</span>
+    </a>
+    <nav class="main-nav">
+      <button class="nav-btn" onclick="window.location.href='/'">Home</button>
+      <button class="nav-btn" onclick="window.location.href='/events'">Events</button>
+      <button class="nav-btn active" onclick="window.location.href='/faq'">FAQ</button>
+    </nav>
+    <a href="/admin" class="btn btn-ghost btn-sm">Admin</a>
+  </div>
+</header>
+
+<!-- PAGE HERO -->
+<section class="faq-hero">
+  <div class="container">
+    <h1 class="faq-hero-title">Frequently Asked Questions</h1>
+    <p class="faq-hero-sub">Everything you need to know before you book</p>
+  </div>
+</section>
+
+<!-- FAQ LIST -->
+<section class="faq-section">
+  <div class="container">
+    <div class="faq-list" id="faq-list">
+      <div class="loading-state">
+        <div class="spinner"></div>
+        <p>Loading…</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="site-footer">
+  <div class="container footer-inner">
+    <div class="footer-brand">Paint &amp; Bubbles</div>
+    <p class="footer-tagline">Creative events for everyone</p>
+  </div>
+</footer>
+
+<script src="/js/faq.js"></script>
+</body>
+</html>
