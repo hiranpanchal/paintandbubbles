@@ -119,6 +119,10 @@ if (settingsCount.count === 0) {
     logo_url:                  '',
     hero_image_url:            '',
     about_image_url:           '',
+    trust_1_icon:  'star',  trust_1_title: '5★ Rated on ClassBento',   trust_1_sub: 'Top-reviewed creative studio',
+    trust_2_icon:  'brush', trust_2_title: '100% Beginner Friendly',   trust_2_sub: 'No experience needed at all',
+    trust_3_icon:  'users', trust_3_title: 'Kids Classes Available',   trust_3_sub: 'Fun sessions for all ages',
+    trust_4_icon:  'pin',   trust_4_title: 'Multiple Locations',       trust_4_sub: 'Coventry · Leamington Spa · Solihull · Rugby · Warwickshire',
   };
   const upsert = db.prepare('INSERT OR IGNORE INTO site_settings (key, value) VALUES (?, ?)');
   for (const [k, v] of Object.entries(defaults)) upsert.run(k, v);
