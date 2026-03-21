@@ -156,14 +156,15 @@ async function renderReviewsSection() {
   const section = document.getElementById('reviews-section');
   if (!section) return;
   try {
-    const reviews = await fetch('/api/reviews').then(r => r.json());
-    if (!reviews || !reviews.length) { section.style.display = 'none'; return; }
+    const allReviews = await fetch('/api/reviews').then(r => r.json());
+    if (!allReviews || !allReviews.length) { section.style.display = 'none'; return; }
+    const reviews = allReviews.slice(0, 8);
     section.style.display = '';
     const track = document.getElementById('reviews-track');
     if (!track) return;
 
-    // Calculate average rating
-    const avg = (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1);
+    // Calculate average rating (based on all reviews)
+    const avg = (allReviews.reduce((s, r) => s + r.rating, 0) / allReviews.length).toFixed(1);
     const scoreEl = section.querySelector('.reviews-score');
     if (scoreEl) scoreEl.textContent = avg;
     const starsEl = section.querySelector('.reviews-stars-big');
