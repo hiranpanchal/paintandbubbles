@@ -1129,28 +1129,18 @@ h4 { font-family: var(--font-h4); }
 }
 
 .faq-section {
-  padding: 56px 0 80px;
+  padding: 40px 0 80px;
+  background: #fff;
 }
 
 .faq-list {
-  max-width: 760px;
+  max-width: 860px;
   margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+  border-top: 1px solid #e5e7eb;
 }
 
 .faq-item {
-  background: white;
-  border: 1.5px solid var(--border);
-  border-radius: var(--radius);
-  overflow: hidden;
-  transition: border-color var(--transition), box-shadow var(--transition);
-}
-
-.faq-item.open {
-  border-color: var(--rose-200);
-  box-shadow: var(--shadow);
+  border-bottom: 1px solid #e5e7eb;
 }
 
 .faq-question {
@@ -1158,31 +1148,28 @@ h4 { font-family: var(--font-h4); }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: 20px 24px;
+  gap: 24px;
+  padding: 28px 0;
   background: none;
   border: none;
   cursor: pointer;
   text-align: left;
   font-family: inherit;
-  font-size: 15px;
-  font-weight: 700;
+  font-size: 18px;
+  font-weight: 400;
   color: var(--text-dark);
-  transition: background var(--transition), color var(--transition);
+  transition: color var(--transition);
 }
 
-.faq-item.open .faq-question {
-  background: var(--rose-50);
-  color: var(--rose-deep);
-}
+.faq-question:hover { color: var(--rose-deep); }
 
-.faq-question:hover { background: var(--rose-50); }
+.faq-item.open .faq-question { color: var(--text-dark); }
 
 .faq-chevron {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   flex-shrink: 0;
-  color: var(--rose);
+  color: #6b7280;
   transition: transform var(--transition);
 }
 
@@ -1191,15 +1178,15 @@ h4 { font-family: var(--font-h4); }
 .faq-answer {
   max-height: 0;
   overflow: hidden;
-  transition: max-height 0.3s ease;
+  transition: max-height 0.35s ease;
 }
 
 .faq-answer-inner {
-  padding: 0 24px 22px;
-  font-size: 15px;
-  font-weight: 500;
-  color: var(--text-mid);
-  line-height: 1.75;
+  padding: 0 48px 28px 0;
+  font-size: 16px;
+  font-weight: 400;
+  color: #6b7280;
+  line-height: 1.8;
   white-space: pre-wrap;
 }
 
@@ -1211,8 +1198,8 @@ h4 { font-family: var(--font-h4); }
 }
 
 @media (max-width: 600px) {
-  .faq-question { padding: 16px 18px; font-size: 14px; }
-  .faq-answer-inner { padding: 0 18px 18px; }
+  .faq-question { padding: 22px 0; font-size: 16px; }
+  .faq-answer-inner { padding: 0 24px 22px 0; font-size: 15px; }
 }
 
 /* ---- SOCIAL SECTION ---- */
