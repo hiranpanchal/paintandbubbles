@@ -10,6 +10,7 @@ function requireAdmin(req, res, next) {
   const token = authHeader.split(' ')[1];
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
+    if (decoded.is_active === false) return res.status(403).json({ error: 'Account disabled' });
     req.admin = decoded;
     next();
   } catch {
@@ -17,4 +18,13 @@ function requireAdmin(req, res, next) {
   }
 }
 
-module.exports = { requireAdmin, JWT_SECRET };
+function requireSuperAdmin(req, res, next) {
+  requireAdmin(req, res, () => {
+    if (req.admin.role !== 'super_admin') {
+      return res.status(403).json({ error: 'Super admin access required' });
+    }
+    next();
+  });
+}
+
+module.exports = { requireAdmin, requireSuperAdmin, JWT_SECRET };

@@ -38,6 +38,7 @@ async function doLogin() {
     });
     authToken = data.token;
     localStorage.setItem('pb_admin_token', authToken);
+    localStorage.setItem('pb_admin_role', data.role || 'admin');
     document.getElementById('login-screen').classList.add('hidden');
     showDashboard();
   } catch (err) {
@@ -57,12 +58,17 @@ function showLoginError(msg) {
 function signOut() {
   authToken = null;
   localStorage.removeItem('pb_admin_token');
+  localStorage.removeItem('pb_admin_role');
   location.reload();
 }
 
 function showDashboard() {
   document.getElementById('login-screen').classList.add('hidden');
   document.getElementById('dashboard').classList.remove('hidden');
+  // Show Users tab only for super_admin
+  const role = localStorage.getItem('pb_admin_role') || 'admin';
+  const usersTab = document.getElementById('tab-users');
+  if (usersTab) usersTab.style.display = role === 'super_admin' ? '' : 'none';
   switchTab('overview');
 }
 
@@ -74,7 +80,7 @@ function switchTab(tab) {
   document.getElementById(`content-${tab}`).classList.remove('hidden');
   document.getElementById(`tab-${tab}`).classList.add('active');
 
-  const titles = { overview: 'Overview', events: 'Events', bookings: 'Bookings', customers: 'Customers', payments: 'Payments', design: 'Design', faq: 'FAQ', reviews: 'Reviews' };
+  const titles = { overview: 'Overview', events: 'Events', bookings: 'Bookings', customers: 'Customers', payments: 'Payments', design: 'Design', faq: 'FAQ', reviews: 'Reviews', users: 'Users' };
   document.getElementById('page-title').textContent = titles[tab] || tab;
 
   // Close sidebar on mobile
@@ -91,6 +97,7 @@ function switchTab(tab) {
   else if (tab === 'design') loadDesign();
   else if (tab === 'faq')     loadAdminFAQs();
   else if (tab === 'reviews') loadAdminReviews();
+  else if (tab === 'users')   loadAdminUsers();
 }
 
 function toggleSidebar() {
@@ -1811,4 +1818,223 @@ async function reorderReview(id, direction) {
     await apiFetch('/api/reviews/reorder', { method: 'PATCH', body: JSON.stringify({ id, direction }) });
     loadAdminReviews();
   } catch { toast('Failed to reorder', 'error'); }
+}
+
+// ---- USERS TAB ----
+async function loadAdminUsers() {
+  const el = document.getElementById('content-users');
+  el.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Loading…</p></div>';
+  try {
+    const users = await apiFetch('/api/admin/users');
+    renderUsersTab(users);
+  } catch { toast('Failed to load users', 'error'); }
+}
+
+function renderUsersTab(users) {
+  const el = document.getElementById('content-users');
+  const currentId = getCurrentUserId();
+  el.innerHTML = `
+    <div class="tab-header">
+      <p style="font-size:13px;color:var(--text-light);font-weight:600;">${users.length} user${users.length !== 1 ? 's' : ''}</p>
+      <button class="btn btn-primary btn-sm" onclick="openUserForm()">+ Add User</button>
+    </div>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Username</th><th>Role</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead>
+        <tbody>
+          ${users.map(u => `
+            <tr id="user-row-${u.id}">
+              <td style="font-weight:600">${escHtml(u.username)}${u.id === currentId ? ' <span style="font-size:11px;color:var(--text-light)">(you)</span>' : ''}</td>
+              <td>
+                <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;${u.role === 'super_admin' ? 'background:#fef3c7;color:#92400e' : 'background:#f3f4f6;color:#374151'}">
+                  ${u.role === 'super_admin' ? '⭐ Super Admin' : 'Admin'}
+                </span>
+              </td>
+              <td>
+                <span style="padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;${u.is_active ? 'background:#d1fae5;color:#065f46' : 'background:#fee2e2;color:#991b1b'}">
+                  ${u.is_active ? 'Active' : 'Disabled'}
+                </span>
+              </td>
+              <td style="color:var(--text-light);font-size:13px">${new Date(u.created_at).toLocaleDateString('en-GB')}</td>
+              <td>
+                <div style="display:flex;gap:6px;flex-wrap:wrap">
+                  ${u.id !== currentId ? `
+                    <button class="btn btn-xs btn-ghost" onclick="openUserForm(${u.id})">Edit</button>
+                    <button class="btn btn-xs btn-ghost" onclick="openResetPassword(${u.id}, '${escHtml(u.username)}')">Reset PW</button>
+                    <button class="btn btn-xs" style="background:#fee2e2;color:#dc2626;border:none" onclick="deleteUser(${u.id})">Delete</button>
+                  ` : `<span style="font-size:12px;color:var(--text-light)">—</span>`}
+                </div>
+              </td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+  ensureUserModal();
+}
+
+function getCurrentUserId() {
+  try {
+    const token = authToken;
+    if (!token) return null;
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return payload.id;
+  } catch { return null; }
+}
+
+function ensureUserModal() {
+  if (!document.getElementById('user-modal')) {
+    const m = document.createElement('div');
+    m.id = 'user-modal';
+    m.className = 'modal-overlay hidden';
+    m.onclick = (e) => { if (e.target === m) closeUserForm(); };
+    document.body.appendChild(m);
+  }
+  if (!document.getElementById('pw-modal')) {
+    const m = document.createElement('div');
+    m.id = 'pw-modal';
+    m.className = 'modal-overlay hidden';
+    m.onclick = (e) => { if (e.target === m) closePwModal(); };
+    document.body.appendChild(m);
+  }
+}
+
+function openUserForm(id = null) {
+  ensureUserModal();
+  const modal = document.getElementById('user-modal');
+  modal.innerHTML = `
+    <div class="modal-box" style="max-width:460px">
+      <div class="modal-header">
+        <h2 class="modal-title">${id ? 'Edit User' : 'Add User'}</h2>
+        <button class="modal-close" onclick="closeUserForm()"><svg viewBox="0 0 20 20" fill="none"><path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="user-form-id" value="${id || ''}">
+        ${!id ? `
+          <div class="form-group">
+            <label>Username <span style="color:#e53e3e">*</span></label>
+            <input type="text" id="user-form-username" placeholder="e.g. jane">
+          </div>
+          <div class="form-group">
+            <label>Password <span style="color:#e53e3e">*</span></label>
+            <input type="password" id="user-form-password" placeholder="Min. 8 characters">
+          </div>
+        ` : ''}
+        <div class="form-group">
+          <label>Role <span style="color:#e53e3e">*</span></label>
+          <select id="user-form-role" style="width:100%;padding:10px 12px;border:1.5px solid #e0d0d4;border-radius:8px;font-size:14px;background:#fff">
+            <option value="admin">Admin</option>
+            <option value="super_admin">Super Admin</option>
+          </select>
+        </div>
+        ${id ? `
+          <div class="form-group">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+              <input type="checkbox" id="user-form-active" style="width:16px;height:16px" checked>
+              Account active
+            </label>
+          </div>
+        ` : ''}
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closeUserForm()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveUser()">${id ? 'Save Changes' : 'Create User'}</button>
+      </div>
+    </div>
+  `;
+  modal.classList.remove('hidden');
+
+  if (id) {
+    apiFetch('/api/admin/users').then(users => {
+      const u = users.find(x => x.id === id);
+      if (!u) return;
+      document.getElementById('user-form-role').value = u.role;
+      const activeEl = document.getElementById('user-form-active');
+      if (activeEl) activeEl.checked = !!u.is_active;
+    });
+  }
+}
+
+function closeUserForm() {
+  const m = document.getElementById('user-modal');
+  if (m) m.classList.add('hidden');
+}
+
+async function saveUser() {
+  const id = document.getElementById('user-form-id').value;
+  const role = document.getElementById('user-form-role').value;
+
+  try {
+    if (id) {
+      const activeEl = document.getElementById('user-form-active');
+      const is_active = activeEl ? activeEl.checked : true;
+      await apiFetch(`/api/admin/users/${id}`, { method: 'PUT', body: JSON.stringify({ role, is_active }) });
+      toast('User updated');
+    } else {
+      const username = document.getElementById('user-form-username').value.trim();
+      const password = document.getElementById('user-form-password').value;
+      if (!username || !password) { toast('Username and password required', 'error'); return; }
+      await apiFetch('/api/admin/users', { method: 'POST', body: JSON.stringify({ username, password, role }) });
+      toast('User created');
+    }
+    closeUserForm();
+    loadAdminUsers();
+  } catch (err) { toast(err.message || 'Failed to save user', 'error'); }
+}
+
+function openResetPassword(id, username) {
+  ensureUserModal();
+  const modal = document.getElementById('pw-modal');
+  modal.innerHTML = `
+    <div class="modal-box" style="max-width:420px">
+      <div class="modal-header">
+        <h2 class="modal-title">Reset Password</h2>
+        <button class="modal-close" onclick="closePwModal()"><svg viewBox="0 0 20 20" fill="none"><path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:14px;color:var(--text-light);margin-bottom:16px">Set a new password for <strong>${escHtml(username)}</strong></p>
+        <input type="hidden" id="pw-form-id" value="${id}">
+        <div class="form-group">
+          <label>New Password <span style="color:#e53e3e">*</span></label>
+          <input type="password" id="pw-form-new" placeholder="Min. 8 characters">
+        </div>
+        <div class="form-group">
+          <label>Confirm Password <span style="color:#e53e3e">*</span></label>
+          <input type="password" id="pw-form-confirm" placeholder="Repeat new password">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closePwModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveResetPassword()">Reset Password</button>
+      </div>
+    </div>
+  `;
+  modal.classList.remove('hidden');
+}
+
+function closePwModal() {
+  const m = document.getElementById('pw-modal');
+  if (m) m.classList.add('hidden');
+}
+
+async function saveResetPassword() {
+  const id = document.getElementById('pw-form-id').value;
+  const pw = document.getElementById('pw-form-new').value;
+  const confirm = document.getElementById('pw-form-confirm').value;
+  if (!pw || pw.length < 8) { toast('Password must be at least 8 characters', 'error'); return; }
+  if (pw !== confirm) { toast('Passwords do not match', 'error'); return; }
+  try {
+    await apiFetch(`/api/admin/users/${id}/reset-password`, { method: 'POST', body: JSON.stringify({ password: pw }) });
+    toast('Password reset successfully');
+    closePwModal();
+  } catch (err) { toast(err.message || 'Failed to reset password', 'error'); }
+}
+
+async function deleteUser(id) {
+  if (!confirm('Delete this user? This cannot be undone.')) return;
+  try {
+    await apiFetch(`/api/admin/users/${id}`, { method: 'DELETE' });
+    toast('User deleted');
+    loadAdminUsers();
+  } catch (err) { toast(err.message || 'Failed to delete user', 'error'); }
 }

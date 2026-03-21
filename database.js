@@ -74,6 +74,8 @@ db.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
+    role TEXT DEFAULT 'admin',
+    is_active INTEGER DEFAULT 1,
     created_at TEXT DEFAULT (datetime('now'))
   );
 
@@ -104,6 +106,12 @@ db.exec(`
     created_at TEXT DEFAULT (datetime('now'))
   );
 `);
+
+// Migrate: add role and is_active to admin_users if not present
+try { db.exec("ALTER TABLE admin_users ADD COLUMN role TEXT DEFAULT 'admin'"); } catch {}
+try { db.exec("ALTER TABLE admin_users ADD COLUMN is_active INTEGER DEFAULT 1"); } catch {}
+// Ensure the seeded admin is a super_admin
+db.prepare("UPDATE admin_users SET role = 'super_admin' WHERE role = 'admin' AND id = (SELECT MIN(id) FROM admin_users)").run();
 
 // Migrate: add class_attended column if it doesn't exist yet
 try {
