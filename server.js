@@ -24,6 +24,7 @@ app.use('/api/customers', require('./routes/customers'));
 app.use('/api/payments',  require('./routes/payments'));
 app.use('/api/design',    require('./routes/design'));
 app.use('/api/faqs',      require('./routes/faqs'));
+app.use('/api/reviews',   require('./routes/reviews'));
 
 // Serve frontend for all non-API routes
 app.get('/admin',       (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));

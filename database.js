@@ -91,6 +91,17 @@ db.exec(`
     is_active INTEGER DEFAULT 1,
     created_at TEXT DEFAULT (datetime('now'))
   );
+
+  CREATE TABLE IF NOT EXISTS reviews (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    author_name TEXT NOT NULL,
+    author_location TEXT DEFAULT '',
+    rating INTEGER DEFAULT 5,
+    body TEXT NOT NULL,
+    is_published INTEGER DEFAULT 0,
+    sort_order INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
 `);
 
 // Seed admin user if not exists

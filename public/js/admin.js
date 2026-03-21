@@ -74,7 +74,7 @@ function switchTab(tab) {
   document.getElementById(`content-${tab}`).classList.remove('hidden');
   document.getElementById(`tab-${tab}`).classList.add('active');
 
-  const titles = { overview: 'Overview', events: 'Events', bookings: 'Bookings', customers: 'Customers', payments: 'Payments', design: 'Design', faq: 'FAQ' };
+  const titles = { overview: 'Overview', events: 'Events', bookings: 'Bookings', customers: 'Customers', payments: 'Payments', design: 'Design', faq: 'FAQ', reviews: 'Reviews' };
   document.getElementById('page-title').textContent = titles[tab] || tab;
 
   // Close sidebar on mobile
@@ -89,7 +89,8 @@ function switchTab(tab) {
   else if (tab === 'customers') loadAdminCustomers();
   else if (tab === 'payments') loadAdminPayments();
   else if (tab === 'design') loadDesign();
-  else if (tab === 'faq')    loadAdminFAQs();
+  else if (tab === 'faq')     loadAdminFAQs();
+  else if (tab === 'reviews') loadAdminReviews();
 }
 
 function toggleSidebar() {
@@ -1616,4 +1617,177 @@ async function saveDesign() {
     btn.disabled = false;
     btn.textContent = 'Save All Changes';
   }
+}
+
+
+// ---- REVIEWS TAB ----
+async function loadAdminReviews() {
+  const el = document.getElementById('content-reviews');
+  try {
+    const reviews = await apiFetch('/api/reviews/all');
+    renderReviewsTab(reviews);
+  } catch { toast('Failed to load reviews', 'error'); }
+}
+
+function renderReviewsTab(reviews) {
+  const el = document.getElementById('content-reviews');
+  el.innerHTML = `
+    <div class="tab-header">
+      <p style="font-size:13px;color:var(--text-light);font-weight:600;">${reviews.length} review${reviews.length !== 1 ? 's' : ''}</p>
+      <button class="btn btn-primary btn-sm" onclick="openReviewForm()">+ Add Review</button>
+    </div>
+    ${reviews.length === 0
+      ? '<div class="empty-state"><p>No reviews yet. Add your first!</p></div>'
+      : `<div class="table-wrap"><table class="data-table">
+          <thead><tr><th>Author</th><th>Rating</th><th>Review</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody>${reviews.map(r => `
+            <tr id="review-row-${r.id}">
+              <td>
+                <div style="font-weight:600">${escHtml(r.author_name)}</div>
+                ${r.author_location ? `<div style="font-size:12px;color:var(--text-light)">${escHtml(r.author_location)}</div>` : ''}
+              </td>
+              <td><span style="color:#f59e0b;font-size:16px">${'★'.repeat(r.rating)}${'☆'.repeat(5 - r.rating)}</span></td>
+              <td style="max-width:280px"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:280px">${escHtml(r.body)}</div></td>
+              <td>
+                <button class="btn btn-xs ${r.is_published ? 'btn-primary' : 'btn-ghost'}"
+                        onclick="toggleReviewPublished(${r.id}, ${r.is_published})">
+                  ${r.is_published ? 'Published' : 'Draft'}
+                </button>
+              </td>
+              <td>
+                <div style="display:flex;gap:6px">
+                  <button class="btn btn-xs btn-ghost" onclick="reorderReview(${r.id},'up')" title="Move up">↑</button>
+                  <button class="btn btn-xs btn-ghost" onclick="reorderReview(${r.id},'down')" title="Move down">↓</button>
+                  <button class="btn btn-ghost btn-xs" onclick="openReviewForm(${r.id})">Edit</button>
+                  <button class="btn btn-xs" style="background:#fee2e2;color:#dc2626;border:none" onclick="deleteReview(${r.id})">Delete</button>
+                </div>
+              </td>
+            </tr>`).join('')}
+          </tbody>
+        </table></div>`
+    }
+    <div id="review-modal" class="modal-overlay hidden" onclick="if(event.target===this)closeReviewForm()">
+      <div class="modal-box" style="max-width:520px">
+        <div class="modal-header">
+          <h2 class="modal-title" id="review-form-title">Add Review</h2>
+          <button class="modal-close" onclick="closeReviewForm()"><svg viewBox="0 0 20 20" fill="none"><path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="review-form-id">
+          <div class="form-group">
+            <label>Author Name <span style="color:#e53e3e">*</span></label>
+            <input type="text" id="review-form-name" placeholder="e.g. Sarah M.">
+          </div>
+          <div class="form-group">
+            <label>Location <span style="color:var(--text-light);font-weight:400">(optional)</span></label>
+            <input type="text" id="review-form-location" placeholder="e.g. Brighton">
+          </div>
+          <div class="form-group">
+            <label>Star Rating <span style="color:#e53e3e">*</span></label>
+            <div id="star-picker" style="display:flex;gap:8px;margin-top:4px">
+              ${[1,2,3,4,5].map(n => `<button type="button" class="star-btn" data-val="${n}" onclick="pickStar(${n})" style="font-size:28px;background:none;border:none;cursor:pointer;color:#d1d5db;padding:0;line-height:1">★</button>`).join('')}
+            </div>
+            <input type="hidden" id="review-form-rating" value="5">
+          </div>
+          <div class="form-group">
+            <label>Review Text <span style="color:#e53e3e">*</span></label>
+            <textarea id="review-form-body" rows="4" placeholder="What did they say?"></textarea>
+          </div>
+          <div class="form-group">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+              <input type="checkbox" id="review-form-published" style="width:16px;height:16px">
+              Publish immediately
+            </label>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-ghost" onclick="closeReviewForm()">Cancel</button>
+          <button class="btn btn-primary" onclick="saveReview()">Save Review</button>
+        </div>
+      </div>
+    </div>
+  `;
+  // Set star picker to 5 by default
+  pickStar(5);
+}
+
+function pickStar(n) {
+  document.getElementById('review-form-rating').value = n;
+  document.querySelectorAll('.star-btn').forEach(btn => {
+    btn.style.color = parseInt(btn.dataset.val) <= n ? '#f59e0b' : '#d1d5db';
+  });
+}
+
+function openReviewForm(id = null) {
+  document.getElementById('review-form-title').textContent = id ? 'Edit Review' : 'Add Review';
+  document.getElementById('review-form-id').value = id || '';
+  document.getElementById('review-form-name').value = '';
+  document.getElementById('review-form-location').value = '';
+  document.getElementById('review-form-body').value = '';
+  document.getElementById('review-form-published').checked = false;
+  pickStar(5);
+
+  if (id) {
+    apiFetch(`/api/reviews/all`).then(reviews => {
+      const r = reviews.find(x => x.id === id);
+      if (!r) return;
+      document.getElementById('review-form-name').value = r.author_name;
+      document.getElementById('review-form-location').value = r.author_location || '';
+      document.getElementById('review-form-body').value = r.body;
+      document.getElementById('review-form-published').checked = !!r.is_published;
+      pickStar(r.rating);
+    });
+  }
+  document.getElementById('review-modal').classList.remove('hidden');
+}
+
+function closeReviewForm() {
+  document.getElementById('review-modal').classList.add('hidden');
+}
+
+async function saveReview() {
+  const id = document.getElementById('review-form-id').value;
+  const author_name = document.getElementById('review-form-name').value.trim();
+  const author_location = document.getElementById('review-form-location').value.trim();
+  const rating = parseInt(document.getElementById('review-form-rating').value);
+  const body = document.getElementById('review-form-body').value.trim();
+  const is_published = document.getElementById('review-form-published').checked ? 1 : 0;
+
+  if (!author_name || !body) { toast('Author name and review text are required', 'error'); return; }
+
+  try {
+    if (id) {
+      await apiFetch(`/api/reviews/${id}`, { method: 'PUT', body: JSON.stringify({ author_name, author_location, rating, body, is_published }) });
+      toast('Review updated');
+    } else {
+      await apiFetch('/api/reviews', { method: 'POST', body: JSON.stringify({ author_name, author_location, rating, body, is_published }) });
+      toast('Review added');
+    }
+    closeReviewForm();
+    loadAdminReviews();
+  } catch { toast('Failed to save review', 'error'); }
+}
+
+async function toggleReviewPublished(id, current) {
+  try {
+    await apiFetch(`/api/reviews/${id}`, { method: 'PUT', body: JSON.stringify({ is_published: current ? 0 : 1 }) });
+    toast(current ? 'Review unpublished' : 'Review published');
+    loadAdminReviews();
+  } catch { toast('Failed to update review', 'error'); }
+}
+
+async function deleteReview(id) {
+  if (!confirm('Delete this review?')) return;
+  try {
+    await apiFetch(`/api/reviews/${id}`, { method: 'DELETE' });
+    toast('Review deleted');
+    loadAdminReviews();
+  } catch { toast('Failed to delete review', 'error'); }
+}
+
+async function reorderReview(id, direction) {
+  try {
+    await apiFetch('/api/reviews/reorder', { method: 'PATCH', body: JSON.stringify({ id, direction }) });
+    loadAdminReviews();
+  } catch { toast('Failed to reorder', 'error'); }
 }

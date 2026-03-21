@@ -45,6 +45,7 @@ async function applyDesignSettings() {
 
     // Social section
     renderSocialSection(s);
+    renderReviewsSection();
   } catch {}
 }
 
@@ -116,6 +117,45 @@ function renderSocialSection(s) {
                  title="${p.label}" style="--sc:${p.color}">${p.icon}</a>`;
     }).join('');
   }
+}
+
+async function renderReviewsSection() {
+  const section = document.getElementById('reviews-section');
+  if (!section) return;
+  try {
+    const reviews = await fetch('/api/reviews').then(r => r.json());
+    if (!reviews || !reviews.length) { section.style.display = 'none'; return; }
+    section.style.display = '';
+    const track = document.getElementById('reviews-track');
+    if (!track) return;
+
+    // Calculate average rating
+    const avg = (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1);
+    const scoreEl = section.querySelector('.reviews-score');
+    if (scoreEl) scoreEl.textContent = avg;
+    const starsEl = section.querySelector('.reviews-stars-big');
+    if (starsEl) {
+      const full = Math.round(parseFloat(avg));
+      starsEl.textContent = '★'.repeat(full) + '☆'.repeat(5 - full);
+    }
+
+    track.innerHTML = reviews.map(r => `
+      <div class="review-card">
+        <div class="review-card-top">
+          <div class="review-card-stars">${'★'.repeat(r.rating)}${'☆'.repeat(5 - r.rating)}</div>
+          <div class="review-tp-logo">
+            <svg viewBox="0 0 24 24" fill="#00b67a"><path d="M12 2l2.4 4.8 5.3.8-3.85 3.75.91 5.3L12 14.27l-4.76 2.53.91-5.3L4.3 7.6l5.3-.8z"/></svg>
+            Verified
+          </div>
+        </div>
+        <p class="review-card-body">"${escHtml(r.body)}"</p>
+        <div class="review-card-author">
+          <span class="review-author-name">${escHtml(r.author_name)}</span>
+          ${r.author_location ? `<span class="review-author-location">${escHtml(r.author_location)}</span>` : ''}
+        </div>
+      </div>
+    `).join('');
+  } catch { if (section) section.style.display = 'none'; }
 }
 
 async function loadFAQs() {

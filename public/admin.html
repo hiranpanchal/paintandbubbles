@@ -81,6 +81,10 @@
         <svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.5"/><path d="M10 14v-.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M10 11c0-1.5 2-1.5 2-3a2 2 0 10-4 0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
         FAQ
       </button>
+      <button class="sidebar-item" id="tab-reviews" onclick="switchTab('reviews')">
+        <svg viewBox="0 0 20 20" fill="none"><path d="M10 2l2.4 4.8 5.3.8-3.85 3.75.91 5.3L10 14.27l-4.76 2.53.91-5.3L2.3 7.6l5.3-.8z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+        Reviews
+      </button>
     </nav>
 
     <div class="sidebar-footer">
@@ -193,6 +197,9 @@
     <div class="tab-content hidden" id="content-faq">
       <div class="loading-state"><div class="spinner"></div></div>
     </div>
+
+    <!-- REVIEWS TAB -->
+    <div class="tab-content hidden" id="content-reviews"></div>
 
   </div>
 </div>
