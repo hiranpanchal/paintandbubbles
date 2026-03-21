@@ -284,7 +284,17 @@ if (settingsCount.count === 0) {
     ins.run('contact_hero_title', 'Get In Touch');
     ins.run('contact_hero_sub', "We'd love to hear from you. Fill in the form and we'll get back to you as soon as possible.");
     ins.run('contact_page_text', "Whether you have a question about our events, want to book a private session, or just want to say hello — we're here for it. Drop us a message and we'll get back to you within 24 hours.");
+    ins.run('notification_email', '');
     console.log('Seeded contact page defaults.');
+  }
+}
+
+// Ensure notification_email setting exists (added after initial seed)
+{
+  const check = db.prepare("SELECT COUNT(*) as count FROM site_settings WHERE key = 'notification_email'").get();
+  if (check.count === 0) {
+    db.prepare('INSERT OR IGNORE INTO site_settings (key, value) VALUES (?, ?)').run('notification_email', '');
+    console.log('Seeded notification_email setting.');
   }
 }
 

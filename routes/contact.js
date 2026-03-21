@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const db = require('../database');
 const { requireAdmin } = require('../middleware/auth');
+const { sendEnquiryNotification } = require('../services/email');
 
 // POST /api/contact — public, submit contact form
 router.post('/', (req, res) => {
@@ -9,6 +10,13 @@ router.post('/', (req, res) => {
   const result = db.prepare(
     'INSERT INTO contact_submissions (name, email, phone, message) VALUES (?, ?, ?, ?)'
   ).run(name.trim(), email.trim(), (phone || '').trim(), message.trim());
+
+  // Fetch the stored submission (includes created_at) and send notification (non-blocking)
+  const submission = db.prepare('SELECT * FROM contact_submissions WHERE id = ?').get(result.lastInsertRowid);
+  const notifSetting = db.prepare("SELECT value FROM site_settings WHERE key = 'notification_email'").get();
+  const notificationEmail = notifSetting?.value || process.env.NOTIFICATION_EMAIL || '';
+  sendEnquiryNotification(submission, notificationEmail).catch(err => console.error('Enquiry email error:', err));
+
   res.status(201).json({ success: true, id: result.lastInsertRowid });
 });
 

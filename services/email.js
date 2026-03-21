@@ -148,4 +148,100 @@ async function sendBookingConfirmation(booking) {
   console.log(`Confirmation email sent to ${booking.customer_email}`);
 }
 
-module.exports = { sendBookingConfirmation };
+async function sendEnquiryNotification(submission, notificationEmail) {
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    console.log('Email not configured — skipping enquiry notification for submission', submission.id);
+    return;
+  }
+  if (!notificationEmail) {
+    console.log('No notification email set — skipping enquiry notification');
+    return;
+  }
+
+  const transporter = createTransporter();
+  const received = new Date(submission.created_at || new Date()).toLocaleString('en-GB', {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
+  });
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0;padding:0;background:#FDF8F9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#FDF8F9;padding:40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 8px 40px rgba(160,80,110,0.15);">
+
+          <!-- Header -->
+          <tr>
+            <td style="background:linear-gradient(135deg,#2C0F18 0%,#6B2D42 50%,#C4748A 100%);padding:36px 48px;text-align:center;">
+              <h1 style="margin:0 0 6px;color:#ffffff;font-size:24px;font-weight:700;">New Contact Enquiry</h1>
+              <p style="margin:0;color:rgba(255,255,255,0.8);font-size:14px;">Paint &amp; Bubbles — received ${received}</p>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding:36px 48px;">
+              <table width="100%" cellpadding="0" cellspacing="0" style="background:#FFF6F8;border:1px solid #FFCCD8;border-radius:14px;margin-bottom:24px;">
+                <tr>
+                  <td style="padding:24px 28px;">
+                    <table width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td style="padding:8px 0;color:#9E8E96;font-size:13px;font-weight:600;width:30%;vertical-align:top;">Name</td>
+                        <td style="padding:8px 0;color:#2C2028;font-size:13px;font-weight:700;">${submission.name}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:8px 0;color:#9E8E96;font-size:13px;font-weight:600;vertical-align:top;">Email</td>
+                        <td style="padding:8px 0;color:#2C2028;font-size:13px;font-weight:700;"><a href="mailto:${submission.email}" style="color:#C4748A;">${submission.email}</a></td>
+                      </tr>
+                      <tr>
+                        <td style="padding:8px 0;color:#9E8E96;font-size:13px;font-weight:600;vertical-align:top;">Phone</td>
+                        <td style="padding:8px 0;color:#2C2028;font-size:13px;font-weight:700;">${submission.phone || '—'}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:0 0 8px;color:#2C2028;font-size:14px;font-weight:700;">Message</p>
+              <div style="background:#F9F5F6;border-left:3px solid #C4748A;padding:16px 20px;border-radius:0 8px 8px 0;margin-bottom:28px;">
+                <p style="margin:0;color:#2C2028;font-size:14px;font-weight:500;line-height:1.75;white-space:pre-wrap;">${submission.message}</p>
+              </div>
+
+              <p style="margin:0;color:#9E8E96;font-size:13px;">Reply directly to this email or hit the button below to contact them.</p>
+              <br>
+              <a href="mailto:${submission.email}" style="display:inline-block;background:linear-gradient(135deg,#6B2D42,#C4748A);color:#fff;text-decoration:none;padding:12px 28px;border-radius:50px;font-size:14px;font-weight:700;">Reply to ${submission.name}</a>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background:#FFF6F8;padding:20px 48px;text-align:center;border-top:1px solid #FFE8EE;">
+              <p style="margin:0;color:#9E8E96;font-size:12px;">Paint &amp; Bubbles — Admin Notification</p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`.trim();
+
+  await transporter.sendMail({
+    from: process.env.EMAIL_FROM || 'Paint & Bubbles <noreply@paintandbubbles.com>',
+    to: notificationEmail,
+    replyTo: submission.email,
+    subject: `New Enquiry from ${submission.name}`,
+    html
+  });
+
+  console.log(`Enquiry notification sent to ${notificationEmail}`);
+}
+
+module.exports = { sendBookingConfirmation, sendEnquiryNotification };

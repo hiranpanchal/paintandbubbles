@@ -2355,6 +2355,18 @@ async function loadContentTab() {
               </div>
             </div>
           </div>
+          <div class="design-card">
+            <div class="design-card-header">
+              <h3 class="design-card-title">Notification Email</h3>
+              <span class="design-hint">Where to send an alert when someone submits the contact form</span>
+            </div>
+            <div class="design-card-body">
+              <div class="form-group">
+                <label>Send notifications to</label>
+                <input type="email" id="ds-notification_email" placeholder="you@example.com" value="${escHtml(s.notification_email || '')}">
+              </div>
+            </div>
+          </div>
           <div class="design-save-bar">
             <button class="btn btn-primary" onclick="saveContentPage('contact')">Save Contact Page</button>
           </div>
@@ -2435,7 +2447,7 @@ const CONTENT_PAGE_KEYS = {
   home:             ['hero_title','hero_title_highlight','hero_subtitle','hero_cta_primary_text','hero_cta_primary_url','hero_cta_secondary_text','hero_cta_secondary_url','about_title','about_body_1','about_body_2','footer_tagline'],
   about:            ['aboutpage_hero_title','aboutpage_hero_sub','aboutpage_label','aboutpage_title','aboutpage_body_1','aboutpage_body_2','aboutpage_body_3','aboutpage_pillar_1_title','aboutpage_pillar_1_text','aboutpage_pillar_2_title','aboutpage_pillar_2_text','aboutpage_pillar_3_title','aboutpage_pillar_3_text'],
   events:           ['included_title','included_items','please_note_title','please_note_text'],
-  contact:          ['contact_hero_title','contact_hero_sub','contact_page_text'],
+  contact:          ['contact_hero_title','contact_hero_sub','contact_page_text','notification_email'],
   'private-events': ['private_events_hero_title','private_events_hero_sub','private_events_content'],
 };
 
