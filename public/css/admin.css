@@ -569,7 +569,28 @@ body {
 }
 .modal-close:hover { background: var(--rose-100); border-color: var(--rose-200); }
 
-.modal-body { padding: 24px; overflow-y: auto; max-height: 70vh; }
+.modal-body { padding: 24px; overflow-y: auto; max-height: 80vh; }
+
+/* CRM customer stat cards */
+.crm-stat {
+  background: var(--bg);
+  border-radius: 10px;
+  padding: 14px 16px;
+  text-align: center;
+}
+.crm-stat-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  color: var(--text-light);
+  margin-bottom: 6px;
+}
+.crm-stat-value {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text-dark);
+}
 
 .modal-footer {
   padding: 16px 24px;

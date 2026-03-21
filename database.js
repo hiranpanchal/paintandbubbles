@@ -41,6 +41,7 @@ db.exec(`
     name TEXT NOT NULL,
     email TEXT NOT NULL UNIQUE,
     phone TEXT,
+    notes TEXT DEFAULT '',
     created_at TEXT DEFAULT (datetime('now'))
   );
 
@@ -106,6 +107,9 @@ db.exec(`
     created_at TEXT DEFAULT (datetime('now'))
   );
 `);
+
+// Migrate: add notes to customers if not present
+try { db.exec("ALTER TABLE customers ADD COLUMN notes TEXT DEFAULT ''"); } catch {}
 
 // Migrate: add role, is_active and last_login_at to admin_users if not present
 try { db.exec("ALTER TABLE admin_users ADD COLUMN role TEXT DEFAULT 'admin'"); } catch {}

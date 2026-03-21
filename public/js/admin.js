@@ -469,7 +469,7 @@ function renderCustomersTable(customers) {
         <th class="hide-mobile">Joined</th>
       </tr></thead>
       <tbody>${customers.map(c => `
-        <tr>
+        <tr class="hoverable-row" onclick="openCustomerDetail(${c.id})" style="cursor:pointer">
           <td style="font-weight:600">${escHtml(c.name)}</td>
           <td style="color:var(--blue)">${escHtml(c.email)}</td>
           <td class="hide-mobile">${escHtml(c.phone || '—')}</td>
@@ -479,6 +479,137 @@ function renderCustomersTable(customers) {
         </tr>`).join('')}
       </tbody>
     </table>`;
+}
+
+async function openCustomerDetail(id) {
+  // Ensure modal container exists
+  let overlay = document.getElementById('customer-detail-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'customer-detail-overlay';
+    overlay.className = 'modal-overlay hidden';
+    overlay.onclick = (e) => { if (e.target === overlay) closeCustomerDetail(); };
+    document.body.appendChild(overlay);
+  }
+  overlay.innerHTML = `<div class="modal" style="max-width:720px;width:100%"><div class="modal-body" style="display:flex;align-items:center;justify-content:center;min-height:200px"><div class="spinner"></div></div></div>`;
+  overlay.classList.remove('hidden');
+
+  try {
+    const c = await apiFetch(`/api/customers/${id}`);
+    const totalUpcoming = c.upcomingBookings?.length || 0;
+    const totalPast = c.pastBookings?.length || 0;
+
+    overlay.innerHTML = `
+      <div class="modal" style="max-width:720px;width:100%">
+        <div class="modal-header">
+          <div>
+            <h2 style="margin:0">${escHtml(c.name)}</h2>
+            <div style="font-size:12px;color:var(--text-light);margin-top:2px">Customer since ${formatDate(c.created_at?.slice(0,10))}</div>
+          </div>
+          <button class="modal-close" onclick="closeCustomerDetail()"><svg viewBox="0 0 20 20" fill="none"><path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+        </div>
+        <div class="modal-body" style="max-height:80vh">
+
+          <!-- Stats row -->
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px">
+            <div class="crm-stat"><div class="crm-stat-label">Total Bookings</div><div class="crm-stat-value">${c.total_bookings}</div></div>
+            <div class="crm-stat"><div class="crm-stat-label">Total Spent</div><div class="crm-stat-value">${formatPrice(c.total_spent)}</div></div>
+            <div class="crm-stat"><div class="crm-stat-label">Upcoming</div><div class="crm-stat-value" style="color:${totalUpcoming > 0 ? 'var(--rose)' : 'inherit'}">${totalUpcoming}</div></div>
+          </div>
+
+          <!-- Edit details -->
+          <div style="border:1.5px solid var(--border);border-radius:12px;padding:20px;margin-bottom:20px">
+            <div style="font-size:13px;font-weight:700;color:var(--text-dark);margin-bottom:16px">Contact Details</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <div class="form-group" style="margin:0">
+                <label style="font-size:12px">Full Name</label>
+                <input type="text" id="crd-name" value="${escHtml(c.name)}">
+              </div>
+              <div class="form-group" style="margin:0">
+                <label style="font-size:12px">Email</label>
+                <input type="email" id="crd-email" value="${escHtml(c.email)}">
+              </div>
+              <div class="form-group" style="margin:0">
+                <label style="font-size:12px">Phone Number</label>
+                <input type="text" id="crd-phone" value="${escHtml(c.phone || '')}" placeholder="e.g. 07700 900000">
+              </div>
+              <div class="form-group" style="margin:0">
+                <label style="font-size:12px">Date Joined</label>
+                <input type="text" value="${formatDate(c.created_at?.slice(0,10))}" disabled style="background:var(--bg);color:var(--text-light)">
+              </div>
+            </div>
+            <div class="form-group" style="margin:12px 0 0">
+              <label style="font-size:12px">Notes</label>
+              <textarea id="crd-notes" rows="3" placeholder="Internal notes about this customer…">${escHtml(c.notes || '')}</textarea>
+            </div>
+            <div style="margin-top:12px;display:flex;justify-content:flex-end">
+              <button class="btn btn-primary btn-sm" onclick="saveCustomerDetail(${c.id})">Save Changes</button>
+            </div>
+          </div>
+
+          <!-- Upcoming bookings -->
+          <div style="margin-bottom:20px">
+            <div style="font-size:13px;font-weight:700;color:var(--text-dark);margin-bottom:10px">
+              Upcoming Bookings <span style="font-weight:400;color:var(--text-light)">(${totalUpcoming})</span>
+            </div>
+            ${totalUpcoming === 0
+              ? `<div style="color:var(--text-light);font-size:13px;padding:12px;background:var(--bg);border-radius:8px">No upcoming bookings</div>`
+              : c.upcomingBookings.map(b => renderCustomerBookingRow(b, true)).join('')
+            }
+          </div>
+
+          <!-- Past bookings -->
+          <div>
+            <div style="font-size:13px;font-weight:700;color:var(--text-dark);margin-bottom:10px">
+              Past Bookings <span style="font-weight:400;color:var(--text-light)">(${totalPast})</span>
+            </div>
+            ${totalPast === 0
+              ? `<div style="color:var(--text-light);font-size:13px;padding:12px;background:var(--bg);border-radius:8px">No past bookings</div>`
+              : c.pastBookings.map(b => renderCustomerBookingRow(b, false)).join('')
+            }
+          </div>
+
+        </div>
+      </div>`;
+  } catch (err) {
+    overlay.innerHTML = `<div class="modal" style="max-width:480px"><div class="modal-body"><p>Failed to load customer details.</p></div></div>`;
+  }
+}
+
+function renderCustomerBookingRow(b, upcoming) {
+  const statusColour = { confirmed:'#065f46', pending:'#92400e', cancelled:'#991b1b' };
+  const statusBg     = { confirmed:'#d1fae5', pending:'#fef3c7', cancelled:'#fee2e2' };
+  const st = b.status || 'confirmed';
+  return `
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;background:var(--bg);border-radius:10px;margin-bottom:8px;flex-wrap:wrap">
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(b.event_title)}</div>
+        <div style="font-size:12px;color:var(--text-light);margin-top:2px">${formatDate(b.event_date)} ${b.event_time ? '· ' + b.event_time : ''} ${b.event_location ? '· ' + escHtml(b.event_location) : ''}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
+        <span style="font-size:12px;font-weight:600;padding:2px 10px;border-radius:20px;background:${statusBg[st]||'#f3f4f6'};color:${statusColour[st]||'#374151'}">${st.charAt(0).toUpperCase()+st.slice(1)}</span>
+        <span style="font-size:13px;font-weight:700">${formatPrice(b.total_pence)}</span>
+        <span style="font-size:12px;color:var(--text-light)">${b.quantity} ticket${b.quantity !== 1 ? 's' : ''}</span>
+      </div>
+    </div>`;
+}
+
+function closeCustomerDetail() {
+  const el = document.getElementById('customer-detail-overlay');
+  if (el) el.classList.add('hidden');
+}
+
+async function saveCustomerDetail(id) {
+  const name  = document.getElementById('crd-name').value.trim();
+  const email = document.getElementById('crd-email').value.trim();
+  const phone = document.getElementById('crd-phone').value.trim();
+  const notes = document.getElementById('crd-notes').value;
+  if (!name || !email) { toast('Name and email are required', 'error'); return; }
+  try {
+    await apiFetch(`/api/customers/${id}`, { method: 'PUT', body: JSON.stringify({ name, email, phone, notes }) });
+    toast('Customer updated');
+    loadAdminCustomers();
+  } catch (err) { toast(err.message || 'Failed to save', 'error'); }
 }
 
 function debouncedCustomerSearch() {
