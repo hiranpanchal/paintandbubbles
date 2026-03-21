@@ -4,6 +4,13 @@
    ============================================= */
 
 :root {
+  /* Typography — overridden at runtime by design settings */
+  --font-body: 'Nunito', sans-serif;
+  --font-h1:   'Nunito', sans-serif;
+  --font-h2:   'Nunito', sans-serif;
+  --font-h3:   'Nunito', sans-serif;
+  --font-h4:   'Nunito', sans-serif;
+
   /* Brand Palette — inspired by the Paint & Bubbles watercolour logo */
   --rose:        #C4748A;
   --rose-deep:   #A85D72;
@@ -41,12 +48,17 @@
 html { scroll-behavior: smooth; }
 
 body {
-  font-family: 'Nunito', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: var(--font-body);
   background: var(--bg);
   color: var(--text-dark);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
 }
+
+h1 { font-family: var(--font-h1); }
+h2 { font-family: var(--font-h2); }
+h3 { font-family: var(--font-h3); }
+h4 { font-family: var(--font-h4); }
 
 .hidden { display: none !important; }
 .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
@@ -1210,6 +1222,63 @@ body {
   .faq-answer-inner { padding: 0 18px 18px; }
 }
 
+/* ---- SOCIAL SECTION ---- */
+.social-section {
+  background: var(--bg);
+  padding: 56px 0;
+  border-top: 1.5px solid var(--border);
+}
+
+.social-section-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 28px;
+  text-align: center;
+}
+
+.social-section-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text-dark);
+  letter-spacing: -0.01em;
+}
+
+.social-links-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.social-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: white;
+  border: 1.5px solid var(--border);
+  color: var(--text-dark);
+  text-decoration: none;
+  transition: background 0.2s, border-color 0.2s, color 0.2s, transform 0.2s, box-shadow 0.2s;
+}
+
+.social-link svg {
+  width: 22px;
+  height: 22px;
+}
+
+.social-link:hover {
+  background: var(--sc, var(--rose));
+  border-color: var(--sc, var(--rose));
+  color: white;
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.14);
+}
+
 /* ---- FOOTER ---- */
 .site-footer { background: #2C0F18; padding: 36px 0; }
 
@@ -1467,7 +1536,7 @@ body {
 /* Booking card (sticky sidebar) */
 .ed-sidebar {
   position: sticky;
-  top: 24px;
+  top: 88px; /* 69px sticky header + 19px breathing room */
 }
 
 .ed-booking-card {

@@ -835,6 +835,14 @@ function renderDesignPanel() {
         <svg viewBox="0 0 20 20" fill="none"><path d="M10 2l1.8 4.8H17l-4.2 3.1 1.6 4.8L10 12l-4.4 2.7 1.6-4.8L3 6.8h5.2L10 2z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
         Trust Cards
       </button>
+      <button class="design-tab-btn" onclick="switchDesignTab('social')" data-tab="social">
+        <svg viewBox="0 0 20 20" fill="none"><circle cx="15" cy="4" r="2" stroke="currentColor" stroke-width="1.5"/><circle cx="5" cy="10" r="2" stroke="currentColor" stroke-width="1.5"/><circle cx="15" cy="16" r="2" stroke="currentColor" stroke-width="1.5"/><path d="M7 9l6-4M7 11l6 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        Social Media
+      </button>
+      <button class="design-tab-btn" onclick="switchDesignTab('fonts')" data-tab="fonts">
+        <svg viewBox="0 0 20 20" fill="none"><path d="M4 15l4-10 4 10M5.5 11.5h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 6c.5-1 1.5-1.5 2.5-1.5S18 5 18 6.5c0 2-2 3-4 5h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Fonts
+      </button>
     </div>
 
     <!-- IMAGES TAB -->
@@ -934,6 +942,30 @@ function renderDesignPanel() {
         </div>
 
         <div class="design-card">
+          <div class="design-card-header">
+            <h3 class="design-card-title">What's Included</h3>
+            <span class="design-hint">Shown on every event detail page</span>
+          </div>
+          <div class="design-card-body">
+            <div class="form-group">
+              <label>Section Title</label>
+              <input type="text" id="ds-included_title" value="${escHtml(s.included_title || "What's included")}">
+            </div>
+            <div class="form-group">
+              <label>Bullet Points <span class="design-hint">Use <code>{capacity}</code> to show the event's max group size</span></label>
+              <div id="included-items-list" class="included-items-list">
+                ${renderIncludedItemsList(s.included_items)}
+              </div>
+              <button type="button" class="btn-add-item" onclick="addIncludedItem()">
+                <svg viewBox="0 0 20 20" fill="none"><path d="M10 4v12M4 10h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                Add item
+              </button>
+            </div>
+            <input type="hidden" id="ds-included_items" value="${escHtml(s.included_items || '[]')}">
+          </div>
+        </div>
+
+        <div class="design-card">
           <div class="design-card-header"><h3 class="design-card-title">Footer</h3></div>
           <div class="design-card-body">
             <div class="form-group">
@@ -969,6 +1001,50 @@ function renderDesignPanel() {
       </div>
     </div>
 
+    <!-- SOCIAL MEDIA TAB -->
+    <div class="design-tab-panel hidden" id="dtab-social">
+      <div class="design-centred-wrap">
+        <div class="design-card">
+          <div class="design-card-header">
+            <h3 class="design-card-title">Social Media Section</h3>
+            <span class="design-hint">Displayed above the footer on every page</span>
+          </div>
+          <div class="design-card-body">
+            <div class="form-group">
+              <label>Section Title</label>
+              <input type="text" id="ds-social_title" value="${escHtml(s.social_title || 'Social Media')}">
+            </div>
+            <div class="form-group">
+              <label>Social Links <span class="design-hint">Hidden automatically if no links are added</span></label>
+              <div id="social-links-list" class="social-links-editor">
+                ${renderSocialLinksList(s.social_links)}
+              </div>
+              <button type="button" class="btn-add-item" onclick="addSocialLink()">
+                <svg viewBox="0 0 20 20" fill="none"><path d="M10 4v12M4 10h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                Add social link
+              </button>
+            </div>
+            <input type="hidden" id="ds-social_links" value="${escHtml(s.social_links || '[]')}">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FONTS TAB -->
+    <div class="design-tab-panel hidden" id="dtab-fonts">
+      <div class="design-centred-wrap">
+        <div class="design-card">
+          <div class="design-card-header">
+            <h3 class="design-card-title">Typography</h3>
+            <span class="design-hint">Choose Google Fonts for each element. Changes apply site-wide.</span>
+          </div>
+          <div class="design-card-body" id="font-pickers-wrap">
+            <div class="loading-state" style="padding:40px 0"><div class="spinner"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- SAVE BAR -->
     <div class="design-save-bar">
       <button class="btn btn-primary" onclick="saveDesign()" id="design-save-btn">Save All Changes</button>
@@ -984,6 +1060,280 @@ function switchDesignTab(tab) {
   document.querySelectorAll('.design-tab-panel').forEach(panel => {
     panel.classList.toggle('hidden', panel.id !== `dtab-${tab}`);
   });
+  if (tab === 'fonts') initFontTab();
+}
+
+// ---- FONT PICKER ----
+const ADMIN_FONTS = [
+  { name: 'Nunito',              cat: 'sans',    group: 'Sans Serif'   },
+  { name: 'Inter',               cat: 'sans',    group: 'Sans Serif'   },
+  { name: 'Roboto',              cat: 'sans',    group: 'Sans Serif'   },
+  { name: 'Open Sans',           cat: 'sans',    group: 'Sans Serif'   },
+  { name: 'Poppins',             cat: 'sans',    group: 'Sans Serif'   },
+  { name: 'Montserrat',          cat: 'sans',    group: 'Sans Serif'   },
+  { name: 'Lato',                cat: 'sans',    group: 'Sans Serif'   },
+  { name: 'Raleway',             cat: 'sans',    group: 'Sans Serif'   },
+  { name: 'DM Sans',             cat: 'sans',    group: 'Sans Serif'   },
+  { name: 'Plus Jakarta Sans',   cat: 'sans',    group: 'Sans Serif'   },
+  { name: 'Outfit',              cat: 'sans',    group: 'Sans Serif'   },
+  { name: 'Figtree',             cat: 'sans',    group: 'Sans Serif'   },
+  { name: 'Work Sans',           cat: 'sans',    group: 'Sans Serif'   },
+  { name: 'Quicksand',           cat: 'sans',    group: 'Sans Serif'   },
+  { name: 'Playfair Display',    cat: 'serif',   group: 'Serif'        },
+  { name: 'Merriweather',        cat: 'serif',   group: 'Serif'        },
+  { name: 'Lora',                cat: 'serif',   group: 'Serif'        },
+  { name: 'Cormorant Garamond',  cat: 'serif',   group: 'Serif'        },
+  { name: 'DM Serif Display',    cat: 'serif',   group: 'Serif'        },
+  { name: 'EB Garamond',         cat: 'serif',   group: 'Serif'        },
+  { name: 'Oswald',              cat: 'display', group: 'Display'      },
+  { name: 'Bebas Neue',          cat: 'display', group: 'Display'      },
+  { name: 'Anton',               cat: 'display', group: 'Display'      },
+  { name: 'Righteous',           cat: 'display', group: 'Display'      },
+  { name: 'Dancing Script',      cat: 'script',  group: 'Script'       },
+  { name: 'Pacifico',            cat: 'script',  group: 'Script'       },
+  { name: 'Caveat',              cat: 'script',  group: 'Script'       },
+  { name: 'Satisfy',             cat: 'script',  group: 'Script'       },
+  { name: 'Great Vibes',         cat: 'script',  group: 'Script'       },
+  { name: 'Lobster',             cat: 'script',  group: 'Script'       },
+];
+
+function adminFontStack(name) {
+  const f = ADMIN_FONTS.find(f => f.name === name);
+  if (!f) return `'${name}', sans-serif`;
+  if (f.cat === 'script')  return `'${name}', cursive`;
+  if (f.cat === 'serif')   return `'${name}', serif`;
+  return `'${name}', sans-serif`;
+}
+
+let fontsLoaded = false;
+function initFontTab() {
+  const wrap = document.getElementById('font-pickers-wrap');
+  if (!wrap || wrap.dataset.ready) return;
+  wrap.dataset.ready = '1';
+
+  // Load all fonts in one batch
+  if (!fontsLoaded) {
+    fontsLoaded = true;
+    const families = ADMIN_FONTS.map(f => f.name.replace(/ /g, '+') + ':wght@400;700').join('&family=');
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = `https://fonts.googleapis.com/css2?family=${families}&display=swap`;
+    document.head.appendChild(link);
+  }
+
+  const s = designSettings;
+  const roles = [
+    { key: 'font_body', label: 'Body / Paragraph', preview: 'The quick brown fox jumps over the lazy dog. 0123456789' },
+    { key: 'font_h1',   label: 'H1 — Page Title',  preview: 'Creative Events Studio' },
+    { key: 'font_h2',   label: 'H2 — Section Heading', preview: 'About This Event' },
+    { key: 'font_h3',   label: 'H3 — Card Title',  preview: 'Sunset Watercolours' },
+    { key: 'font_h4',   label: 'H4 — Sub-heading', preview: 'What\'s Included' },
+  ];
+
+  wrap.innerHTML = roles.map(r => {
+    const current = s[r.key] || 'Nunito';
+    return `
+      <div class="fp-field" id="fpf-${r.key}">
+        <div class="fp-field-label">${r.label}</div>
+        <div class="fp-picker" id="fpp-${r.key}">
+          <button type="button" class="fp-trigger" onclick="toggleFontPicker('${r.key}')"
+                  id="fptrig-${r.key}" style="font-family:${adminFontStack(current)}">
+            <span id="fptrig-name-${r.key}">${escHtml(current)}</span>
+            <svg viewBox="0 0 20 20" fill="none"><path d="M5 8l5 5 5-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="fp-dropdown hidden" id="fpdd-${r.key}">
+            <div class="fp-search-wrap">
+              <svg viewBox="0 0 20 20" fill="none"><circle cx="8.5" cy="8.5" r="5" stroke="currentColor" stroke-width="1.5"/><path d="M15 15l-3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+              <input type="text" class="fp-search" placeholder="Search fonts…" oninput="filterFontOptions('${r.key}', this.value)">
+            </div>
+            <div class="fp-list" id="fplist-${r.key}">
+              ${renderFontOptions(r.key, current)}
+            </div>
+          </div>
+        </div>
+        <div class="fp-preview" id="fpprev-${r.key}" style="font-family:${adminFontStack(current)}">${r.preview}</div>
+        <input type="hidden" id="ds-${r.key}" value="${escHtml(current)}">
+      </div>`;
+  }).join('<div class="fp-divider"></div>');
+
+  // Close dropdowns when clicking outside
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.fp-picker')) closeFontDropdowns();
+  });
+}
+
+function renderFontOptions(role, selected) {
+  const groups = [...new Set(ADMIN_FONTS.map(f => f.group))];
+  return groups.map(group => {
+    const fonts = ADMIN_FONTS.filter(f => f.group === group);
+    return `
+      <div class="fp-group-label">${group}</div>
+      ${fonts.map(f => `
+        <div class="fp-option${f.name === selected ? ' selected' : ''}"
+             style="font-family:${adminFontStack(f.name)}"
+             onclick="pickFont('${role}', '${f.name}')">
+          ${escHtml(f.name)}
+        </div>`).join('')}`;
+  }).join('');
+}
+
+function toggleFontPicker(role) {
+  const dd = document.getElementById(`fpdd-${role}`);
+  if (!dd) return;
+  const isOpen = !dd.classList.contains('hidden');
+  closeFontDropdowns();
+  if (!isOpen) {
+    dd.classList.remove('hidden');
+    dd.querySelector('.fp-search')?.focus();
+  }
+}
+
+function closeFontDropdowns() {
+  document.querySelectorAll('.fp-dropdown').forEach(d => d.classList.add('hidden'));
+}
+
+function filterFontOptions(role, query) {
+  const list = document.getElementById(`fplist-${role}`);
+  if (!list) return;
+  const q = query.toLowerCase();
+  list.querySelectorAll('.fp-option').forEach(opt => {
+    opt.style.display = opt.textContent.toLowerCase().includes(q) ? '' : 'none';
+  });
+  list.querySelectorAll('.fp-group-label').forEach(label => {
+    const next = label.nextElementSibling;
+    const hasVisible = [...label.parentElement.querySelectorAll('.fp-option')].some(
+      o => o.style.display !== 'none' && label.compareDocumentPosition(o) & 4
+    );
+    label.style.display = hasVisible ? '' : 'none';
+  });
+}
+
+function pickFont(role, fontName) {
+  // Update hidden input
+  const input = document.getElementById(`ds-${role}`);
+  if (input) input.value = fontName;
+  // Update trigger button
+  const trig = document.getElementById(`fptrig-${role}`);
+  const trigName = document.getElementById(`fptrig-name-${role}`);
+  if (trig) trig.style.fontFamily = adminFontStack(fontName);
+  if (trigName) trigName.textContent = fontName;
+  // Update preview
+  const preview = document.getElementById(`fpprev-${role}`);
+  if (preview) preview.style.fontFamily = adminFontStack(fontName);
+  // Update selected state
+  const list = document.getElementById(`fplist-${role}`);
+  if (list) {
+    list.querySelectorAll('.fp-option').forEach(opt => {
+      opt.classList.toggle('selected', opt.textContent.trim() === fontName);
+    });
+  }
+  closeFontDropdowns();
+}
+
+// ---- WHAT'S INCLUDED LIST ----
+function renderIncludedItemsList(jsonStr) {
+  let items = [];
+  try { items = JSON.parse(jsonStr || '[]'); } catch {}
+  if (!items.length) {
+    items = [
+      'All materials and tools provided',
+      'Step-by-step instructor guidance',
+      'Drinks included throughout the session',
+      'Small group setting — max {capacity} people',
+      'Take your finished creation home',
+    ];
+  }
+  return items.map(text => renderIncludedItemRow(text)).join('');
+}
+
+function renderIncludedItemRow(text = '') {
+  return `
+    <div class="included-item-row">
+      <svg class="included-drag-handle" viewBox="0 0 20 20" fill="none">
+        <path d="M7 7h6M7 10h6M7 13h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+      <input type="text" class="included-item-input" value="${escHtml(text)}"
+             placeholder="e.g. All materials provided" oninput="syncIncludedItems()">
+      <button type="button" class="included-item-remove" onclick="removeIncludedItem(this)" title="Remove item">
+        <svg viewBox="0 0 20 20" fill="none"><path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      </button>
+    </div>`;
+}
+
+function addIncludedItem() {
+  const list = document.getElementById('included-items-list');
+  if (!list) return;
+  list.insertAdjacentHTML('beforeend', renderIncludedItemRow(''));
+  syncIncludedItems();
+  list.lastElementChild.querySelector('input').focus();
+}
+
+function removeIncludedItem(btn) {
+  btn.closest('.included-item-row').remove();
+  syncIncludedItems();
+}
+
+function syncIncludedItems() {
+  const inputs = document.querySelectorAll('.included-item-input');
+  const items  = Array.from(inputs).map(i => i.value.trim()).filter(Boolean);
+  const hidden = document.getElementById('ds-included_items');
+  if (hidden) hidden.value = JSON.stringify(items);
+}
+
+// ---- SOCIAL LINKS EDITOR ----
+const SOCIAL_PLATFORM_LABELS = {
+  instagram: 'Instagram',
+  facebook:  'Facebook',
+  tiktok:    'TikTok',
+  youtube:   'YouTube',
+  twitter:   'X (Twitter)',
+  pinterest: 'Pinterest',
+  linkedin:  'LinkedIn',
+  spotify:   'Spotify',
+};
+
+function renderSocialLinksList(jsonStr) {
+  let links = [];
+  try { links = JSON.parse(jsonStr || '[]'); } catch {}
+  return links.map(({ platform, url }) => renderSocialLinkRow(platform, url)).join('');
+}
+
+function renderSocialLinkRow(platform = 'instagram', url = '') {
+  const options = Object.entries(SOCIAL_PLATFORM_LABELS).map(([val, label]) =>
+    `<option value="${val}"${val === platform ? ' selected' : ''}>${label}</option>`
+  ).join('');
+  return `
+    <div class="social-link-row">
+      <select class="social-link-platform" onchange="syncSocialLinks()">${options}</select>
+      <input type="text" class="social-link-url" value="${escHtml(url)}"
+             placeholder="https://..." oninput="syncSocialLinks()">
+      <button type="button" class="included-item-remove" onclick="removeSocialLink(this)" title="Remove">
+        <svg viewBox="0 0 20 20" fill="none"><path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      </button>
+    </div>`;
+}
+
+function addSocialLink() {
+  const list = document.getElementById('social-links-list');
+  if (!list) return;
+  list.insertAdjacentHTML('beforeend', renderSocialLinkRow('instagram', ''));
+  syncSocialLinks();
+  list.lastElementChild.querySelector('input').focus();
+}
+
+function removeSocialLink(btn) {
+  btn.closest('.social-link-row').remove();
+  syncSocialLinks();
+}
+
+function syncSocialLinks() {
+  const rows  = document.querySelectorAll('.social-link-row');
+  const links = Array.from(rows).map(row => ({
+    platform: row.querySelector('.social-link-platform').value,
+    url:      row.querySelector('.social-link-url').value.trim(),
+  })).filter(l => l.url);
+  const hidden = document.getElementById('ds-social_links');
+  if (hidden) hidden.value = JSON.stringify(links);
 }
 
 // ---- ICON PICKER ----
@@ -1153,6 +1503,10 @@ async function saveDesign() {
   const btn = document.getElementById('design-save-btn');
   btn.disabled = true;
   btn.textContent = 'Saving…';
+
+  // Sync dynamic lists into their hidden inputs before collecting
+  syncIncludedItems();
+  syncSocialLinks();
 
   // Collect all ds- prefixed inputs
   const settings = { ...designSettings };

@@ -123,10 +123,56 @@ if (settingsCount.count === 0) {
     trust_2_icon:  'brush', trust_2_title: '100% Beginner Friendly',   trust_2_sub: 'No experience needed at all',
     trust_3_icon:  'users', trust_3_title: 'Kids Classes Available',   trust_3_sub: 'Fun sessions for all ages',
     trust_4_icon:  'pin',   trust_4_title: 'Multiple Locations',       trust_4_sub: 'Coventry · Leamington Spa · Solihull · Rugby · Warwickshire',
+    included_title: "What's included",
+    included_items: JSON.stringify([
+      'All materials and tools provided',
+      'Step-by-step instructor guidance',
+      'Drinks included throughout the session',
+      'Small group setting — max {capacity} people',
+      'Take your finished creation home',
+    ]),
   };
   const upsert = db.prepare('INSERT OR IGNORE INTO site_settings (key, value) VALUES (?, ?)');
   for (const [k, v] of Object.entries(defaults)) upsert.run(k, v);
   console.log('Default site settings seeded.');
+}
+
+// Ensure font settings exist (added after initial seed)
+{
+  const check = db.prepare("SELECT COUNT(*) as count FROM site_settings WHERE key = 'font_body'").get();
+  if (check.count === 0) {
+    const ins = db.prepare('INSERT OR IGNORE INTO site_settings (key, value) VALUES (?, ?)');
+    ['font_body','font_h1','font_h2','font_h3','font_h4'].forEach(k => ins.run(k, 'Nunito'));
+    console.log('Seeded font defaults.');
+  }
+}
+
+// Ensure Social Media settings exist (added after initial seed)
+{
+  const check = db.prepare("SELECT COUNT(*) as count FROM site_settings WHERE key = 'social_links'").get();
+  if (check.count === 0) {
+    const ins = db.prepare('INSERT OR IGNORE INTO site_settings (key, value) VALUES (?, ?)');
+    ins.run('social_title', 'Social Media');
+    ins.run('social_links', '[]');
+    console.log('Seeded social_links defaults.');
+  }
+}
+
+// Ensure "What's Included" settings exist (added after initial seed)
+{
+  const check = db.prepare("SELECT COUNT(*) as count FROM site_settings WHERE key = 'included_items'").get();
+  if (check.count === 0) {
+    const ins = db.prepare('INSERT OR IGNORE INTO site_settings (key, value) VALUES (?, ?)');
+    ins.run('included_title', "What's included");
+    ins.run('included_items', JSON.stringify([
+      'All materials and tools provided',
+      'Step-by-step instructor guidance',
+      'Drinks included throughout the session',
+      'Small group setting — max {capacity} people',
+      'Take your finished creation home',
+    ]));
+    console.log('Seeded included_items defaults.');
+  }
 }
 
 // Seed sample events if empty
