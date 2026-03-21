@@ -4,7 +4,14 @@ const { DatabaseSync } = require('node:sqlite');
 const path = require('path');
 const bcrypt = require('bcryptjs');
 
-const DB_PATH = process.env.DB_PATH || './db/paintandbubbles.db';
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'db');
+const DB_PATH  = process.env.DB_PATH  || path.join(DATA_DIR, 'paintandbubbles.db');
+
+// Ensure data directory exists (important on Railway where volume may start empty)
+const fs = require('fs');
+if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+
+console.log(`[DB] Using database at: ${DB_PATH}`);
 const db = new DatabaseSync(path.resolve(DB_PATH));
 
 // Enable WAL mode and foreign keys

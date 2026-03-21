@@ -12,7 +12,8 @@ app.use('/api/payments/webhook', express.raw({ type: 'application/json' }));
 app.use(cors());
 app.use(express.json());
 // Serve uploaded images from the persistent volume directory
-app.use('/uploads', express.static(path.join(__dirname, 'db/uploads')));
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'db');
+app.use('/uploads', express.static(path.join(DATA_DIR, 'uploads')));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Routes

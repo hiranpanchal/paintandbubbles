@@ -5,9 +5,9 @@ const multer = require('multer');
 const db     = require('../database');
 const { requireAdmin } = require('../middleware/auth');
 
-// Store uploads inside the persistent volume (/app/db/uploads on Railway)
-// so images survive deployments. Served via /uploads route in server.js.
-const uploadsDir = path.join(__dirname, '../db/uploads');
+// Store uploads in DATA_DIR/uploads so they persist on the Railway volume
+const DATA_DIR   = process.env.DATA_DIR || path.join(__dirname, '../db');
+const uploadsDir = path.join(DATA_DIR, 'uploads');
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 
 const storage = multer.diskStorage({
