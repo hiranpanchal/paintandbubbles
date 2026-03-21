@@ -143,6 +143,14 @@ if (settingsCount.count === 0) {
   if (check.count === 0) {
     const ins = db.prepare('INSERT OR IGNORE INTO site_settings (key, value) VALUES (?, ?)');
     ['font_body','font_h1','font_h2','font_h3','font_h4'].forEach(k => ins.run(k, 'Nunito'));
+  }
+}
+// Ensure font_hero_highlight exists (added later)
+{
+  const check = db.prepare("SELECT COUNT(*) as count FROM site_settings WHERE key = 'font_hero_highlight'").get();
+  if (check.count === 0) {
+    const ins = db.prepare('INSERT OR IGNORE INTO site_settings (key, value) VALUES (?, ?)');
+    ins.run('font_hero_highlight', 'Dancing Script');
     console.log('Seeded font defaults.');
   }
 }

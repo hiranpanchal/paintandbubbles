@@ -149,11 +149,12 @@ const SOCIAL_PLATFORMS = {
 // ---- FONT SETTINGS ----
 function applyFontSettings(s) {
   const map = {
-    font_body: { cssVar: '--font-body', selectors: 'body, p, span, li, label, input, textarea, button, a' },
-    font_h1:   { cssVar: '--font-h1',   selectors: 'h1' },
-    font_h2:   { cssVar: '--font-h2',   selectors: 'h2' },
-    font_h3:   { cssVar: '--font-h3',   selectors: 'h3' },
-    font_h4:   { cssVar: '--font-h4',   selectors: 'h4' },
+    font_body:           { cssVar: '--font-body',           selectors: 'body, p, span, li, label, input, textarea, button, a' },
+    font_h1:             { cssVar: '--font-h1',             selectors: 'h1' },
+    font_h2:             { cssVar: '--font-h2',             selectors: 'h2' },
+    font_h3:             { cssVar: '--font-h3',             selectors: 'h3' },
+    font_h4:             { cssVar: '--font-h4',             selectors: 'h4' },
+    font_hero_highlight: { cssVar: '--font-hero-highlight', selectors: '.hero-highlight' },
   };
   const fontsNeeded = [], vars = [], rules = [];
   for (const [key, { cssVar, selectors }] of Object.entries(map)) {

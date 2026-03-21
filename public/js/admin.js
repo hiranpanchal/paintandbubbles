@@ -1123,11 +1123,12 @@ function initFontTab() {
 
   const s = designSettings;
   const roles = [
-    { key: 'font_body', label: 'Body / Paragraph', preview: 'The quick brown fox jumps over the lazy dog. 0123456789' },
-    { key: 'font_h1',   label: 'H1 — Page Title',  preview: 'Creative Events Studio' },
-    { key: 'font_h2',   label: 'H2 — Section Heading', preview: 'About This Event' },
-    { key: 'font_h3',   label: 'H3 — Card Title',  preview: 'Sunset Watercolours' },
-    { key: 'font_h4',   label: 'H4 — Sub-heading', preview: 'What\'s Included' },
+    { key: 'font_body',           label: 'Body / Paragraph',          preview: 'The quick brown fox jumps over the lazy dog. 0123456789' },
+    { key: 'font_h1',             label: 'H1 — Page Title',            preview: 'Creative Events Studio' },
+    { key: 'font_hero_highlight', label: 'Hero Highlight (& Celebrate)', preview: '& Celebrate' },
+    { key: 'font_h2',             label: 'H2 — Section Heading',       preview: 'About This Event' },
+    { key: 'font_h3',             label: 'H3 — Card Title',            preview: 'Sunset Watercolours' },
+    { key: 'font_h4',             label: 'H4 — Sub-heading',           preview: 'What\'s Included' },
   ];
 
   wrap.innerHTML = roles.map(r => {
