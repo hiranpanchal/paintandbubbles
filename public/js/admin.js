@@ -1840,10 +1840,10 @@ function renderUsersTab(users) {
     </div>
     <div class="table-wrap">
       <table class="data-table">
-        <thead><tr><th>Username</th><th>Role</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead>
+        <thead><tr><th>Username</th><th>Role</th><th>Status</th><th>Last Login</th><th>Created</th></tr></thead>
         <tbody>
           ${users.map(u => `
-            <tr id="user-row-${u.id}">
+            <tr id="user-row-${u.id}" onclick="openUserDetail(${u.id})" style="cursor:pointer" class="hoverable-row">
               <td style="font-weight:600">${escHtml(u.username)}${u.id === currentId ? ' <span style="font-size:11px;color:var(--text-light)">(you)</span>' : ''}</td>
               <td>
                 <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;${u.role === 'super_admin' ? 'background:#fef3c7;color:#92400e' : 'background:#f3f4f6;color:#374151'}">
@@ -1855,22 +1855,124 @@ function renderUsersTab(users) {
                   ${u.is_active ? 'Active' : 'Disabled'}
                 </span>
               </td>
+              <td style="color:var(--text-light);font-size:13px">${u.last_login_at ? new Date(u.last_login_at).toLocaleString('en-GB', {dateStyle:'medium',timeStyle:'short'}) : 'Never'}</td>
               <td style="color:var(--text-light);font-size:13px">${new Date(u.created_at).toLocaleDateString('en-GB')}</td>
-              <td>
-                <div style="display:flex;gap:6px;flex-wrap:wrap">
-                  ${u.id !== currentId ? `
-                    <button class="btn btn-xs btn-ghost" onclick="openUserForm(${u.id})">Edit</button>
-                    <button class="btn btn-xs btn-ghost" onclick="openResetPassword(${u.id}, '${escHtml(u.username)}')">Reset PW</button>
-                    <button class="btn btn-xs" style="background:#fee2e2;color:#dc2626;border:none" onclick="deleteUser(${u.id})">Delete</button>
-                  ` : `<span style="font-size:12px;color:var(--text-light)">—</span>`}
-                </div>
-              </td>
             </tr>`).join('')}
         </tbody>
       </table>
     </div>
   `;
   ensureUserModal();
+}
+
+// Store users list for detail modal lookup
+let _cachedUsers = [];
+const _origLoadAdminUsers = loadAdminUsers;
+
+function openUserDetail(id) {
+  ensureUserModal();
+  apiFetch('/api/admin/users').then(users => {
+    const u = users.find(x => x.id === id);
+    if (!u) return;
+    const currentId = getCurrentUserId();
+    const isSelf = u.id === currentId;
+    const modal = document.getElementById('user-modal');
+    modal.innerHTML = `
+      <div class="modal" style="max-width:480px">
+        <div class="modal-header">
+          <h2>${escHtml(u.username)}</h2>
+          <button class="modal-close" onclick="closeUserForm()"><svg viewBox="0 0 20 20" fill="none"><path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+        </div>
+        <div class="modal-body">
+          <!-- User info -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px">
+            <div style="background:var(--bg);border-radius:10px;padding:14px">
+              <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-light);margin-bottom:4px">Role</div>
+              <div style="font-weight:600;font-size:14px">${u.role === 'super_admin' ? '⭐ Super Admin' : 'Admin'}</div>
+            </div>
+            <div style="background:var(--bg);border-radius:10px;padding:14px">
+              <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-light);margin-bottom:4px">Status</div>
+              <div style="font-weight:600;font-size:14px;color:${u.is_active ? '#065f46' : '#991b1b'}">${u.is_active ? 'Active' : 'Disabled'}</div>
+            </div>
+            <div style="background:var(--bg);border-radius:10px;padding:14px">
+              <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-light);margin-bottom:4px">Last Login</div>
+              <div style="font-weight:600;font-size:14px">${u.last_login_at ? new Date(u.last_login_at).toLocaleString('en-GB', {dateStyle:'medium',timeStyle:'short'}) : 'Never'}</div>
+            </div>
+            <div style="background:var(--bg);border-radius:10px;padding:14px">
+              <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-light);margin-bottom:4px">Member Since</div>
+              <div style="font-weight:600;font-size:14px">${new Date(u.created_at).toLocaleDateString('en-GB',{dateStyle:'medium'})}</div>
+            </div>
+          </div>
+
+          ${!isSelf ? `
+          <!-- Role & Status -->
+          <div style="border-top:1px solid var(--border);padding-top:20px;margin-bottom:20px">
+            <div style="font-size:13px;font-weight:700;margin-bottom:12px;color:var(--text-dark)">Settings</div>
+            <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+              <select id="ud-role" style="flex:1;padding:9px 12px;border:1.5px solid #e0d0d4;border-radius:8px;font-size:14px;background:#fff">
+                <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>Admin</option>
+                <option value="super_admin" ${u.role === 'super_admin' ? 'selected' : ''}>Super Admin</option>
+              </select>
+              <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:14px;font-weight:600;white-space:nowrap">
+                <input type="checkbox" id="ud-active" ${u.is_active ? 'checked' : ''} style="width:16px;height:16px">
+                Account active
+              </label>
+              <button class="btn btn-primary btn-sm" onclick="saveUserDetail(${u.id})">Save</button>
+            </div>
+          </div>
+
+          <!-- Change Password -->
+          <div style="border-top:1px solid var(--border);padding-top:20px;margin-bottom:20px">
+            <div style="font-size:13px;font-weight:700;margin-bottom:12px;color:var(--text-dark)">Change Password</div>
+            <div class="form-group">
+              <label>New Password</label>
+              <input type="password" id="ud-pw-new" placeholder="Min. 8 characters">
+            </div>
+            <div class="form-group">
+              <label>Confirm Password</label>
+              <input type="password" id="ud-pw-confirm" placeholder="Repeat new password">
+            </div>
+            <button class="btn btn-ghost btn-sm" onclick="saveUserPassword(${u.id})">Update Password</button>
+          </div>
+
+          <!-- Danger Zone -->
+          <div style="border-top:1px solid #fee2e2;padding-top:20px;background:#fff9f9;border-radius:0 0 10px 10px;margin:-1px -24px -1px;padding:16px 24px">
+            <div style="font-size:13px;font-weight:700;margin-bottom:8px;color:#991b1b">Danger Zone</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+              <p style="font-size:13px;color:#6b7280;margin:0">Permanently delete this user account.</p>
+              <button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:none;flex-shrink:0" onclick="deleteUser(${u.id})">Delete User</button>
+            </div>
+          </div>
+          ` : `<p style="font-size:14px;color:var(--text-light);text-align:center;padding:8px 0">This is your account. To change your password, sign out and use another super admin account.</p>`}
+        </div>
+      </div>
+    `;
+    modal.classList.remove('hidden');
+  });
+}
+
+async function saveUserDetail(id) {
+  const role = document.getElementById('ud-role').value;
+  const is_active = document.getElementById('ud-active').checked;
+  try {
+    await apiFetch(`/api/admin/users/${id}`, { method: 'PUT', body: JSON.stringify({ role, is_active }) });
+    toast('User updated');
+    closeUserForm();
+    loadAdminUsers();
+  } catch (err) { toast(err.message || 'Failed to update user', 'error'); }
+}
+
+async function saveUserPassword(id) {
+  const pw = document.getElementById('ud-pw-new').value;
+  const confirm = document.getElementById('ud-pw-confirm').value;
+  if (!pw || pw.length < 8) { toast('Password must be at least 8 characters', 'error'); return; }
+  if (pw !== confirm) { toast('Passwords do not match', 'error'); return; }
+  try {
+    await apiFetch(`/api/admin/users/${id}/reset-password`, { method: 'POST', body: JSON.stringify({ password: pw }) });
+    toast('Password updated successfully');
+    document.getElementById('ud-pw-new').value = '';
+    document.getElementById('ud-pw-confirm').value = '';
+  } catch (err) { toast(err.message || 'Failed to update password', 'error'); }
 }
 
 function getCurrentUserId() {

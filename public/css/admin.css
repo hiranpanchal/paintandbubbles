@@ -474,6 +474,8 @@ body {
 
 .data-table tr:last-child td { border-bottom: none; }
 .data-table tr:hover td { background: var(--rose-50); }
+.hoverable-row:hover td { background: var(--rose-50); cursor: pointer; }
+.hoverable-row:active td { background: var(--rose-100); }
 .data-table .actions { display: flex; gap: 6px; }
 
 /* ---- BADGES ---- */

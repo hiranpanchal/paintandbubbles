@@ -107,9 +107,10 @@ db.exec(`
   );
 `);
 
-// Migrate: add role and is_active to admin_users if not present
+// Migrate: add role, is_active and last_login_at to admin_users if not present
 try { db.exec("ALTER TABLE admin_users ADD COLUMN role TEXT DEFAULT 'admin'"); } catch {}
 try { db.exec("ALTER TABLE admin_users ADD COLUMN is_active INTEGER DEFAULT 1"); } catch {}
+try { db.exec("ALTER TABLE admin_users ADD COLUMN last_login_at TEXT"); } catch {}
 // Ensure the seeded admin is a super_admin
 db.prepare("UPDATE admin_users SET role = 'super_admin' WHERE role = 'admin' AND id = (SELECT MIN(id) FROM admin_users)").run();
 

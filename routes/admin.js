@@ -19,6 +19,8 @@ router.post('/login', (req, res) => {
     return res.status(403).json({ error: 'Account disabled. Contact a super admin.' });
   }
 
+  db.prepare("UPDATE admin_users SET last_login_at = datetime('now') WHERE id = ?").run(user.id);
+
   const token = jwt.sign(
     { id: user.id, username: user.username, role: user.role, is_active: !!user.is_active },
     JWT_SECRET,
@@ -68,7 +70,7 @@ router.get('/stats', requireAdmin, (req, res) => {
 // GET /api/admin/users
 router.get('/users', requireSuperAdmin, (req, res) => {
   const users = db.prepare(
-    'SELECT id, username, role, is_active, created_at FROM admin_users ORDER BY created_at ASC'
+    'SELECT id, username, role, is_active, created_at, last_login_at FROM admin_users ORDER BY created_at ASC'
   ).all();
   res.json(users);
 });
@@ -90,7 +92,7 @@ router.post('/users', requireSuperAdmin, (req, res) => {
     'INSERT INTO admin_users (username, password_hash, role) VALUES (?, ?, ?)'
   ).run(username.trim(), hash, userRole);
 
-  res.status(201).json(db.prepare('SELECT id, username, role, is_active, created_at FROM admin_users WHERE id = ?').get(result.lastInsertRowid));
+  res.status(201).json(db.prepare('SELECT id, username, role, is_active, created_at, last_login_at FROM admin_users WHERE id = ?').get(result.lastInsertRowid));
 });
 
 // PUT /api/admin/users/:id
@@ -109,7 +111,7 @@ router.put('/users/:id', requireSuperAdmin, (req, res) => {
     is_active !== undefined ? (is_active ? 1 : 0) : user.is_active,
     req.params.id
   );
-  res.json(db.prepare('SELECT id, username, role, is_active, created_at FROM admin_users WHERE id = ?').get(req.params.id));
+  res.json(db.prepare('SELECT id, username, role, is_active, created_at, last_login_at FROM admin_users WHERE id = ?').get(req.params.id));
 });
 
 // POST /api/admin/users/:id/reset-password
