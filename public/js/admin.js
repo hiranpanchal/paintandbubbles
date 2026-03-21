@@ -876,6 +876,19 @@ function renderDesignPanel() {
             ${renderColorField('color_text_dark', 'Heading Text',    s.color_text_dark || '#2C2028')}
           </div>
         </div>
+        <div class="design-card">
+          <div class="design-card-header">
+            <h3 class="design-card-title">Section Backgrounds</h3>
+            <span class="design-hint">Background colour for each section on the public site</span>
+          </div>
+          <div class="design-card-body">
+            ${renderColorField('color_bg_about',  'About Section',   s.color_bg_about  || '#ffffff')}
+            ${renderColorField('color_bg_trust',  'Features / Trust Strip', s.color_bg_trust  || '#F5F0EB')}
+            ${renderColorField('color_bg_events', 'Events Section',  s.color_bg_events || '#FDF8F9')}
+            ${renderColorField('color_bg_social', 'Social Media Section', s.color_bg_social || '#F5F0EB')}
+            ${renderColorField('color_bg_footer', 'Footer',          s.color_bg_footer || '#2C0F18')}
+          </div>
+        </div>
       </div>
     </div>
 

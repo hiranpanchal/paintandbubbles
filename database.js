@@ -190,6 +190,20 @@ if (settingsCount.count === 0) {
   }
 }
 
+// Ensure Section Background colour settings exist
+{
+  const check = db.prepare("SELECT COUNT(*) as count FROM site_settings WHERE key = 'color_bg_social'").get();
+  if (check.count === 0) {
+    const ins = db.prepare('INSERT OR IGNORE INTO site_settings (key, value) VALUES (?, ?)');
+    ins.run('color_bg_about',  '#ffffff');
+    ins.run('color_bg_trust',  '#F5F0EB');
+    ins.run('color_bg_events', '#FDF8F9');
+    ins.run('color_bg_social', '#F5F0EB');
+    ins.run('color_bg_footer', '#2C0F18');
+    console.log('Seeded section background colour defaults.');
+  }
+}
+
 // Ensure "Please Note" settings exist
 {
   const check = db.prepare("SELECT COUNT(*) as count FROM site_settings WHERE key = 'please_note_title'").get();

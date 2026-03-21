@@ -35,6 +35,13 @@
   --bg:         #FDF8F9;
   --white:      #ffffff;
 
+  /* Section Backgrounds — overridden at runtime by design settings */
+  --bg-about:  #ffffff;
+  --bg-trust:  #F5F0EB;
+  --bg-events: var(--bg);
+  --bg-social: #F5F0EB;
+  --bg-footer: #2C0F18;
+
   /* Effects */
   --shadow-sm: 0 1px 4px rgba(160,80,110,0.08), 0 1px 2px rgba(0,0,0,0.04);
   --shadow:    0 4px 20px rgba(160,80,110,0.12);
@@ -399,7 +406,7 @@ h4 { font-family: var(--font-h4); }
 /* ---- ABOUT SECTION ---- */
 .about-section {
   padding: 80px 0;
-  background: white;
+  background: var(--bg-about);
   border-bottom: 1px solid var(--border);
 }
 
@@ -513,7 +520,7 @@ h4 { font-family: var(--font-h4); }
 /* ---- TRUST BAR ---- */
 .trust-section {
   padding: 48px 0;
-  background: var(--rose-50);
+  background: var(--bg-trust);
   border-top: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
 }
@@ -583,7 +590,7 @@ h4 { font-family: var(--font-h4); }
 }
 
 /* ---- EVENTS SECTION ---- */
-.events-section { padding: 40px 0 80px; }
+.events-section { padding: 40px 0 80px; background: var(--bg-events); }
 
 .section-header {
   display: flex;
@@ -1210,7 +1217,7 @@ h4 { font-family: var(--font-h4); }
 
 /* ---- SOCIAL SECTION ---- */
 .social-section {
-  background: var(--bg);
+  background: var(--bg-social);
   padding: 56px 0;
   border-top: 1.5px solid var(--border);
 }
@@ -1266,7 +1273,7 @@ h4 { font-family: var(--font-h4); }
 }
 
 /* ---- FOOTER ---- */
-.site-footer { background: #2C0F18; padding: 36px 0; }
+.site-footer { background: var(--bg-footer); padding: 36px 0; }
 
 .footer-inner {
   display: flex;

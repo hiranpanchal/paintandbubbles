@@ -29,6 +29,11 @@ async function applyDesignSettings() {
     if (s.color_rose_dark)  vars.push(`--rose-dark: ${s.color_rose_dark}`);
     if (s.color_bg)         vars.push(`--bg: ${s.color_bg}`);
     if (s.color_text_dark)  vars.push(`--text-dark: ${s.color_text_dark}`);
+    if (s.color_bg_about)   vars.push(`--bg-about: ${s.color_bg_about}`);
+    if (s.color_bg_trust)   vars.push(`--bg-trust: ${s.color_bg_trust}`);
+    if (s.color_bg_events)  vars.push(`--bg-events: ${s.color_bg_events}`);
+    if (s.color_bg_social)  vars.push(`--bg-social: ${s.color_bg_social}`);
+    if (s.color_bg_footer)  vars.push(`--bg-footer: ${s.color_bg_footer}`);
     if (vars.length) {
       const st = document.createElement('style');
       st.id = 'design-vars';
