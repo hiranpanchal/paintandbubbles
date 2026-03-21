@@ -697,6 +697,20 @@ body {
   width: fit-content;
 }
 
+/* Content tab page-selector variant — full width, more breathing room */
+.content-page-tabs {
+  width: 100%;
+  border-radius: 10px;
+  margin-bottom: 28px;
+}
+.content-page-tabs .design-tab-btn {
+  flex: 1;
+  justify-content: center;
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
 .design-tab-btn {
   display: flex;
   align-items: center;

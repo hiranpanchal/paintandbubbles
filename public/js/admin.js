@@ -968,10 +968,6 @@ function renderDesignPanel() {
         <svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.5"/><path d="M10 3c1.5 2 3 3.5 3 5.5a3 3 0 01-6 0C7 6.5 8.5 5 10 3z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
         Colours
       </button>
-      <button class="design-tab-btn" onclick="switchDesignTab('content')" data-tab="content">
-        <svg viewBox="0 0 20 20" fill="none"><path d="M4 6h12M4 10h8M4 14h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-        Content
-      </button>
       <button class="design-tab-btn" onclick="switchDesignTab('trust')" data-tab="trust">
         <svg viewBox="0 0 20 20" fill="none"><path d="M10 2l1.8 4.8H17l-4.2 3.1 1.6 4.8L10 12l-4.4 2.7 1.6-4.8L3 6.8h5.2L10 2z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
         Trust Cards
@@ -1034,175 +1030,6 @@ function renderDesignPanel() {
             ${renderColorField('color_bg_footer', 'Footer',          s.color_bg_footer || '#2C0F18')}
           </div>
         </div>
-      </div>
-    </div>
-
-    <!-- CONTENT TAB -->
-    <div class="design-tab-panel hidden" id="dtab-content">
-      <div class="design-centred-wrap">
-
-        <div class="design-card">
-          <div class="design-card-header"><h3 class="design-card-title">Hero Section</h3></div>
-          <div class="design-card-body">
-            <div class="form-row">
-              <div class="form-group">
-                <label>Title Text</label>
-                <input type="text" id="ds-hero_title" value="${escHtml(s.hero_title || 'Paint, Create')}" placeholder="Paint, Create">
-              </div>
-              <div class="form-group">
-                <label>Title Highlight <span class="design-hint">(coloured part)</span></label>
-                <input type="text" id="ds-hero_title_highlight" value="${escHtml(s.hero_title_highlight || '& Celebrate')}" placeholder="& Celebrate">
-              </div>
-            </div>
-            <div class="form-group">
-              <label>Subtitle</label>
-              <textarea id="ds-hero_subtitle" rows="2">${escHtml(s.hero_subtitle || '')}</textarea>
-            </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label>Primary Button Text</label>
-                <input type="text" id="ds-hero_cta_primary_text" value="${escHtml(s.hero_cta_primary_text || 'Browse All Events')}">
-              </div>
-              <div class="form-group">
-                <label>Primary Button URL</label>
-                <input type="text" id="ds-hero_cta_primary_url" value="${escHtml(s.hero_cta_primary_url || '/events')}">
-              </div>
-            </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label>Secondary Button Text</label>
-                <input type="text" id="ds-hero_cta_secondary_text" value="${escHtml(s.hero_cta_secondary_text || 'About Us')}">
-              </div>
-              <div class="form-group">
-                <label>Secondary Button URL</label>
-                <input type="text" id="ds-hero_cta_secondary_url" value="${escHtml(s.hero_cta_secondary_url || '#about')}">
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="design-card">
-          <div class="design-card-header"><h3 class="design-card-title">About Section</h3></div>
-          <div class="design-card-body">
-            <div class="form-group">
-              <label>Section Title</label>
-              <input type="text" id="ds-about_title" value="${escHtml(s.about_title || 'Where creativity meets good company')}">
-            </div>
-            <div class="form-group">
-              <label>Body — Paragraph 1</label>
-              <textarea id="ds-about_body_1" rows="3">${escHtml(s.about_body_1 || '')}</textarea>
-            </div>
-            <div class="form-group">
-              <label>Body — Paragraph 2</label>
-              <textarea id="ds-about_body_2" rows="3">${escHtml(s.about_body_2 || '')}</textarea>
-            </div>
-          </div>
-        </div>
-
-        <div class="design-card">
-          <div class="design-card-header">
-            <h3 class="design-card-title">About Page</h3>
-            <span class="design-hint">Content for the /about page</span>
-          </div>
-          <div class="design-card-body">
-            <div class="form-row">
-              <div class="form-group">
-                <label>Hero Title</label>
-                <input type="text" id="ds-aboutpage_hero_title" value="${escHtml(s.aboutpage_hero_title || 'About Us')}">
-              </div>
-              <div class="form-group">
-                <label>Hero Subtitle</label>
-                <input type="text" id="ds-aboutpage_hero_sub" value="${escHtml(s.aboutpage_hero_sub || 'The story behind Paint & Bubbles')}">
-              </div>
-            </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label>Label <span class="design-hint">(small text above title)</span></label>
-                <input type="text" id="ds-aboutpage_label" value="${escHtml(s.aboutpage_label || 'Our Story')}">
-              </div>
-              <div class="form-group">
-                <label>Section Title</label>
-                <input type="text" id="ds-aboutpage_title" value="${escHtml(s.aboutpage_title || 'Where creativity meets good company')}">
-              </div>
-            </div>
-            <div class="form-group">
-              <label>Body — Paragraph 1</label>
-              <textarea id="ds-aboutpage_body_1" rows="3">${escHtml(s.aboutpage_body_1 || '')}</textarea>
-            </div>
-            <div class="form-group">
-              <label>Body — Paragraph 2</label>
-              <textarea id="ds-aboutpage_body_2" rows="3">${escHtml(s.aboutpage_body_2 || '')}</textarea>
-            </div>
-            <div class="form-group">
-              <label>Body — Paragraph 3 <span class="design-hint">(optional)</span></label>
-              <textarea id="ds-aboutpage_body_3" rows="3">${escHtml(s.aboutpage_body_3 || '')}</textarea>
-            </div>
-            <div class="form-group">
-              <label>Pillars / Highlights</label>
-              ${[1,2,3].map(n => `
-              <div class="form-row" style="margin-bottom:8px">
-                <div class="form-group">
-                  <input type="text" id="ds-aboutpage_pillar_${n}_title" value="${escHtml(s[`aboutpage_pillar_${n}_title`] || '')}" placeholder="Pillar ${n} title">
-                </div>
-                <div class="form-group">
-                  <input type="text" id="ds-aboutpage_pillar_${n}_text" value="${escHtml(s[`aboutpage_pillar_${n}_text`] || '')}" placeholder="Pillar ${n} description">
-                </div>
-              </div>`).join('')}
-            </div>
-          </div>
-        </div>
-
-        <div class="design-card">
-          <div class="design-card-header">
-            <h3 class="design-card-title">What's Included</h3>
-            <span class="design-hint">Shown on every event detail page</span>
-          </div>
-          <div class="design-card-body">
-            <div class="form-group">
-              <label>Section Title</label>
-              <input type="text" id="ds-included_title" value="${escHtml(s.included_title || "What's included")}">
-            </div>
-            <div class="form-group">
-              <label>Bullet Points <span class="design-hint">Use <code>{capacity}</code> to show the event's max group size</span></label>
-              <div id="included-items-list" class="included-items-list">
-                ${renderIncludedItemsList(s.included_items)}
-              </div>
-              <button type="button" class="btn-add-item" onclick="addIncludedItem()">
-                <svg viewBox="0 0 20 20" fill="none"><path d="M10 4v12M4 10h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-                Add item
-              </button>
-            </div>
-            <input type="hidden" id="ds-included_items" value="${escHtml(s.included_items || '[]')}">
-          </div>
-        </div>
-
-        <div class="design-card">
-          <div class="design-card-header">
-            <h3 class="design-card-title">Please Note</h3>
-            <span class="design-hint">Shown on every event detail page alongside What's Included</span>
-          </div>
-          <div class="design-card-body">
-            <div class="form-group">
-              <label>Section Title</label>
-              <input type="text" id="ds-please_note_title" value="${escHtml(s.please_note_title || 'Please Note')}">
-            </div>
-            <div class="form-group">
-              <label>Text</label>
-              <textarea id="ds-please_note_text" rows="5">${escHtml(s.please_note_text || '')}</textarea>
-            </div>
-          </div>
-        </div>
-
-        <div class="design-card">
-          <div class="design-card-header"><h3 class="design-card-title">Footer</h3></div>
-          <div class="design-card-body">
-            <div class="form-group">
-              <label>Tagline</label>
-              <input type="text" id="ds-footer_tagline" value="${escHtml(s.footer_tagline || 'Creative events for everyone')}">
-            </div>
-          </div>
-        </div>
-
       </div>
     </div>
 
@@ -1282,10 +1109,11 @@ function renderDesignPanel() {
 }
 
 function switchDesignTab(tab) {
-  document.querySelectorAll('.design-tab-btn').forEach(btn => {
+  const container = document.getElementById('content-design');
+  container.querySelectorAll('.design-tab-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.tab === tab);
   });
-  document.querySelectorAll('.design-tab-panel').forEach(panel => {
+  container.querySelectorAll('.design-tab-panel').forEach(panel => {
     panel.classList.toggle('hidden', panel.id !== `dtab-${tab}`);
   });
   if (tab === 'fonts') initFontTab();
@@ -2288,105 +2116,350 @@ let peQuill = null;
 async function loadContentTab() {
   const el = document.getElementById('content-content');
   el.innerHTML = '<div class="loading-state"><div class="spinner"></div></div>';
+  peQuill = null;
+  window._peQuillInitContent = '';
   try {
     const s = await apiFetch('/api/design/settings');
+    window._peQuillInitContent = s.private_events_content || '';
 
     el.innerHTML = `
-      <div class="card" style="margin-bottom:24px">
-        <div class="card-header">
-          <h3 class="card-title">Contact Page</h3>
-        </div>
-        <div class="card-body" style="padding:24px">
-          <div class="form-group">
-            <label>Hero Title</label>
-            <input type="text" id="cnt-contact-hero-title" value="${escAdminHtml(s.contact_hero_title || 'Get In Touch')}">
+      <div class="design-tabs-nav content-page-tabs">
+        <button class="design-tab-btn active" onclick="switchContentTab('home')" data-tab="home">Home</button>
+        <button class="design-tab-btn" onclick="switchContentTab('about')" data-tab="about">About</button>
+        <button class="design-tab-btn" onclick="switchContentTab('events')" data-tab="events">Events</button>
+        <button class="design-tab-btn" onclick="switchContentTab('contact')" data-tab="contact">Contact</button>
+        <button class="design-tab-btn" onclick="switchContentTab('private-events')" data-tab="private-events">Private Events</button>
+      </div>
+
+      <!-- HOME PAGE -->
+      <div class="design-tab-panel" id="ctab-home">
+        <div class="design-centred-wrap">
+          <div class="design-card">
+            <div class="design-card-header"><h3 class="design-card-title">Hero Banner</h3></div>
+            <div class="design-card-body">
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Title</label>
+                  <input type="text" id="ds-hero_title" value="${escHtml(s.hero_title || 'Paint, Create')}">
+                </div>
+                <div class="form-group">
+                  <label>Title Highlight <span class="design-hint">(the coloured part)</span></label>
+                  <input type="text" id="ds-hero_title_highlight" value="${escHtml(s.hero_title_highlight || '& Celebrate')}">
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Subtitle</label>
+                <textarea id="ds-hero_subtitle" rows="2">${escHtml(s.hero_subtitle || '')}</textarea>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Primary Button Text</label>
+                  <input type="text" id="ds-hero_cta_primary_text" value="${escHtml(s.hero_cta_primary_text || 'Browse All Events')}">
+                </div>
+                <div class="form-group">
+                  <label>Primary Button URL</label>
+                  <input type="text" id="ds-hero_cta_primary_url" value="${escHtml(s.hero_cta_primary_url || '/events')}">
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Secondary Button Text</label>
+                  <input type="text" id="ds-hero_cta_secondary_text" value="${escHtml(s.hero_cta_secondary_text || 'About Us')}">
+                </div>
+                <div class="form-group">
+                  <label>Secondary Button URL</label>
+                  <input type="text" id="ds-hero_cta_secondary_url" value="${escHtml(s.hero_cta_secondary_url || '#about')}">
+                </div>
+              </div>
+            </div>
           </div>
-          <div class="form-group">
-            <label>Hero Subtitle</label>
-            <input type="text" id="cnt-contact-hero-sub" value="${escAdminHtml(s.contact_hero_sub || '')}">
+          <div class="design-card">
+            <div class="design-card-header">
+              <h3 class="design-card-title">About Snippet</h3>
+              <span class="design-hint">The short about section on the homepage</span>
+            </div>
+            <div class="design-card-body">
+              <div class="form-group">
+                <label>Section Title</label>
+                <input type="text" id="ds-about_title" value="${escHtml(s.about_title || '')}">
+              </div>
+              <div class="form-group">
+                <label>Paragraph 1</label>
+                <textarea id="ds-about_body_1" rows="3">${escHtml(s.about_body_1 || '')}</textarea>
+              </div>
+              <div class="form-group">
+                <label>Paragraph 2</label>
+                <textarea id="ds-about_body_2" rows="3">${escHtml(s.about_body_2 || '')}</textarea>
+              </div>
+            </div>
           </div>
-          <div class="form-group">
-            <label>Intro Text</label>
-            <textarea id="cnt-contact-page-text" rows="5">${escAdminHtml(s.contact_page_text || '')}</textarea>
+          <div class="design-card">
+            <div class="design-card-header"><h3 class="design-card-title">Footer</h3></div>
+            <div class="design-card-body">
+              <div class="form-group">
+                <label>Tagline</label>
+                <input type="text" id="ds-footer_tagline" value="${escHtml(s.footer_tagline || 'Creative events for everyone')}">
+              </div>
+            </div>
           </div>
-          <button class="btn btn-primary btn-sm" onclick="saveContactContent()">Save Contact Page</button>
-          <span id="contact-save-msg" style="margin-left:12px;font-size:13px;color:var(--green)"></span>
+          <div class="design-save-bar">
+            <button class="btn btn-primary" onclick="saveContentPage('home')">Save Home Page</button>
+          </div>
         </div>
       </div>
 
-      <div class="card">
-        <div class="card-header">
-          <h3 class="card-title">Private Events Page</h3>
+      <!-- ABOUT PAGE -->
+      <div class="design-tab-panel hidden" id="ctab-about">
+        <div class="design-centred-wrap">
+          <div class="design-card">
+            <div class="design-card-header"><h3 class="design-card-title">Hero</h3></div>
+            <div class="design-card-body">
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Hero Title</label>
+                  <input type="text" id="ds-aboutpage_hero_title" value="${escHtml(s.aboutpage_hero_title || 'About Us')}">
+                </div>
+                <div class="form-group">
+                  <label>Hero Subtitle</label>
+                  <input type="text" id="ds-aboutpage_hero_sub" value="${escHtml(s.aboutpage_hero_sub || '')}">
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="design-card">
+            <div class="design-card-header"><h3 class="design-card-title">Main Content</h3></div>
+            <div class="design-card-body">
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Label <span class="design-hint">(small text above title)</span></label>
+                  <input type="text" id="ds-aboutpage_label" value="${escHtml(s.aboutpage_label || 'Our Story')}">
+                </div>
+                <div class="form-group">
+                  <label>Section Title</label>
+                  <input type="text" id="ds-aboutpage_title" value="${escHtml(s.aboutpage_title || '')}">
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Paragraph 1</label>
+                <textarea id="ds-aboutpage_body_1" rows="3">${escHtml(s.aboutpage_body_1 || '')}</textarea>
+              </div>
+              <div class="form-group">
+                <label>Paragraph 2</label>
+                <textarea id="ds-aboutpage_body_2" rows="3">${escHtml(s.aboutpage_body_2 || '')}</textarea>
+              </div>
+              <div class="form-group">
+                <label>Paragraph 3 <span class="design-hint">(optional)</span></label>
+                <textarea id="ds-aboutpage_body_3" rows="3">${escHtml(s.aboutpage_body_3 || '')}</textarea>
+              </div>
+            </div>
+          </div>
+          <div class="design-card">
+            <div class="design-card-header">
+              <h3 class="design-card-title">Highlights</h3>
+              <span class="design-hint">Three feature points shown below the text</span>
+            </div>
+            <div class="design-card-body">
+              ${[1,2,3].map(n => `
+              <div class="form-row" style="margin-bottom:12px">
+                <div class="form-group">
+                  <label>Highlight ${n} — Title</label>
+                  <input type="text" id="ds-aboutpage_pillar_${n}_title" value="${escHtml(s[`aboutpage_pillar_${n}_title`] || '')}">
+                </div>
+                <div class="form-group">
+                  <label>Highlight ${n} — Description</label>
+                  <input type="text" id="ds-aboutpage_pillar_${n}_text" value="${escHtml(s[`aboutpage_pillar_${n}_text`] || '')}">
+                </div>
+              </div>`).join('')}
+            </div>
+          </div>
+          <div class="design-save-bar">
+            <button class="btn btn-primary" onclick="saveContentPage('about')">Save About Page</button>
+          </div>
         </div>
-        <div class="card-body" style="padding:24px">
-          <div class="form-group">
-            <label>Hero Title</label>
-            <input type="text" id="cnt-pe-hero-title" value="${escAdminHtml(s.private_events_hero_title || 'Private Events')}">
+      </div>
+
+      <!-- EVENTS PAGE -->
+      <div class="design-tab-panel hidden" id="ctab-events">
+        <div class="design-centred-wrap">
+          <div class="design-card">
+            <div class="design-card-header">
+              <h3 class="design-card-title">What's Included</h3>
+              <span class="design-hint">Shown on every event detail page</span>
+            </div>
+            <div class="design-card-body">
+              <div class="form-group">
+                <label>Section Title</label>
+                <input type="text" id="ds-included_title" value="${escHtml(s.included_title || "What's included")}">
+              </div>
+              <div class="form-group">
+                <label>Bullet Points <span class="design-hint">Use <code>{capacity}</code> to show group size</span></label>
+                <div id="included-items-list" class="included-items-list">
+                  ${renderIncludedItemsList(s.included_items)}
+                </div>
+                <button type="button" class="btn-add-item" onclick="addIncludedItem()">
+                  <svg viewBox="0 0 20 20" fill="none"><path d="M10 4v12M4 10h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                  Add item
+                </button>
+              </div>
+              <input type="hidden" id="ds-included_items" value="${escHtml(s.included_items || '[]')}">
+            </div>
           </div>
-          <div class="form-group">
-            <label>Hero Subtitle</label>
-            <input type="text" id="cnt-pe-hero-sub" value="${escAdminHtml(s.private_events_hero_sub || '')}">
+          <div class="design-card">
+            <div class="design-card-header">
+              <h3 class="design-card-title">Please Note</h3>
+              <span class="design-hint">Shown alongside What's Included</span>
+            </div>
+            <div class="design-card-body">
+              <div class="form-group">
+                <label>Section Title</label>
+                <input type="text" id="ds-please_note_title" value="${escHtml(s.please_note_title || 'Please Note')}">
+              </div>
+              <div class="form-group">
+                <label>Text</label>
+                <textarea id="ds-please_note_text" rows="5">${escHtml(s.please_note_text || '')}</textarea>
+              </div>
+            </div>
           </div>
-          <div class="form-group">
-            <label>Page Content</label>
-            <div id="pe-quill-editor" style="height:320px;background:#fff;border-radius:8px"></div>
+          <div class="design-save-bar">
+            <button class="btn btn-primary" onclick="saveContentPage('events')">Save Events Content</button>
           </div>
-          <button class="btn btn-primary btn-sm" onclick="savePEContent()" style="margin-top:8px">Save Private Events Page</button>
-          <span id="pe-save-msg" style="margin-left:12px;font-size:13px;color:var(--green)"></span>
+        </div>
+      </div>
+
+      <!-- CONTACT PAGE -->
+      <div class="design-tab-panel hidden" id="ctab-contact">
+        <div class="design-centred-wrap">
+          <div class="design-card">
+            <div class="design-card-header"><h3 class="design-card-title">Hero</h3></div>
+            <div class="design-card-body">
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Hero Title</label>
+                  <input type="text" id="ds-contact_hero_title" value="${escHtml(s.contact_hero_title || 'Get In Touch')}">
+                </div>
+                <div class="form-group">
+                  <label>Hero Subtitle</label>
+                  <input type="text" id="ds-contact_hero_sub" value="${escHtml(s.contact_hero_sub || '')}">
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="design-card">
+            <div class="design-card-header">
+              <h3 class="design-card-title">Intro Text</h3>
+              <span class="design-hint">Shown to the left of the contact form</span>
+            </div>
+            <div class="design-card-body">
+              <div class="form-group">
+                <textarea id="ds-contact_page_text" rows="6">${escHtml(s.contact_page_text || '')}</textarea>
+              </div>
+            </div>
+          </div>
+          <div class="design-save-bar">
+            <button class="btn btn-primary" onclick="saveContentPage('contact')">Save Contact Page</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- PRIVATE EVENTS PAGE -->
+      <div class="design-tab-panel hidden" id="ctab-private-events">
+        <div class="design-centred-wrap">
+          <div class="design-card">
+            <div class="design-card-header"><h3 class="design-card-title">Hero</h3></div>
+            <div class="design-card-body">
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Hero Title</label>
+                  <input type="text" id="ds-private_events_hero_title" value="${escHtml(s.private_events_hero_title || 'Private Events')}">
+                </div>
+                <div class="form-group">
+                  <label>Hero Subtitle</label>
+                  <input type="text" id="ds-private_events_hero_sub" value="${escHtml(s.private_events_hero_sub || '')}">
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="design-card">
+            <div class="design-card-header">
+              <h3 class="design-card-title">Page Content</h3>
+              <span class="design-hint">Use the toolbar to format headings, lists and links</span>
+            </div>
+            <div class="design-card-body">
+              <div id="pe-quill-editor" style="min-height:300px;background:#fff;border-radius:6px"></div>
+            </div>
+          </div>
+          <div class="design-save-bar">
+            <button class="btn btn-primary" onclick="saveContentPage('private-events')">Save Private Events Page</button>
+          </div>
         </div>
       </div>
     `;
 
-    // Init Quill
-    peQuill = new Quill('#pe-quill-editor', {
-      theme: 'snow',
-      modules: {
-        toolbar: [
-          [{ header: [2, 3, false] }],
-          ['bold', 'italic', 'underline'],
-          [{ list: 'ordered' }, { list: 'bullet' }],
-          ['link'],
-          ['clean']
-        ]
-      }
-    });
-    peQuill.root.innerHTML = s.private_events_content || '';
-
-  } catch (err) {
+    // Quill init is deferred until the Private Events tab is clicked
+  } catch {
     el.innerHTML = '<p style="padding:24px;color:red">Failed to load content settings.</p>';
+  }
+}
+
+function switchContentTab(tab) {
+  const container = document.getElementById('content-content');
+  container.querySelectorAll('.design-tab-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === tab);
+  });
+  container.querySelectorAll('.design-tab-panel').forEach(panel => {
+    panel.classList.toggle('hidden', panel.id !== `ctab-${tab}`);
+  });
+  if (tab === 'private-events') initContentPEQuill();
+}
+
+function initContentPEQuill() {
+  if (peQuill) return;
+  const editorEl = document.getElementById('pe-quill-editor');
+  if (!editorEl) return;
+  peQuill = new Quill('#pe-quill-editor', {
+    theme: 'snow',
+    modules: {
+      toolbar: [
+        [{ header: [2, 3, false] }],
+        ['bold', 'italic', 'underline'],
+        [{ list: 'ordered' }, { list: 'bullet' }],
+        ['link'],
+        ['clean']
+      ]
+    }
+  });
+  peQuill.root.innerHTML = window._peQuillInitContent || '';
+}
+
+const CONTENT_PAGE_KEYS = {
+  home:             ['hero_title','hero_title_highlight','hero_subtitle','hero_cta_primary_text','hero_cta_primary_url','hero_cta_secondary_text','hero_cta_secondary_url','about_title','about_body_1','about_body_2','footer_tagline'],
+  about:            ['aboutpage_hero_title','aboutpage_hero_sub','aboutpage_label','aboutpage_title','aboutpage_body_1','aboutpage_body_2','aboutpage_body_3','aboutpage_pillar_1_title','aboutpage_pillar_1_text','aboutpage_pillar_2_title','aboutpage_pillar_2_text','aboutpage_pillar_3_title','aboutpage_pillar_3_text'],
+  events:           ['included_title','included_items','please_note_title','please_note_text'],
+  contact:          ['contact_hero_title','contact_hero_sub','contact_page_text'],
+  'private-events': ['private_events_hero_title','private_events_hero_sub','private_events_content'],
+};
+
+async function saveContentPage(page) {
+  if (page === 'events') syncIncludedItems();
+  const data = {};
+  for (const key of (CONTENT_PAGE_KEYS[page] || [])) {
+    if (key === 'private_events_content') {
+      data[key] = peQuill ? peQuill.root.innerHTML : '';
+    } else {
+      const el = document.getElementById(`ds-${key}`);
+      if (el) data[key] = el.value;
+    }
+  }
+  try {
+    await apiFetch('/api/design/settings', { method: 'POST', body: JSON.stringify(data) });
+    toast('Saved!', 'success');
+  } catch (err) {
+    toast(err.message || 'Failed to save', 'error');
   }
 }
 
 function escAdminHtml(str) {
   return String(str || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
-
-async function saveContactContent() {
-  const data = {
-    contact_hero_title: document.getElementById('cnt-contact-hero-title').value,
-    contact_hero_sub:   document.getElementById('cnt-contact-hero-sub').value,
-    contact_page_text:  document.getElementById('cnt-contact-page-text').value,
-  };
-  try {
-    await apiFetch('/api/design/settings', { method: 'POST', body: JSON.stringify(data) });
-    const msg = document.getElementById('contact-save-msg');
-    msg.textContent = '\u2713 Saved';
-    setTimeout(() => msg.textContent = '', 3000);
-  } catch { alert('Failed to save.'); }
-}
-
-async function savePEContent() {
-  const data = {
-    private_events_hero_title: document.getElementById('cnt-pe-hero-title').value,
-    private_events_hero_sub:   document.getElementById('cnt-pe-hero-sub').value,
-    private_events_content:    peQuill ? peQuill.root.innerHTML : '',
-  };
-  try {
-    await apiFetch('/api/design/settings', { method: 'POST', body: JSON.stringify(data) });
-    const msg = document.getElementById('pe-save-msg');
-    msg.textContent = '\u2713 Saved';
-    setTimeout(() => msg.textContent = '', 3000);
-  } catch { alert('Failed to save.'); }
 }
 
 // ---- ENQUIRIES TAB ----
