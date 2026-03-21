@@ -215,6 +215,28 @@ if (settingsCount.count === 0) {
   }
 }
 
+// Ensure About Page settings exist
+{
+  const check = db.prepare("SELECT COUNT(*) as count FROM site_settings WHERE key = 'aboutpage_title'").get();
+  if (check.count === 0) {
+    const ins = db.prepare('INSERT OR IGNORE INTO site_settings (key, value) VALUES (?, ?)');
+    ins.run('aboutpage_hero_title', 'About Us');
+    ins.run('aboutpage_hero_sub', 'The story behind Paint & Bubbles');
+    ins.run('aboutpage_label', 'Our Story');
+    ins.run('aboutpage_title', 'Where creativity meets good company');
+    ins.run('aboutpage_body_1', "Paint & Bubbles is Brighton's favourite creative events studio. We host relaxed, fun painting and craft sessions for all skill levels — whether you're a total beginner or a seasoned artist, you'll leave with something you're proud of and a smile on your face.");
+    ins.run('aboutpage_body_2', 'Every event includes all the materials you need, a welcoming space, and drinks to keep the creativity flowing. No experience necessary — just show up, let loose, and enjoy the ride.');
+    ins.run('aboutpage_body_3', '');
+    ins.run('aboutpage_pillar_1_title', 'All levels welcome');
+    ins.run('aboutpage_pillar_1_text', 'From first-timers to seasoned creatives');
+    ins.run('aboutpage_pillar_2_title', 'Everything included');
+    ins.run('aboutpage_pillar_2_text', 'Materials, guidance and drinks provided');
+    ins.run('aboutpage_pillar_3_title', 'Small groups');
+    ins.run('aboutpage_pillar_3_text', 'Intimate sessions for a personal experience');
+    console.log('Seeded about page defaults.');
+  }
+}
+
 // Seed sample events if empty
 const eventCount = db.prepare('SELECT COUNT(*) as count FROM events').get();
 if (eventCount.count === 0) {

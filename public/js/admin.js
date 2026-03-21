@@ -860,6 +860,10 @@ function renderDesignPanel() {
           <div class="design-card-header"><h3 class="design-card-title">About Section Image</h3></div>
           <div class="design-card-body">${renderDropZone('about_image_url', s.about_image_url)}</div>
         </div>
+        <div class="design-card">
+          <div class="design-card-header"><h3 class="design-card-title">About Page Image</h3></div>
+          <div class="design-card-body">${renderDropZone('aboutpage_image_url', s.aboutpage_image_url)}</div>
+        </div>
       </div>
     </div>
 
@@ -950,6 +954,59 @@ function renderDesignPanel() {
             <div class="form-group">
               <label>Body — Paragraph 2</label>
               <textarea id="ds-about_body_2" rows="3">${escHtml(s.about_body_2 || '')}</textarea>
+            </div>
+          </div>
+        </div>
+
+        <div class="design-card">
+          <div class="design-card-header">
+            <h3 class="design-card-title">About Page</h3>
+            <span class="design-hint">Content for the /about page</span>
+          </div>
+          <div class="design-card-body">
+            <div class="form-row">
+              <div class="form-group">
+                <label>Hero Title</label>
+                <input type="text" id="ds-aboutpage_hero_title" value="${escHtml(s.aboutpage_hero_title || 'About Us')}">
+              </div>
+              <div class="form-group">
+                <label>Hero Subtitle</label>
+                <input type="text" id="ds-aboutpage_hero_sub" value="${escHtml(s.aboutpage_hero_sub || 'The story behind Paint & Bubbles')}">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Label <span class="design-hint">(small text above title)</span></label>
+                <input type="text" id="ds-aboutpage_label" value="${escHtml(s.aboutpage_label || 'Our Story')}">
+              </div>
+              <div class="form-group">
+                <label>Section Title</label>
+                <input type="text" id="ds-aboutpage_title" value="${escHtml(s.aboutpage_title || 'Where creativity meets good company')}">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Body — Paragraph 1</label>
+              <textarea id="ds-aboutpage_body_1" rows="3">${escHtml(s.aboutpage_body_1 || '')}</textarea>
+            </div>
+            <div class="form-group">
+              <label>Body — Paragraph 2</label>
+              <textarea id="ds-aboutpage_body_2" rows="3">${escHtml(s.aboutpage_body_2 || '')}</textarea>
+            </div>
+            <div class="form-group">
+              <label>Body — Paragraph 3 <span class="design-hint">(optional)</span></label>
+              <textarea id="ds-aboutpage_body_3" rows="3">${escHtml(s.aboutpage_body_3 || '')}</textarea>
+            </div>
+            <div class="form-group">
+              <label>Pillars / Highlights</label>
+              ${[1,2,3].map(n => `
+              <div class="form-row" style="margin-bottom:8px">
+                <div class="form-group">
+                  <input type="text" id="ds-aboutpage_pillar_${n}_title" value="${escHtml(s[`aboutpage_pillar_${n}_title`] || '')}" placeholder="Pillar ${n} title">
+                </div>
+                <div class="form-group">
+                  <input type="text" id="ds-aboutpage_pillar_${n}_text" value="${escHtml(s[`aboutpage_pillar_${n}_text`] || '')}" placeholder="Pillar ${n} description">
+                </div>
+              </div>`).join('')}
             </div>
           </div>
         </div>

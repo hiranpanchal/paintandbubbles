@@ -3,12 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Event — Paint &amp; Bubbles</title>
+  <title>About Us — Paint &amp; Bubbles</title>
   <link rel="stylesheet" href="/css/style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <script src="https://js.stripe.com/v3/"></script>
 </head>
 <body>
 
@@ -22,21 +21,41 @@
     </a>
     <nav class="main-nav">
       <button class="nav-btn" onclick="window.location.href='/'">Home</button>
-      <button class="nav-btn active" onclick="window.location.href='/events'">Events</button>
-      <button class="nav-btn" onclick="window.location.href='/about'">About</button>
+      <button class="nav-btn" onclick="window.location.href='/events'">Events</button>
+      <button class="nav-btn active" onclick="window.location.href='/about'">About</button>
       <button class="nav-btn" onclick="window.location.href='/faq'">FAQ</button>
     </nav>
     <a href="/admin" class="btn btn-ghost btn-sm">Admin</a>
   </div>
 </header>
 
-<!-- MAIN CONTENT (rendered by JS) -->
-<div id="event-detail-root">
-  <div class="ed-loading">
-    <div class="spinner"></div>
-    <p>Loading event…</p>
+<!-- PAGE HERO -->
+<section class="faq-hero">
+  <div class="container">
+    <h1 class="faq-hero-title" id="aboutpage-hero-title">About Us</h1>
+    <p class="faq-hero-sub" id="aboutpage-hero-sub">The story behind Paint &amp; Bubbles</p>
   </div>
-</div>
+</section>
+
+<!-- ABOUT CONTENT -->
+<section class="about-section">
+  <div class="container">
+    <div class="about-inner">
+      <div class="about-text">
+        <p class="about-label" id="aboutpage-label">Our Story</p>
+        <h2 class="about-title" id="aboutpage-title">Where creativity meets good company</h2>
+        <div id="aboutpage-body"></div>
+        <div class="about-pillars" id="aboutpage-pillars"></div>
+      </div>
+      <div class="about-image">
+        <div class="about-image-inner" id="aboutpage-image-wrap">
+          <img id="aboutpage-img" src="" alt="About Paint and Bubbles" style="display:none"
+               onerror="this.parentElement.classList.add('about-image-placeholder')">
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
 
 <!-- SOCIAL MEDIA -->
 <section class="social-section" id="social-section" style="display:none">
@@ -54,21 +73,6 @@
   </div>
 </footer>
 
-<!-- BOOKING MODAL -->
-<div class="modal-overlay hidden" id="booking-modal" onclick="closeBookingModal(event)">
-  <div class="modal modal-lg" id="booking-modal-content">
-    <button class="modal-close" onclick="closeModal('booking-modal')">✕</button>
-    <div id="booking-modal-body"></div>
-  </div>
-</div>
-
-<!-- CONFIRMATION MODAL -->
-<div class="modal-overlay hidden" id="confirm-modal">
-  <div class="modal" id="confirm-modal-content">
-    <div id="confirm-modal-body"></div>
-  </div>
-</div>
-
-<script src="/js/event-detail.js"></script>
+<script src="/js/about.js"></script>
 </body>
 </html>
