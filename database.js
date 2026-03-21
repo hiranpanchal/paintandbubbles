@@ -96,6 +96,7 @@ db.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     author_name TEXT NOT NULL,
     author_location TEXT DEFAULT '',
+    class_attended TEXT DEFAULT '',
     rating INTEGER DEFAULT 5,
     body TEXT NOT NULL,
     is_published INTEGER DEFAULT 0,
@@ -103,6 +104,11 @@ db.exec(`
     created_at TEXT DEFAULT (datetime('now'))
   );
 `);
+
+// Migrate: add class_attended column if it doesn't exist yet
+try {
+  db.exec("ALTER TABLE reviews ADD COLUMN class_attended TEXT DEFAULT ''");
+} catch (e) { /* column already exists */ }
 
 // Seed admin user if not exists
 const adminUsername = process.env.ADMIN_USERNAME || 'admin';

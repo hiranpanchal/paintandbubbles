@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>About Us — Paint &amp; Bubbles</title>
+  <title>Reviews — Paint &amp; Bubbles</title>
   <link rel="stylesheet" href="/css/style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -22,8 +22,8 @@
     <nav class="main-nav">
       <button class="nav-btn" onclick="window.location.href='/'">Home</button>
       <button class="nav-btn" onclick="window.location.href='/events'">Events</button>
-      <button class="nav-btn active" onclick="window.location.href='/about'">About</button>
-      <button class="nav-btn" onclick="window.location.href='/reviews'">Reviews</button>
+      <button class="nav-btn" onclick="window.location.href='/about'">About</button>
+      <button class="nav-btn active" onclick="window.location.href='/reviews'">Reviews</button>
       <button class="nav-btn" onclick="window.location.href='/faq'">FAQ</button>
     </nav>
     <a href="/admin" class="btn btn-ghost btn-sm">Admin</a>
@@ -33,43 +33,49 @@
 <!-- PAGE HERO -->
 <section class="faq-hero">
   <div class="container">
-    <h1 class="faq-hero-title" id="aboutpage-hero-title">About Us</h1>
-    <p class="faq-hero-sub" id="aboutpage-hero-sub">The story behind Paint &amp; Bubbles</p>
+    <h1 class="faq-hero-title">What our guests say</h1>
+    <p class="faq-hero-sub">Real reviews from real guests — unedited and straight from the heart</p>
   </div>
 </section>
 
-<!-- ABOUT CONTENT -->
-<section class="about-section">
+<!-- REVIEWS GRID -->
+<section class="reviews-page-section">
   <div class="container">
-    <div class="about-inner">
-      <div class="about-text">
-        <p class="about-label" id="aboutpage-label">Our Story</p>
-        <h2 class="about-title" id="aboutpage-title">Where creativity meets good company</h2>
-        <div id="aboutpage-body"></div>
-        <div class="about-pillars" id="aboutpage-pillars"></div>
-      </div>
-      <div class="about-image">
-        <div class="about-image-inner" id="aboutpage-image-wrap">
-          <img id="aboutpage-img" src="" alt="About Paint and Bubbles" style="display:none"
-               onerror="this.parentElement.classList.add('about-image-placeholder')">
-        </div>
+    <div id="reviews-page-list" class="reviews-page-grid">
+      <div class="loading-state">
+        <div class="spinner"></div>
+        <p>Loading reviews…</p>
       </div>
     </div>
   </div>
 </section>
 
-<!-- REVIEWS -->
-<section class="reviews-section" id="reviews-section" style="display:none">
-  <div class="container reviews-section-inner">
-    <div class="reviews-header">
-      <h2 class="reviews-section-title">What our guests say</h2>
-      <div class="reviews-stars-summary">
-        <span class="reviews-stars-big">★★★★★</span>
-        <span class="reviews-score">5.0</span>
+<!-- LEAVE A REVIEW -->
+<section class="review-form-section">
+  <div class="container">
+    <div class="review-form-wrap">
+      <div class="review-form-intro">
+        <h2 class="review-form-title">Leave a review</h2>
+        <p class="review-form-sub">Had a great time? We'd love to hear about it! Your review will be checked before it goes live.</p>
       </div>
-    </div>
-    <div class="reviews-track-wrap">
-      <div class="reviews-track" id="reviews-track"></div>
+      <form id="review-submit-form" class="review-form" onsubmit="submitReview(event)" novalidate>
+        <div class="form-group">
+          <label for="rf-name">Your name <span class="req">*</span></label>
+          <input type="text" id="rf-name" placeholder="e.g. Sarah M." required>
+        </div>
+        <div class="form-group">
+          <label for="rf-class">Class attended <span class="req">*</span></label>
+          <input type="text" id="rf-class" placeholder="e.g. Sip & Paint — Sunset Edition" required>
+        </div>
+        <div class="form-group">
+          <label for="rf-body">Your review <span class="req">*</span></label>
+          <textarea id="rf-body" rows="5" placeholder="Tell us about your experience…" required></textarea>
+        </div>
+        <div id="review-form-msg" class="review-form-msg hidden"></div>
+        <button type="submit" class="btn btn-primary review-form-btn" id="review-submit-btn">
+          Submit Review
+        </button>
+      </form>
     </div>
   </div>
 </section>
@@ -90,6 +96,6 @@
   </div>
 </footer>
 
-<script src="/js/about.js"></script>
+<script src="/js/reviews.js"></script>
 </body>
 </html>

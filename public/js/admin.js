@@ -1644,6 +1644,7 @@ function renderReviewsTab(reviews) {
             <tr id="review-row-${r.id}">
               <td>
                 <div style="font-weight:600">${escHtml(r.author_name)}</div>
+                ${r.class_attended ? `<div style="font-size:12px;color:var(--text-light)">${escHtml(r.class_attended)}</div>` : ''}
                 ${r.author_location ? `<div style="font-size:12px;color:var(--text-light)">${escHtml(r.author_location)}</div>` : ''}
               </td>
               <td><span style="color:#f59e0b;font-size:16px">${'★'.repeat(r.rating)}${'☆'.repeat(5 - r.rating)}</span></td>
@@ -1677,6 +1678,10 @@ function renderReviewsTab(reviews) {
           <div class="form-group">
             <label>Author Name <span style="color:#e53e3e">*</span></label>
             <input type="text" id="review-form-name" placeholder="e.g. Sarah M.">
+          </div>
+          <div class="form-group">
+            <label>Class Attended <span style="color:var(--text-light);font-weight:400">(optional)</span></label>
+            <input type="text" id="review-form-class" placeholder="e.g. Sip & Paint — Sunset Edition">
           </div>
           <div class="form-group">
             <label>Location <span style="color:var(--text-light);font-weight:400">(optional)</span></label>
@@ -1722,6 +1727,7 @@ function openReviewForm(id = null) {
   document.getElementById('review-form-title').textContent = id ? 'Edit Review' : 'Add Review';
   document.getElementById('review-form-id').value = id || '';
   document.getElementById('review-form-name').value = '';
+  document.getElementById('review-form-class').value = '';
   document.getElementById('review-form-location').value = '';
   document.getElementById('review-form-body').value = '';
   document.getElementById('review-form-published').checked = false;
@@ -1732,6 +1738,7 @@ function openReviewForm(id = null) {
       const r = reviews.find(x => x.id === id);
       if (!r) return;
       document.getElementById('review-form-name').value = r.author_name;
+      document.getElementById('review-form-class').value = r.class_attended || '';
       document.getElementById('review-form-location').value = r.author_location || '';
       document.getElementById('review-form-body').value = r.body;
       document.getElementById('review-form-published').checked = !!r.is_published;
@@ -1748,6 +1755,7 @@ function closeReviewForm() {
 async function saveReview() {
   const id = document.getElementById('review-form-id').value;
   const author_name = document.getElementById('review-form-name').value.trim();
+  const class_attended = document.getElementById('review-form-class').value.trim();
   const author_location = document.getElementById('review-form-location').value.trim();
   const rating = parseInt(document.getElementById('review-form-rating').value);
   const body = document.getElementById('review-form-body').value.trim();
@@ -1757,10 +1765,10 @@ async function saveReview() {
 
   try {
     if (id) {
-      await apiFetch(`/api/reviews/${id}`, { method: 'PUT', body: JSON.stringify({ author_name, author_location, rating, body, is_published }) });
+      await apiFetch(`/api/reviews/${id}`, { method: 'PUT', body: JSON.stringify({ author_name, class_attended, author_location, rating, body, is_published }) });
       toast('Review updated');
     } else {
-      await apiFetch('/api/reviews', { method: 'POST', body: JSON.stringify({ author_name, author_location, rating, body, is_published }) });
+      await apiFetch('/api/reviews', { method: 'POST', body: JSON.stringify({ author_name, class_attended, author_location, rating, body, is_published }) });
       toast('Review added');
     }
     closeReviewForm();
