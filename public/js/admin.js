@@ -1686,9 +1686,9 @@ function renderReviewsTab(reviews) {
   modal.className = 'modal-overlay hidden';
   modal.onclick = (e) => { if (e.target === modal) closeReviewForm(); };
   modal.innerHTML = `
-    <div class="modal-box" style="max-width:520px">
+    <div class="modal" style="max-width:520px">
       <div class="modal-header">
-        <h2 class="modal-title" id="review-form-title">Add Review</h2>
+        <h2 class="" id="review-form-title">Add Review</h2>
         <button class="modal-close" onclick="closeReviewForm()"><svg viewBox="0 0 20 20" fill="none"><path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
       </div>
       <div class="modal-body">
@@ -1903,9 +1903,9 @@ function openUserForm(id = null) {
   ensureUserModal();
   const modal = document.getElementById('user-modal');
   modal.innerHTML = `
-    <div class="modal-box" style="max-width:460px">
+    <div class="modal" style="max-width:460px">
       <div class="modal-header">
-        <h2 class="modal-title">${id ? 'Edit User' : 'Add User'}</h2>
+        <h2 class="">${id ? 'Edit User' : 'Add User'}</h2>
         <button class="modal-close" onclick="closeUserForm()"><svg viewBox="0 0 20 20" fill="none"><path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
       </div>
       <div class="modal-body">
@@ -1986,9 +1986,9 @@ function openResetPassword(id, username) {
   ensureUserModal();
   const modal = document.getElementById('pw-modal');
   modal.innerHTML = `
-    <div class="modal-box" style="max-width:420px">
+    <div class="modal" style="max-width:420px">
       <div class="modal-header">
-        <h2 class="modal-title">Reset Password</h2>
+        <h2 class="">Reset Password</h2>
         <button class="modal-close" onclick="closePwModal()"><svg viewBox="0 0 20 20" fill="none"><path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
       </div>
       <div class="modal-body">
