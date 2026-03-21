@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FAQ — Paint &amp; Bubbles</title>
+  <title>Contact Us — Paint &amp; Bubbles</title>
   <link rel="stylesheet" href="/css/style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -11,7 +11,6 @@
 </head>
 <body>
 
-<!-- HEADER -->
 <header class="site-header">
   <div class="container header-inner">
     <a href="/" class="logo">
@@ -24,52 +23,51 @@
       <button class="nav-btn" onclick="window.location.href='/about'">About</button>
       <button class="nav-btn" onclick="window.location.href='/events'">Events</button>
       <button class="nav-btn" onclick="window.location.href='/reviews'">Reviews</button>
-      <button class="nav-btn active" onclick="window.location.href='/faq'">FAQ</button>
+      <button class="nav-btn" onclick="window.location.href='/faq'">FAQ</button>
     </nav>
-    <a href="/contact" class="btn btn-ghost btn-sm">Contact Us</a>
+    <a href="/contact" class="btn btn-ghost btn-sm active-nav-cta">Contact Us</a>
   </div>
 </header>
 
-<!-- PAGE HERO -->
 <section class="faq-hero">
   <div class="container">
-    <h1 class="faq-hero-title">Frequently Asked Questions</h1>
-    <p class="faq-hero-sub">Everything you need to know before you book</p>
+    <h1 class="faq-hero-title" id="contact-hero-title">Get In Touch</h1>
+    <p class="faq-hero-sub" id="contact-hero-sub">We'd love to hear from you.</p>
   </div>
 </section>
 
-<!-- FAQ LIST -->
-<section class="faq-section">
+<section class="contact-section">
   <div class="container">
-    <div class="faq-list" id="faq-list">
-      <div class="loading-state">
-        <div class="spinner"></div>
-        <p>Loading…</p>
+    <div class="contact-layout">
+      <div class="contact-intro">
+        <p id="contact-page-text">Whether you have a question about our events, want to book a private session, or just want to say hello — we're here for it.</p>
+      </div>
+      <div class="contact-form-wrap">
+        <form id="contact-form" onsubmit="submitContact(event)" novalidate>
+          <div class="form-group">
+            <label for="cf-name">Full Name <span class="req">*</span></label>
+            <input type="text" id="cf-name" placeholder="Your full name" required>
+          </div>
+          <div class="form-group">
+            <label for="cf-email">Email <span class="req">*</span></label>
+            <input type="email" id="cf-email" placeholder="your@email.com" required>
+          </div>
+          <div class="form-group">
+            <label for="cf-phone">Phone Number</label>
+            <input type="tel" id="cf-phone" placeholder="Optional">
+          </div>
+          <div class="form-group">
+            <label for="cf-message">Your Message <span class="req">*</span></label>
+            <textarea id="cf-message" rows="6" placeholder="How can we help?" required></textarea>
+          </div>
+          <div id="contact-form-msg" class="review-form-msg hidden"></div>
+          <button type="submit" class="btn btn-primary" id="contact-submit-btn">Send Message</button>
+        </form>
       </div>
     </div>
   </div>
 </section>
 
-<!-- REVIEWS -->
-<section class="reviews-section" id="reviews-section" style="display:none">
-  <div class="container reviews-section-inner">
-    <div class="reviews-header">
-      <h2 class="reviews-section-title">What our guests say</h2>
-      <div class="reviews-stars-summary">
-        <span class="reviews-stars-big">★★★★★</span>
-        <span class="reviews-score">5.0</span>
-      </div>
-    </div>
-    <div class="reviews-track-wrap">
-      <div class="reviews-track" id="reviews-track"></div>
-    </div>
-    <div class="reviews-cta">
-      <a href="/reviews" class="btn btn-primary">See All Reviews</a>
-    </div>
-  </div>
-</section>
-
-<!-- SOCIAL MEDIA -->
 <section class="social-section" id="social-section" style="display:none">
   <div class="container social-section-inner">
     <h2 class="social-section-title" id="social-section-title">Social Media</h2>
@@ -77,7 +75,6 @@
   </div>
 </section>
 
-<!-- FOOTER -->
 <footer class="site-footer">
   <div class="container footer-inner">
     <div class="footer-brand">Paint &amp; Bubbles</div>
@@ -85,6 +82,6 @@
   </div>
 </footer>
 
-<script src="/js/faq.js"></script>
+<script src="/js/contact.js"></script>
 </body>
 </html>

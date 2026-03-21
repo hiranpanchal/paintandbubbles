@@ -80,7 +80,7 @@ function switchTab(tab) {
   document.getElementById(`content-${tab}`).classList.remove('hidden');
   document.getElementById(`tab-${tab}`).classList.add('active');
 
-  const titles = { overview: 'Overview', events: 'Events', bookings: 'Bookings', customers: 'Customers', payments: 'Payments', design: 'Design', faq: 'FAQ', reviews: 'Reviews', users: 'Users' };
+  const titles = { overview: 'Overview', events: 'Events', bookings: 'Bookings', customers: 'Customers', payments: 'Payments', design: 'Design', faq: 'FAQ', reviews: 'Reviews', users: 'Users', content: 'Content', enquiries: 'Enquiries' };
   document.getElementById('page-title').textContent = titles[tab] || tab;
 
   // Close sidebar on mobile
@@ -97,7 +97,9 @@ function switchTab(tab) {
   else if (tab === 'design') loadDesign();
   else if (tab === 'faq')     loadAdminFAQs();
   else if (tab === 'reviews') loadAdminReviews();
-  else if (tab === 'users')   loadAdminUsers();
+  else if (tab === 'users')     loadAdminUsers();
+  else if (tab === 'content')   loadContentTab();
+  else if (tab === 'enquiries') loadEnquiries();
 }
 
 function toggleSidebar() {
@@ -2278,4 +2280,164 @@ async function deleteUser(id) {
     toast('User deleted');
     loadAdminUsers();
   } catch (err) { toast(err.message || 'Failed to delete user', 'error'); }
+}
+
+// ---- CONTENT TAB ----
+let peQuill = null;
+
+async function loadContentTab() {
+  const el = document.getElementById('content-content');
+  el.innerHTML = '<div class="loading-state"><div class="spinner"></div></div>';
+  try {
+    const s = await apiFetch('/api/design/settings');
+
+    el.innerHTML = `
+      <div class="card" style="margin-bottom:24px">
+        <div class="card-header">
+          <h3 class="card-title">Contact Page</h3>
+        </div>
+        <div class="card-body" style="padding:24px">
+          <div class="form-group">
+            <label>Hero Title</label>
+            <input type="text" id="cnt-contact-hero-title" value="${escAdminHtml(s.contact_hero_title || 'Get In Touch')}">
+          </div>
+          <div class="form-group">
+            <label>Hero Subtitle</label>
+            <input type="text" id="cnt-contact-hero-sub" value="${escAdminHtml(s.contact_hero_sub || '')}">
+          </div>
+          <div class="form-group">
+            <label>Intro Text</label>
+            <textarea id="cnt-contact-page-text" rows="5">${escAdminHtml(s.contact_page_text || '')}</textarea>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="saveContactContent()">Save Contact Page</button>
+          <span id="contact-save-msg" style="margin-left:12px;font-size:13px;color:var(--green)"></span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Private Events Page</h3>
+        </div>
+        <div class="card-body" style="padding:24px">
+          <div class="form-group">
+            <label>Hero Title</label>
+            <input type="text" id="cnt-pe-hero-title" value="${escAdminHtml(s.private_events_hero_title || 'Private Events')}">
+          </div>
+          <div class="form-group">
+            <label>Hero Subtitle</label>
+            <input type="text" id="cnt-pe-hero-sub" value="${escAdminHtml(s.private_events_hero_sub || '')}">
+          </div>
+          <div class="form-group">
+            <label>Page Content</label>
+            <div id="pe-quill-editor" style="height:320px;background:#fff;border-radius:8px"></div>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="savePEContent()" style="margin-top:8px">Save Private Events Page</button>
+          <span id="pe-save-msg" style="margin-left:12px;font-size:13px;color:var(--green)"></span>
+        </div>
+      </div>
+    `;
+
+    // Init Quill
+    peQuill = new Quill('#pe-quill-editor', {
+      theme: 'snow',
+      modules: {
+        toolbar: [
+          [{ header: [2, 3, false] }],
+          ['bold', 'italic', 'underline'],
+          [{ list: 'ordered' }, { list: 'bullet' }],
+          ['link'],
+          ['clean']
+        ]
+      }
+    });
+    peQuill.root.innerHTML = s.private_events_content || '';
+
+  } catch (err) {
+    el.innerHTML = '<p style="padding:24px;color:red">Failed to load content settings.</p>';
+  }
+}
+
+function escAdminHtml(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+async function saveContactContent() {
+  const data = {
+    contact_hero_title: document.getElementById('cnt-contact-hero-title').value,
+    contact_hero_sub:   document.getElementById('cnt-contact-hero-sub').value,
+    contact_page_text:  document.getElementById('cnt-contact-page-text').value,
+  };
+  try {
+    await apiFetch('/api/design/settings', { method: 'POST', body: JSON.stringify(data) });
+    const msg = document.getElementById('contact-save-msg');
+    msg.textContent = '\u2713 Saved';
+    setTimeout(() => msg.textContent = '', 3000);
+  } catch { alert('Failed to save.'); }
+}
+
+async function savePEContent() {
+  const data = {
+    private_events_hero_title: document.getElementById('cnt-pe-hero-title').value,
+    private_events_hero_sub:   document.getElementById('cnt-pe-hero-sub').value,
+    private_events_content:    peQuill ? peQuill.root.innerHTML : '',
+  };
+  try {
+    await apiFetch('/api/design/settings', { method: 'POST', body: JSON.stringify(data) });
+    const msg = document.getElementById('pe-save-msg');
+    msg.textContent = '\u2713 Saved';
+    setTimeout(() => msg.textContent = '', 3000);
+  } catch { alert('Failed to save.'); }
+}
+
+// ---- ENQUIRIES TAB ----
+async function loadEnquiries() {
+  const el = document.getElementById('content-enquiries');
+  el.innerHTML = '<div class="loading-state"><div class="spinner"></div></div>';
+  try {
+    const submissions = await apiFetch('/api/contact');
+    if (!submissions.length) {
+      el.innerHTML = '<div class="card"><div style="padding:40px;text-align:center;color:var(--text-light);font-weight:600">No enquiries yet</div></div>';
+      return;
+    }
+    el.innerHTML = `<div class="card"><div class="table-wrap"><table class="data-table">
+      <thead><tr>
+        <th>Name</th><th>Email</th><th>Phone</th><th>Message</th><th>Date</th><th></th>
+      </tr></thead>
+      <tbody>${submissions.map(s => `
+        <tr class="${s.is_read ? '' : 'unread-row'}" id="enq-row-${s.id}">
+          <td><strong>${escAdminHtml(s.name)}</strong></td>
+          <td><a href="mailto:${escAdminHtml(s.email)}">${escAdminHtml(s.email)}</a></td>
+          <td>${escAdminHtml(s.phone || '\u2014')}</td>
+          <td style="max-width:320px;white-space:pre-wrap">${escAdminHtml(s.message)}</td>
+          <td style="white-space:nowrap">${new Date(s.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</td>
+          <td style="display:flex;gap:8px">
+            ${!s.is_read ? `<button class="btn btn-ghost btn-sm" onclick="markEnquiryRead(${s.id})">Mark Read</button>` : '<span style="color:var(--text-light);font-size:13px">Read</span>'}
+            <button class="btn btn-danger btn-sm" onclick="deleteEnquiry(${s.id})">Delete</button>
+          </td>
+        </tr>`).join('')}
+      </tbody>
+    </table></div></div>`;
+  } catch {
+    el.innerHTML = '<p style="padding:24px;color:red">Failed to load enquiries.</p>';
+  }
+}
+
+async function markEnquiryRead(id) {
+  try {
+    await apiFetch(`/api/contact/${id}/read`, { method: 'PATCH' });
+    const row = document.getElementById(`enq-row-${id}`);
+    if (row) {
+      row.classList.remove('unread-row');
+      const btn = row.querySelector('button.btn-ghost');
+      if (btn) btn.outerHTML = '<span style="color:var(--text-light);font-size:13px">Read</span>';
+    }
+  } catch { alert('Failed to mark as read.'); }
+}
+
+async function deleteEnquiry(id) {
+  if (!confirm('Delete this enquiry?')) return;
+  try {
+    await apiFetch(`/api/contact/${id}`, { method: 'DELETE' });
+    document.getElementById(`enq-row-${id}`)?.remove();
+  } catch { alert('Failed to delete.'); }
 }

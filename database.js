@@ -106,6 +106,16 @@ db.exec(`
     sort_order INTEGER DEFAULT 0,
     created_at TEXT DEFAULT (datetime('now'))
   );
+
+  CREATE TABLE IF NOT EXISTS contact_submissions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    email TEXT NOT NULL,
+    phone TEXT DEFAULT '',
+    message TEXT NOT NULL,
+    is_read INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
 `);
 
 // Migrate: add notes to customers if not present
@@ -263,6 +273,30 @@ if (settingsCount.count === 0) {
     ins.run('aboutpage_pillar_3_title', 'Small groups');
     ins.run('aboutpage_pillar_3_text', 'Intimate sessions for a personal experience');
     console.log('Seeded about page defaults.');
+  }
+}
+
+// Ensure Contact page settings exist
+{
+  const check = db.prepare("SELECT COUNT(*) as count FROM site_settings WHERE key = 'contact_page_text'").get();
+  if (check.count === 0) {
+    const ins = db.prepare('INSERT OR IGNORE INTO site_settings (key, value) VALUES (?, ?)');
+    ins.run('contact_hero_title', 'Get In Touch');
+    ins.run('contact_hero_sub', "We'd love to hear from you. Fill in the form and we'll get back to you as soon as possible.");
+    ins.run('contact_page_text', "Whether you have a question about our events, want to book a private session, or just want to say hello — we're here for it. Drop us a message and we'll get back to you within 24 hours.");
+    console.log('Seeded contact page defaults.');
+  }
+}
+
+// Ensure Private Events page settings exist
+{
+  const check = db.prepare("SELECT COUNT(*) as count FROM site_settings WHERE key = 'private_events_content'").get();
+  if (check.count === 0) {
+    const ins = db.prepare('INSERT OR IGNORE INTO site_settings (key, value) VALUES (?, ?)');
+    ins.run('private_events_hero_title', 'Private Events');
+    ins.run('private_events_hero_sub', 'Create an unforgettable experience for your group');
+    ins.run('private_events_content', '<h2>Host Your Own Private Event</h2><p>Looking for a unique and memorable experience for your team, hen party, birthday, or any special occasion? We offer fully tailored private painting and craft sessions just for your group.</p><h3>What we offer</h3><ul><li>Fully private session — just your group</li><li>Choose your preferred painting or craft activity</li><li>All materials and guidance included</li><li>Flexible on location — our venue or yours</li><li>Drinks packages available</li></ul><h3>How to book</h3><p>Simply fill in our contact form and tell us a bit about your event — group size, preferred date, and any special requests. We\'ll be in touch within 24 hours to discuss the details.</p>');
+    console.log('Seeded private events page defaults.');
   }
 }
 

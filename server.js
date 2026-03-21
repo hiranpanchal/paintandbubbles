@@ -25,6 +25,7 @@ app.use('/api/payments',  require('./routes/payments'));
 app.use('/api/design',    require('./routes/design'));
 app.use('/api/faqs',      require('./routes/faqs'));
 app.use('/api/reviews',   require('./routes/reviews'));
+app.use('/api/contact',   require('./routes/contact'));
 
 // Serve frontend for all non-API routes
 app.get('/admin',       (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
@@ -32,8 +33,10 @@ app.get('/events',      (req, res) => res.sendFile(path.join(__dirname, 'public'
 app.get('/events/:id',  (req, res) => res.sendFile(path.join(__dirname, 'public', 'event-detail.html')));
 app.get('/faq',         (req, res) => res.sendFile(path.join(__dirname, 'public', 'faq.html')));
 app.get('/about',       (req, res) => res.sendFile(path.join(__dirname, 'public', 'about.html')));
-app.get('/reviews',     (req, res) => res.sendFile(path.join(__dirname, 'public', 'reviews.html')));
-app.get('*',            (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+app.get('/reviews',         (req, res) => res.sendFile(path.join(__dirname, 'public', 'reviews.html')));
+app.get('/contact',         (req, res) => res.sendFile(path.join(__dirname, 'public', 'contact.html')));
+app.get('/private-events',  (req, res) => res.sendFile(path.join(__dirname, 'public', 'private-events.html')));
+app.get('*',                (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
 // Global error handler
 app.use((err, req, res, next) => {

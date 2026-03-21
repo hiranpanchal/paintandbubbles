@@ -1314,3 +1314,5 @@ body {
   .dz-inner           { flex-direction: column; text-align: center; }
   .dz-info            { align-items: center; }
 }
+
+.unread-row { background: #fef9ec; font-weight: 600; }

@@ -1932,3 +1932,79 @@ h4 { font-family: var(--font-h4); }
   .reviews-page-cards { grid-template-columns: 1fr; }
   .review-form-title { font-size: 22px; }
 }
+
+/* ---- CONTACT PAGE ---- */
+.contact-section {
+  padding: 56px 0 80px;
+  background: #fff;
+}
+.contact-layout {
+  display: grid;
+  grid-template-columns: 1fr 1.6fr;
+  gap: 60px;
+  max-width: 960px;
+  margin: 0 auto;
+  align-items: start;
+}
+.contact-intro {
+  padding-top: 8px;
+}
+.contact-intro p {
+  font-size: 17px;
+  line-height: 1.8;
+  color: var(--text-mid);
+}
+.contact-form-wrap {
+  background: #fff;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 36px;
+}
+@media (max-width: 700px) {
+  .contact-layout { grid-template-columns: 1fr; gap: 32px; }
+  .contact-form-wrap { padding: 24px; }
+}
+
+/* ---- PRIVATE EVENTS PAGE ---- */
+.private-events-section {
+  padding: 56px 0 40px;
+  background: #fff;
+}
+.private-events-content {
+  max-width: 780px;
+  margin: 0 auto;
+}
+.private-events-cta {
+  text-align: center;
+  margin-top: 40px;
+  padding-bottom: 48px;
+}
+.wysiwyg-content h2 {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-dark);
+  margin: 32px 0 12px;
+}
+.wysiwyg-content h3 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-dark);
+  margin: 24px 0 10px;
+}
+.wysiwyg-content p {
+  font-size: 16px;
+  line-height: 1.8;
+  color: var(--text-mid);
+  margin-bottom: 14px;
+}
+.wysiwyg-content ul, .wysiwyg-content ol {
+  padding-left: 24px;
+  margin-bottom: 14px;
+}
+.wysiwyg-content li {
+  font-size: 16px;
+  line-height: 1.8;
+  color: var(--text-mid);
+  margin-bottom: 6px;
+}
+.wysiwyg-content a { color: var(--rose-deep); }
