@@ -966,6 +966,23 @@ function renderDesignPanel() {
         </div>
 
         <div class="design-card">
+          <div class="design-card-header">
+            <h3 class="design-card-title">Please Note</h3>
+            <span class="design-hint">Shown on every event detail page alongside What's Included</span>
+          </div>
+          <div class="design-card-body">
+            <div class="form-group">
+              <label>Section Title</label>
+              <input type="text" id="ds-please_note_title" value="${escHtml(s.please_note_title || 'Please Note')}">
+            </div>
+            <div class="form-group">
+              <label>Text</label>
+              <textarea id="ds-please_note_text" rows="5">${escHtml(s.please_note_text || '')}</textarea>
+            </div>
+          </div>
+        </div>
+
+        <div class="design-card">
           <div class="design-card-header"><h3 class="design-card-title">Footer</h3></div>
           <div class="design-card-body">
             <div class="form-group">

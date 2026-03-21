@@ -326,6 +326,12 @@ function renderEventDetail(event) {
 
             <p class="ed-booking-note">No payment taken until the next step</p>
           </div>
+
+          ${siteSettings.please_note_text ? `
+          <div class="ed-please-note">
+            <h3 class="ed-please-note-title">${escHtml(siteSettings.please_note_title || 'Please Note')}</h3>
+            <p class="ed-please-note-text">${escHtml(siteSettings.please_note_text)}</p>
+          </div>` : ''}
         </div>
 
       </div>

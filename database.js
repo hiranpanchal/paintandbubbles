@@ -190,6 +190,17 @@ if (settingsCount.count === 0) {
   }
 }
 
+// Ensure "Please Note" settings exist
+{
+  const check = db.prepare("SELECT COUNT(*) as count FROM site_settings WHERE key = 'please_note_title'").get();
+  if (check.count === 0) {
+    const ins = db.prepare('INSERT OR IGNORE INTO site_settings (key, value) VALUES (?, ?)');
+    ins.run('please_note_title', 'Please Note');
+    ins.run('please_note_text', "As a small independent business, we're unable to offer refunds or date transfers due to pre-booked venue costs and materials. A minimum of 5 participants is required for each class to go ahead. In the unlikely event a class doesn't reach this number, you'll be offered a full refund, credit, or an alternative date.");
+    console.log('Seeded please_note defaults.');
+  }
+}
+
 // Seed sample events if empty
 const eventCount = db.prepare('SELECT COUNT(*) as count FROM events').get();
 if (eventCount.count === 0) {

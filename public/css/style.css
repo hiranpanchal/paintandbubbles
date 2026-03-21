@@ -1608,6 +1608,31 @@ h4 { font-family: var(--font-h4); }
   font-weight: 500;
 }
 
+.ed-please-note {
+  margin-top: 16px;
+  background: #fff8f9;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--rose);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+}
+
+.ed-please-note-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ed-please-note-text {
+  font-size: 13px;
+  color: var(--text-light);
+  line-height: 1.65;
+  margin: 0;
+}
+
 /* Responsive */
 @media (max-width: 900px) {
   .ed-layout {
