@@ -2,7 +2,7 @@ const router = require('express').Router();
 const path   = require('path');
 const fs     = require('fs');
 const multer = require('multer');
-const db     = require('../db/database');
+const db     = require('../database');
 const { requireAdmin } = require('../middleware/auth');
 
 // Ensure uploads dir exists

@@ -1,7 +1,7 @@
 const router = require('express').Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const db = require('../db/database');
+const db = require('../database');
 const { requireAdmin, JWT_SECRET } = require('../middleware/auth');
 
 // POST /api/admin/login

@@ -1,5 +1,5 @@
 const router = require('express').Router();
-const db = require('../db/database');
+const db = require('../database');
 const { requireAdmin } = require('../middleware/auth');
 
 // GET /api/faqs — public
