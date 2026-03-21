@@ -1667,52 +1667,65 @@ function renderReviewsTab(reviews) {
           </tbody>
         </table></div>`
     }
-    <div id="review-modal" class="modal-overlay hidden" onclick="if(event.target===this)closeReviewForm()">
-      <div class="modal-box" style="max-width:520px">
-        <div class="modal-header">
-          <h2 class="modal-title" id="review-form-title">Add Review</h2>
-          <button class="modal-close" onclick="closeReviewForm()"><svg viewBox="0 0 20 20" fill="none"><path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+  `;
+
+  // Inject modal into body so it overlays the whole page properly
+  let modal = document.getElementById('review-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'review-modal';
+    document.body.appendChild(modal);
+  }
+  modal.className = 'modal-overlay hidden';
+  modal.onclick = (e) => { if (e.target === modal) closeReviewForm(); };
+  modal.innerHTML = `
+    <div class="modal-box" style="max-width:520px">
+      <div class="modal-header">
+        <h2 class="modal-title" id="review-form-title">Add Review</h2>
+        <button class="modal-close" onclick="closeReviewForm()"><svg viewBox="0 0 20 20" fill="none"><path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="review-form-id">
+        <div class="form-group">
+          <label>Author Name <span style="color:#e53e3e">*</span></label>
+          <input type="text" id="review-form-name" placeholder="e.g. Sarah M.">
         </div>
-        <div class="modal-body">
-          <input type="hidden" id="review-form-id">
-          <div class="form-group">
-            <label>Author Name <span style="color:#e53e3e">*</span></label>
-            <input type="text" id="review-form-name" placeholder="e.g. Sarah M.">
-          </div>
-          <div class="form-group">
-            <label>Class Attended <span style="color:var(--text-light);font-weight:400">(optional)</span></label>
-            <input type="text" id="review-form-class" placeholder="e.g. Sip & Paint — Sunset Edition">
-          </div>
-          <div class="form-group">
-            <label>Location <span style="color:var(--text-light);font-weight:400">(optional)</span></label>
-            <input type="text" id="review-form-location" placeholder="e.g. Brighton">
-          </div>
-          <div class="form-group">
-            <label>Star Rating <span style="color:#e53e3e">*</span></label>
-            <div id="star-picker" style="display:flex;gap:8px;margin-top:4px">
-              ${[1,2,3,4,5].map(n => `<button type="button" class="star-btn" data-val="${n}" onclick="pickStar(${n})" style="font-size:28px;background:none;border:none;cursor:pointer;color:#d1d5db;padding:0;line-height:1">★</button>`).join('')}
-            </div>
-            <input type="hidden" id="review-form-rating" value="5">
-          </div>
-          <div class="form-group">
-            <label>Review Text <span style="color:#e53e3e">*</span></label>
-            <textarea id="review-form-body" rows="4" placeholder="What did they say?"></textarea>
-          </div>
-          <div class="form-group">
-            <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
-              <input type="checkbox" id="review-form-published" style="width:16px;height:16px">
-              Publish immediately
-            </label>
-          </div>
+        <div class="form-group">
+          <label>Class Attended <span style="color:var(--text-light);font-weight:400">(optional)</span></label>
+          <input type="text" id="review-form-class" placeholder="e.g. Sip &amp; Paint — Sunset Edition">
         </div>
-        <div class="modal-footer">
-          <button class="btn btn-ghost" onclick="closeReviewForm()">Cancel</button>
-          <button class="btn btn-primary" onclick="saveReview()">Save Review</button>
+        <div class="form-group">
+          <label>Location <span style="color:var(--text-light);font-weight:400">(optional)</span></label>
+          <input type="text" id="review-form-location" placeholder="e.g. Brighton">
         </div>
+        <div class="form-group">
+          <label>Star Rating <span style="color:#e53e3e">*</span></label>
+          <div id="star-picker" style="display:flex;gap:4px;margin-top:4px">
+            <button type="button" class="star-btn" data-val="1" onclick="pickStar(1)" style="font-size:24px;background:none;border:none;cursor:pointer;color:#d1d5db;padding:0;line-height:1">★</button>
+            <button type="button" class="star-btn" data-val="2" onclick="pickStar(2)" style="font-size:24px;background:none;border:none;cursor:pointer;color:#d1d5db;padding:0;line-height:1">★</button>
+            <button type="button" class="star-btn" data-val="3" onclick="pickStar(3)" style="font-size:24px;background:none;border:none;cursor:pointer;color:#d1d5db;padding:0;line-height:1">★</button>
+            <button type="button" class="star-btn" data-val="4" onclick="pickStar(4)" style="font-size:24px;background:none;border:none;cursor:pointer;color:#d1d5db;padding:0;line-height:1">★</button>
+            <button type="button" class="star-btn" data-val="5" onclick="pickStar(5)" style="font-size:24px;background:none;border:none;cursor:pointer;color:#d1d5db;padding:0;line-height:1">★</button>
+          </div>
+          <input type="hidden" id="review-form-rating" value="5">
+        </div>
+        <div class="form-group">
+          <label>Review Text <span style="color:#e53e3e">*</span></label>
+          <textarea id="review-form-body" rows="4" placeholder="What did they say?"></textarea>
+        </div>
+        <div class="form-group">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+            <input type="checkbox" id="review-form-published" style="width:16px;height:16px">
+            Publish immediately
+          </label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closeReviewForm()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveReview()">Save Review</button>
       </div>
     </div>
   `;
-  // Set star picker to 5 by default
   pickStar(5);
 }
 
