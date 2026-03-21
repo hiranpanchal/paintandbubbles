@@ -154,6 +154,7 @@ async function renderReviewsSection() {
         <div class="review-card-author">
           <span class="review-author-name">${escHtml(r.author_name)}</span>
           ${r.author_location ? `<span class="review-author-location">${escHtml(r.author_location)}</span>` : ''}
+          ${r.review_date ? `<span class="review-author-location">${new Date(r.review_date).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</span>` : ''}
         </div>
       </div>
     `).join('');

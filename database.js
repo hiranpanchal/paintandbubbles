@@ -118,10 +118,9 @@ try { db.exec("ALTER TABLE admin_users ADD COLUMN last_login_at TEXT"); } catch 
 // Ensure the seeded admin is a super_admin
 db.prepare("UPDATE admin_users SET role = 'super_admin' WHERE role = 'admin' AND id = (SELECT MIN(id) FROM admin_users)").run();
 
-// Migrate: add class_attended column if it doesn't exist yet
-try {
-  db.exec("ALTER TABLE reviews ADD COLUMN class_attended TEXT DEFAULT ''");
-} catch (e) { /* column already exists */ }
+// Migrate: add class_attended and review_date columns if they don't exist yet
+try { db.exec("ALTER TABLE reviews ADD COLUMN class_attended TEXT DEFAULT ''"); } catch {}
+try { db.exec("ALTER TABLE reviews ADD COLUMN review_date TEXT DEFAULT ''"); } catch {}
 
 // Seed admin user if not exists
 const adminUsername = process.env.ADMIN_USERNAME || 'admin';

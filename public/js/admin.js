@@ -1777,7 +1777,7 @@ function renderReviewsTab(reviews) {
     ${reviews.length === 0
       ? '<div class="empty-state"><p>No reviews yet. Add your first!</p></div>'
       : `<div class="table-wrap"><table class="data-table">
-          <thead><tr><th>Author</th><th>Rating</th><th>Review</th><th>Status</th><th>Actions</th></tr></thead>
+          <thead><tr><th>Author</th><th>Rating</th><th>Review</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead>
           <tbody>${reviews.map(r => `
             <tr id="review-row-${r.id}">
               <td>
@@ -1787,6 +1787,7 @@ function renderReviewsTab(reviews) {
               </td>
               <td><span style="color:#f59e0b;font-size:16px">${'★'.repeat(r.rating)}${'☆'.repeat(5 - r.rating)}</span></td>
               <td style="max-width:280px"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:280px">${escHtml(r.body)}</div></td>
+              <td style="color:var(--text-light);font-size:13px;white-space:nowrap">${r.review_date ? new Date(r.review_date).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : '—'}</td>
               <td>
                 <button class="btn btn-xs ${r.is_published ? 'btn-primary' : 'btn-ghost'}"
                         onclick="toggleReviewPublished(${r.id}, ${r.is_published})">
@@ -1837,6 +1838,10 @@ function renderReviewsTab(reviews) {
           <input type="text" id="review-form-location" placeholder="e.g. Brighton">
         </div>
         <div class="form-group">
+          <label>Date of Review <span style="color:var(--text-light);font-weight:400">(optional)</span></label>
+          <input type="date" id="review-form-date">
+        </div>
+        <div class="form-group">
           <label>Star Rating <span style="color:#e53e3e">*</span></label>
           <div id="star-picker" style="display:flex;gap:4px;margin-top:4px">
             <button type="button" class="star-btn" data-val="1" onclick="pickStar(1)" style="font-size:24px;background:none;border:none;cursor:pointer;color:#d1d5db;padding:0;line-height:1">★</button>
@@ -1880,6 +1885,7 @@ function openReviewForm(id = null) {
   document.getElementById('review-form-name').value = '';
   document.getElementById('review-form-class').value = '';
   document.getElementById('review-form-location').value = '';
+  document.getElementById('review-form-date').value = '';
   document.getElementById('review-form-body').value = '';
   document.getElementById('review-form-published').checked = false;
   pickStar(5);
@@ -1891,6 +1897,7 @@ function openReviewForm(id = null) {
       document.getElementById('review-form-name').value = r.author_name;
       document.getElementById('review-form-class').value = r.class_attended || '';
       document.getElementById('review-form-location').value = r.author_location || '';
+      document.getElementById('review-form-date').value = r.review_date || '';
       document.getElementById('review-form-body').value = r.body;
       document.getElementById('review-form-published').checked = !!r.is_published;
       pickStar(r.rating);
@@ -1908,6 +1915,7 @@ async function saveReview() {
   const author_name = document.getElementById('review-form-name').value.trim();
   const class_attended = document.getElementById('review-form-class').value.trim();
   const author_location = document.getElementById('review-form-location').value.trim();
+  const review_date = document.getElementById('review-form-date').value;
   const rating = parseInt(document.getElementById('review-form-rating').value);
   const body = document.getElementById('review-form-body').value.trim();
   const is_published = document.getElementById('review-form-published').checked ? 1 : 0;
@@ -1916,10 +1924,10 @@ async function saveReview() {
 
   try {
     if (id) {
-      await apiFetch(`/api/reviews/${id}`, { method: 'PUT', body: JSON.stringify({ author_name, class_attended, author_location, rating, body, is_published }) });
+      await apiFetch(`/api/reviews/${id}`, { method: 'PUT', body: JSON.stringify({ author_name, class_attended, author_location, review_date, rating, body, is_published }) });
       toast('Review updated');
     } else {
-      await apiFetch('/api/reviews', { method: 'POST', body: JSON.stringify({ author_name, class_attended, author_location, rating, body, is_published }) });
+      await apiFetch('/api/reviews', { method: 'POST', body: JSON.stringify({ author_name, class_attended, author_location, review_date, rating, body, is_published }) });
       toast('Review added');
     }
     closeReviewForm();

@@ -30,16 +30,17 @@ router.post('/submit', (req, res) => {
 
 // POST /api/reviews — admin
 router.post('/', requireAdmin, (req, res) => {
-  const { author_name, author_location, class_attended, rating, body, is_published } = req.body;
+  const { author_name, author_location, class_attended, review_date, rating, body, is_published } = req.body;
   if (!author_name || !body) return res.status(400).json({ error: 'Author name and review text are required' });
   const maxOrder = db.prepare('SELECT MAX(sort_order) as m FROM reviews').get();
   const sort_order = (maxOrder.m ?? -1) + 1;
   const result = db.prepare(
-    'INSERT INTO reviews (author_name, author_location, class_attended, rating, body, is_published, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?)'
+    'INSERT INTO reviews (author_name, author_location, class_attended, review_date, rating, body, is_published, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
   ).run(
     author_name.trim(),
     (author_location || '').trim(),
     (class_attended || '').trim(),
+    (review_date || '').trim(),
     rating ?? 5,
     body.trim(),
     is_published ?? 0,
@@ -50,15 +51,16 @@ router.post('/', requireAdmin, (req, res) => {
 
 // PUT /api/reviews/:id — admin
 router.put('/:id', requireAdmin, (req, res) => {
-  const { author_name, author_location, class_attended, rating, body, is_published, sort_order } = req.body;
+  const { author_name, author_location, class_attended, review_date, rating, body, is_published, sort_order } = req.body;
   const review = db.prepare('SELECT * FROM reviews WHERE id = ?').get(req.params.id);
   if (!review) return res.status(404).json({ error: 'Review not found' });
   db.prepare(`
-    UPDATE reviews SET author_name = ?, author_location = ?, class_attended = ?, rating = ?, body = ?, is_published = ?, sort_order = ? WHERE id = ?
+    UPDATE reviews SET author_name = ?, author_location = ?, class_attended = ?, review_date = ?, rating = ?, body = ?, is_published = ?, sort_order = ? WHERE id = ?
   `).run(
     author_name     ?? review.author_name,
     author_location !== undefined ? author_location : review.author_location,
     class_attended  !== undefined ? class_attended  : review.class_attended,
+    review_date     !== undefined ? review_date     : review.review_date,
     rating          ?? review.rating,
     body            ?? review.body,
     is_published    ?? review.is_published,
