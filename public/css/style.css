@@ -528,7 +528,7 @@ h4 { font-family: var(--font-h4); }
     grid-template-columns: 1fr;
     gap: 40px;
   }
-  .about-image { order: -1; }
+  .about-image { order: 1; }
   .about-image::before { display: none; }
   .about-pillars { flex-direction: row; flex-wrap: wrap; }
   .about-pillar { flex: 1; min-width: 140px; }
@@ -1304,7 +1304,7 @@ h4 { font-family: var(--font-h4); }
 /* ---- RESPONSIVE ---- */
 @media (max-width: 900px) {
   /* Show burger, hide desktop nav */
-  .nav-burger { display: flex; }
+  .nav-burger { display: flex; margin-left: auto; }
   .main-nav {
     display: none;
     flex-direction: column;
