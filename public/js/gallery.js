@@ -185,7 +185,7 @@ function renderGalleryPage(s) {
 
   grid.innerHTML = images.map((url, i) => `
     <div class="gallery-item">
-      <img src="${escHtml(url)}" alt="Gallery image ${i + 1}" loading="lazy">
+      <img src="${escHtml(url)}" alt="Gallery image ${i + 1}">
     </div>
   `).join('');
 }

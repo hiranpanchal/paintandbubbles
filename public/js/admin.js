@@ -1562,7 +1562,7 @@ async function removeGalleryImage(index) {
     body: JSON.stringify({ gallery_images: JSON.stringify(images) })
   });
   renderGalleryGrid();
-  showAdminToast('Image removed');
+  toast('Image removed', 'success');
 }
 
 function triggerGalleryUpload() {
@@ -1572,12 +1572,21 @@ function triggerGalleryUpload() {
 async function handleGalleryFileInput(input) {
   const files = Array.from(input.files);
   if (!files.length) return;
-  for (const file of files) {
-    await uploadGalleryImage(file);
+  const zone = document.getElementById('gallery-drop-zone');
+  if (zone) zone.style.opacity = '0.5';
+  try {
+    for (const file of files) {
+      await uploadGalleryImage(file);
+    }
+    await renderGalleryGrid();
+    toast('Gallery updated', 'success');
+  } catch (err) {
+    toast('Upload failed — please try again', 'error');
+    console.error('Gallery upload error:', err);
+  } finally {
+    if (zone) zone.style.opacity = '';
+    input.value = '';
   }
-  renderGalleryGrid();
-  showAdminToast('Gallery updated');
-  input.value = '';
 }
 
 function initGalleryDropZone() {
@@ -1589,11 +1598,20 @@ function initGalleryDropZone() {
     e.preventDefault();
     zone.classList.remove('drag-over');
     const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
-    for (const file of files) {
-      await uploadGalleryImage(file);
+    if (!files.length) return;
+    zone.style.opacity = '0.5';
+    try {
+      for (const file of files) {
+        await uploadGalleryImage(file);
+      }
+      await renderGalleryGrid();
+      toast('Gallery updated', 'success');
+    } catch (err) {
+      toast('Upload failed — please try again', 'error');
+      console.error('Gallery upload error:', err);
+    } finally {
+      zone.style.opacity = '';
     }
-    renderGalleryGrid();
-    showAdminToast('Gallery updated');
   });
 }
 
