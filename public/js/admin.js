@@ -1505,7 +1505,9 @@ function triggerFileInput(key) {
 
 // ---- GALLERY IMAGES ----
 async function renderGalleryGrid() {
-  const settings = await fetch('/api/design/settings').then(r=>r.json());
+  const settings = await fetch('/api/design/settings', {
+    headers: { Authorization: `Bearer ${authToken}` }
+  }).then(r=>r.json());
   let images = [];
   try { images = JSON.parse(settings.gallery_images || '[]'); } catch {}
   const grid = document.getElementById('gallery-admin-grid');
@@ -1525,30 +1527,38 @@ async function renderGalleryGrid() {
 async function uploadGalleryImage(file) {
   const fd = new FormData();
   fd.append('image', file);
-  const res = await fetch('/api/design/upload', { method: 'POST', body: fd });
+  const res = await fetch('/api/design/upload', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${authToken}` },
+    body: fd
+  });
   const data = await res.json();
   if (!data.url) throw new Error('Upload failed');
   // Fetch current gallery_images, append, save
-  const settings = await fetch('/api/design/settings').then(r=>r.json());
+  const settings = await fetch('/api/design/settings', {
+    headers: { Authorization: `Bearer ${authToken}` }
+  }).then(r=>r.json());
   let images = [];
   try { images = JSON.parse(settings.gallery_images || '[]'); } catch {}
   images.push(data.url);
   await fetch('/api/design/settings', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
     body: JSON.stringify({ gallery_images: JSON.stringify(images) })
   });
   return data.url;
 }
 
 async function removeGalleryImage(index) {
-  const settings = await fetch('/api/design/settings').then(r=>r.json());
+  const settings = await fetch('/api/design/settings', {
+    headers: { Authorization: `Bearer ${authToken}` }
+  }).then(r=>r.json());
   let images = [];
   try { images = JSON.parse(settings.gallery_images || '[]'); } catch {}
   images.splice(index, 1);
   await fetch('/api/design/settings', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
     body: JSON.stringify({ gallery_images: JSON.stringify(images) })
   });
   renderGalleryGrid();
