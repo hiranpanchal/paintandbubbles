@@ -452,7 +452,7 @@ function showBookingStep1() {
           <input type="email" id="b-email" placeholder="jane@example.com" value="${escHtml(currentBookingState.email || '')}">
         </div>
         <div class="form-group">
-          <label>Phone (optional)</label>
+          <label>Phone Number *</label>
           <input type="tel" id="b-phone" placeholder="+44 7700 900000" value="${escHtml(currentBookingState.phone || '')}">
         </div>
       </div>
@@ -510,7 +510,7 @@ async function proceedToPayment() {
   const phone = document.getElementById('b-phone').value.trim();
   const notes = document.getElementById('b-notes').value.trim();
 
-  if (!name || !email) { highlightError(!name ? 'b-name' : 'b-email'); return; }
+  if (!name || !email || !phone) { highlightError(!name ? 'b-name' : !email ? 'b-email' : 'b-phone'); return; }
   if (!isValidEmail(email)) { highlightError('b-email'); return; }
 
   Object.assign(currentBookingState, { name, email, phone, notes });
