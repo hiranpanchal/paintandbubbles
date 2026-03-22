@@ -117,6 +117,7 @@ h4 { font-family: var(--font-h4); }
 
 .main-nav {
   display: flex;
+  align-items: center;
   gap: 4px;
   flex: 1;
   justify-content: flex-end;
@@ -132,9 +133,30 @@ h4 { font-family: var(--font-h4); }
   color: var(--text-mid);
   cursor: pointer;
   transition: var(--transition);
+  white-space: nowrap;
 }
 .nav-btn:hover  { background: var(--rose-50); color: var(--rose); }
 .nav-btn.active { background: var(--rose-50); color: var(--rose-deep); font-weight: 800; }
+
+/* ---- BURGER BUTTON ---- */
+.nav-burger {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+  color: var(--text-dark);
+  flex-shrink: 0;
+  transition: background var(--transition);
+}
+.nav-burger:hover { background: var(--rose-50); }
+.nav-burger svg { width: 24px; height: 24px; display: block; transition: var(--transition); }
+.burger-icon-close { display: none; }
+.site-header.nav-open .burger-icon-open  { display: none; }
+.site-header.nav-open .burger-icon-close { display: block; }
 
 /* ---- BUTTONS ---- */
 .btn {
@@ -1280,6 +1302,43 @@ h4 { font-family: var(--font-h4); }
 .footer-tagline { font-size: 13px; color: rgba(255,255,255,0.4); font-weight: 500; }
 
 /* ---- RESPONSIVE ---- */
+@media (max-width: 900px) {
+  /* Show burger, hide desktop nav */
+  .nav-burger { display: flex; }
+  .main-nav {
+    display: none;
+    flex-direction: column;
+    align-items: stretch;
+    position: fixed;
+    top: 68px;
+    left: 0;
+    right: 0;
+    background: rgba(255,255,255,0.98);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 20px 20px;
+    gap: 4px;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.1);
+    z-index: 99;
+  }
+  .site-header.nav-open .main-nav { display: flex; }
+  .main-nav .nav-btn {
+    text-align: left;
+    width: 100%;
+    padding: 13px 16px;
+    border-radius: 10px;
+    font-size: 15px;
+  }
+  .main-nav .btn {
+    width: 100%;
+    text-align: center;
+    margin-top: 8px;
+    padding: 13px 16px;
+    border-radius: 10px;
+    justify-content: center;
+  }
+}
+
 @media (max-width: 768px) {
   .header-inner { gap: 12px; }
   .hero { padding: 48px 0 0; }
