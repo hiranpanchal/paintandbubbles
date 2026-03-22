@@ -310,6 +310,26 @@ if (settingsCount.count === 0) {
   }
 }
 
+// Ensure gallery_images setting exists
+{
+  const check = db.prepare("SELECT COUNT(*) as count FROM site_settings WHERE key = 'gallery_images'").get();
+  if (check.count === 0) {
+    db.prepare('INSERT OR IGNORE INTO site_settings (key, value) VALUES (?, ?)').run('gallery_images', '[]');
+    console.log('Seeded gallery_images setting.');
+  }
+}
+
+// Ensure Gallery page settings exist
+{
+  const check = db.prepare("SELECT COUNT(*) as count FROM site_settings WHERE key = 'gallery_hero_title'").get();
+  if (check.count === 0) {
+    const ins = db.prepare('INSERT OR IGNORE INTO site_settings (key, value) VALUES (?, ?)');
+    ins.run('gallery_hero_title', 'Our Gallery');
+    ins.run('gallery_hero_sub', 'A glimpse of the creativity from our sessions');
+    console.log('Seeded gallery page defaults.');
+  }
+}
+
 // Seed sample events if empty
 const eventCount = db.prepare('SELECT COUNT(*) as count FROM events').get();
 if (eventCount.count === 0) {

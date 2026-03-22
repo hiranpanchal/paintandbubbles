@@ -1002,6 +1002,18 @@ function renderDesignPanel() {
           <div class="design-card-body">${renderDropZone('aboutpage_image_url', s.aboutpage_image_url)}</div>
         </div>
       </div>
+      <div class="design-card" style="margin-top:24px">
+        <div class="design-card-header">
+          <h3 class="design-card-title">Gallery Images</h3>
+          <p class="design-card-desc">Images displayed on the public gallery page. Drag &amp; drop or click to upload. Supports multiple images.</p>
+        </div>
+        <div id="gallery-admin-grid" class="gallery-admin-grid"></div>
+        <div id="gallery-drop-zone" class="gallery-drop-zone" onclick="triggerGalleryUpload()">
+          <svg width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></svg>
+          <p>Drop images here or click to upload</p>
+        </div>
+        <input type="file" id="gallery-file-input" accept="image/*" multiple style="display:none" onchange="handleGalleryFileInput(this)">
+      </div>
     </div>
 
     <!-- COLOURS TAB -->
@@ -1106,6 +1118,8 @@ function renderDesignPanel() {
     </div>`;
 
   initDropZones();
+  renderGalleryGrid();
+  initGalleryDropZone();
 }
 
 function switchDesignTab(tab) {
@@ -1487,6 +1501,90 @@ function initDropZones() {
 
 function triggerFileInput(key) {
   document.getElementById(`fi-${key}`).click();
+}
+
+// ---- GALLERY IMAGES ----
+async function renderGalleryGrid() {
+  const settings = await fetch('/api/design/settings').then(r=>r.json());
+  let images = [];
+  try { images = JSON.parse(settings.gallery_images || '[]'); } catch {}
+  const grid = document.getElementById('gallery-admin-grid');
+  if (!grid) return;
+  if (images.length === 0) {
+    grid.innerHTML = '<p style="color:#aaa;font-size:0.9rem;margin:0">No gallery images yet.</p>';
+    return;
+  }
+  grid.innerHTML = images.map((url, i) => `
+    <div class="gallery-admin-item">
+      <img src="${escAdminHtml(url)}" alt="Gallery image ${i+1}">
+      <button class="gallery-admin-remove" onclick="removeGalleryImage(${i})" title="Remove">\u00d7</button>
+    </div>
+  `).join('');
+}
+
+async function uploadGalleryImage(file) {
+  const fd = new FormData();
+  fd.append('image', file);
+  const res = await fetch('/api/design/upload', { method: 'POST', body: fd });
+  const data = await res.json();
+  if (!data.url) throw new Error('Upload failed');
+  // Fetch current gallery_images, append, save
+  const settings = await fetch('/api/design/settings').then(r=>r.json());
+  let images = [];
+  try { images = JSON.parse(settings.gallery_images || '[]'); } catch {}
+  images.push(data.url);
+  await fetch('/api/design/settings', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ gallery_images: JSON.stringify(images) })
+  });
+  return data.url;
+}
+
+async function removeGalleryImage(index) {
+  const settings = await fetch('/api/design/settings').then(r=>r.json());
+  let images = [];
+  try { images = JSON.parse(settings.gallery_images || '[]'); } catch {}
+  images.splice(index, 1);
+  await fetch('/api/design/settings', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ gallery_images: JSON.stringify(images) })
+  });
+  renderGalleryGrid();
+  showAdminToast('Image removed');
+}
+
+function triggerGalleryUpload() {
+  document.getElementById('gallery-file-input').click();
+}
+
+async function handleGalleryFileInput(input) {
+  const files = Array.from(input.files);
+  if (!files.length) return;
+  for (const file of files) {
+    await uploadGalleryImage(file);
+  }
+  renderGalleryGrid();
+  showAdminToast('Gallery updated');
+  input.value = '';
+}
+
+function initGalleryDropZone() {
+  const zone = document.getElementById('gallery-drop-zone');
+  if (!zone) return;
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+  zone.addEventListener('drop', async e => {
+    e.preventDefault();
+    zone.classList.remove('drag-over');
+    const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+    for (const file of files) {
+      await uploadGalleryImage(file);
+    }
+    renderGalleryGrid();
+    showAdminToast('Gallery updated');
+  });
 }
 
 function handleFileInput(e, key) {
@@ -2129,6 +2227,7 @@ async function loadContentTab() {
         <button class="design-tab-btn" onclick="switchContentTab('events')" data-tab="events">Events</button>
         <button class="design-tab-btn" onclick="switchContentTab('contact')" data-tab="contact">Contact</button>
         <button class="design-tab-btn" onclick="switchContentTab('private-events')" data-tab="private-events">Private Events</button>
+        <button class="design-tab-btn" onclick="switchContentTab('gallery')" data-tab="gallery">Gallery</button>
       </div>
 
       <!-- HOME PAGE -->
@@ -2405,6 +2504,30 @@ async function loadContentTab() {
           </div>
         </div>
       </div>
+
+      <!-- GALLERY PAGE -->
+      <div class="design-tab-panel hidden" id="ctab-gallery">
+        <div class="design-centred-wrap">
+          <div class="design-card">
+            <div class="design-card-header"><h3 class="design-card-title">Hero</h3></div>
+            <div class="design-card-body">
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Hero Title</label>
+                  <input type="text" id="ds-gallery_hero_title" value="${escHtml(s.gallery_hero_title || 'Our Gallery')}">
+                </div>
+                <div class="form-group">
+                  <label>Hero Subtitle</label>
+                  <input type="text" id="ds-gallery_hero_sub" value="${escHtml(s.gallery_hero_sub || '')}">
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="design-save-bar">
+            <button class="btn btn-primary" onclick="saveContentPage('gallery')">Save Gallery Page</button>
+          </div>
+        </div>
+      </div>
     `;
 
     // Quill init is deferred until the Private Events tab is clicked
@@ -2449,6 +2572,7 @@ const CONTENT_PAGE_KEYS = {
   events:           ['included_title','included_items','please_note_title','please_note_text'],
   contact:          ['contact_hero_title','contact_hero_sub','contact_page_text','notification_email'],
   'private-events': ['private_events_hero_title','private_events_hero_sub','private_events_content'],
+  gallery:          ['gallery_hero_title','gallery_hero_sub'],
 };
 
 async function saveContentPage(page) {

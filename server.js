@@ -36,6 +36,7 @@ app.get('/about',       (req, res) => res.sendFile(path.join(__dirname, 'public'
 app.get('/reviews',         (req, res) => res.sendFile(path.join(__dirname, 'public', 'reviews.html')));
 app.get('/contact',         (req, res) => res.sendFile(path.join(__dirname, 'public', 'contact.html')));
 app.get('/private-events',  (req, res) => res.sendFile(path.join(__dirname, 'public', 'private-events.html')));
+app.get('/gallery',         (req, res) => res.sendFile(path.join(__dirname, 'public', 'gallery.html')));
 app.get('*',                (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
 // Global error handler
