@@ -199,7 +199,7 @@ h4 { font-family: var(--font-h4); }
 /* ---- HERO ---- */
 .hero {
   background: linear-gradient(135deg, #2C0F18 0%, #6B2D42 45%, #C4748A 100%);
-  padding: 120px 0 0;
+  padding: 180px 0 0;
   position: relative;
   overflow: hidden;
 }
