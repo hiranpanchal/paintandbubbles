@@ -1399,3 +1399,55 @@ body {
   transition: transform 0.2s; box-shadow: 0 1px 4px rgba(0,0,0,0.15);
 }
 .pay-toggle input:checked + .pay-toggle-track .pay-toggle-thumb { transform: translateX(20px); }
+
+/* ---- PAYMENT SETTINGS PANEL ---- */
+.pay-settings-wrap { max-width: 560px; display: flex; flex-direction: column; gap: 20px; }
+.pay-settings-desc { font-size: 14px; color: #888; margin: 0; }
+
+.pay-provider-card {
+  background: #fff;
+  border: 1.5px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.pay-provider-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: var(--surface, #faf8f9);
+  border-bottom: 1.5px solid var(--border);
+}
+
+.pay-provider-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-dark, #3a2c35);
+}
+
+.pay-provider-body {
+  padding: 20px;
+}
+
+.pay-provider-body .form-group {
+  margin-bottom: 14px;
+}
+
+.pay-hint {
+  font-size: 12px;
+  color: #aaa;
+  margin: 6px 0 0;
+  line-height: 1.5;
+}
+
+.pay-hint code {
+  font-size: 11px;
+  background: #f5f0f2;
+  padding: 2px 5px;
+  border-radius: 4px;
+  word-break: break-all;
+}

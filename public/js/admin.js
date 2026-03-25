@@ -638,55 +638,62 @@ async function loadPaymentsSettings() {
   try {
     const s = await apiFetch('/api/payments/provider-settings');
     el.innerHTML = `
-      <div class="design-section-title" style="margin-bottom:8px">Payment Providers</div>
-      <p style="color:#888;font-size:14px;margin-bottom:28px">Enable one or both providers. Customers will see a choice if both are active. Leave credentials blank to use environment variables if set.</p>
+      <div class="pay-settings-wrap">
+        <p class="pay-settings-desc">Enable one or both providers. Customers will see a choice if both are active.</p>
 
-      <div class="design-card">
-        <div class="design-card-title" style="display:flex;align-items:center;justify-content:space-between">
-          <span style="font-size:17px;font-weight:700">Stripe</span>
-          <label class="pay-toggle">
-            <input type="checkbox" id="ps-stripe-enabled" ${s.stripe_enabled === 'true' ? 'checked' : ''}>
-            <span class="pay-toggle-track"><span class="pay-toggle-thumb"></span></span>
-          </label>
+        <div class="pay-provider-card">
+          <div class="pay-provider-header">
+            <div class="pay-provider-logo stripe-logo">
+              <svg viewBox="0 0 60 26" fill="none" height="20"><path d="M26.4 11.1c0-1.5 1.2-2.1 3.2-2.1 2.9 0 6.5.9 9.4 2.5V4.3C36.2 2.9 33.1 2 30 2c-7.6 0-12.7 4-12.7 10.7 0 10.4 14.3 8.7 14.3 13.2 0 1.8-1.5 2.3-3.6 2.3-3.1 0-7.2-1.3-10.4-3v7.2c3.5 1.5 7 2.1 10.4 2.1 7.8 0 13.2-3.9 13.2-10.7C41.2 13 26.4 15 26.4 11.1z" fill="#635BFF"/></svg>
+              <span>Stripe</span>
+            </div>
+            <label class="pay-toggle">
+              <input type="checkbox" id="ps-stripe-enabled" ${s.stripe_enabled === 'true' ? 'checked' : ''}>
+              <span class="pay-toggle-track"><span class="pay-toggle-thumb"></span></span>
+            </label>
+          </div>
+          <div class="pay-provider-body">
+            <div class="form-group">
+              <label>Publishable Key</label>
+              <input type="text" id="ps-stripe-pk" placeholder="pk_live_…" value="${escAdminHtml(s.stripe_publishable_key || '')}">
+            </div>
+            <div class="form-group">
+              <label>Secret Key</label>
+              <input type="password" id="ps-stripe-sk" placeholder="sk_live_…" value="${escAdminHtml(s.stripe_secret_key || '')}">
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label>Webhook Secret</label>
+              <input type="password" id="ps-stripe-ws" placeholder="whsec_…" value="${escAdminHtml(s.stripe_webhook_secret || '')}">
+              <p class="pay-hint">Webhook endpoint: <code>${location.origin}/api/payments/webhook</code></p>
+            </div>
+          </div>
         </div>
-        <div class="design-card-body" style="display:flex;flex-direction:column;gap:14px;margin-top:16px">
-          <div>
-            <label class="design-label">Publishable Key</label>
-            <input class="design-input" id="ps-stripe-pk" type="text" placeholder="pk_live_…" value="${escAdminHtml(s.stripe_publishable_key || '')}">
+
+        <div class="pay-provider-card">
+          <div class="pay-provider-header">
+            <div class="pay-provider-logo sumup-logo">
+              <svg viewBox="0 0 24 24" height="20" fill="#00D66B"><circle cx="12" cy="12" r="12"/><path d="M7 12h10M12 7v10" stroke="white" stroke-width="2.5" stroke-linecap="round"/></svg>
+              <span>SumUp</span>
+            </div>
+            <label class="pay-toggle">
+              <input type="checkbox" id="ps-sumup-enabled" ${s.sumup_enabled === 'true' ? 'checked' : ''}>
+              <span class="pay-toggle-track"><span class="pay-toggle-thumb"></span></span>
+            </label>
           </div>
-          <div>
-            <label class="design-label">Secret Key</label>
-            <input class="design-input" id="ps-stripe-sk" type="password" placeholder="sk_live_…" value="${escAdminHtml(s.stripe_secret_key || '')}">
-          </div>
-          <div>
-            <label class="design-label">Webhook Secret</label>
-            <input class="design-input" id="ps-stripe-ws" type="password" placeholder="whsec_…" value="${escAdminHtml(s.stripe_webhook_secret || '')}">
-            <p style="font-size:12px;color:#aaa;margin-top:4px">Webhook endpoint: <code>${location.origin}/api/payments/webhook</code></p>
+          <div class="pay-provider-body">
+            <div class="form-group">
+              <label>API Key</label>
+              <input type="password" id="ps-sumup-key" placeholder="sup_sk_…" value="${escAdminHtml(s.sumup_api_key || '')}">
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label>Merchant Code</label>
+              <input type="text" id="ps-sumup-merchant" placeholder="MXXXXX" value="${escAdminHtml(s.sumup_merchant_code || '')}">
+            </div>
           </div>
         </div>
+
+        <button class="btn btn-primary" onclick="savePaymentSettings()">Save Payment Settings</button>
       </div>
-
-      <div class="design-card" style="margin-top:20px">
-        <div class="design-card-title" style="display:flex;align-items:center;justify-content:space-between">
-          <span style="font-size:17px;font-weight:700">SumUp</span>
-          <label class="pay-toggle">
-            <input type="checkbox" id="ps-sumup-enabled" ${s.sumup_enabled === 'true' ? 'checked' : ''}>
-            <span class="pay-toggle-track"><span class="pay-toggle-thumb"></span></span>
-          </label>
-        </div>
-        <div class="design-card-body" style="display:flex;flex-direction:column;gap:14px;margin-top:16px">
-          <div>
-            <label class="design-label">API Key</label>
-            <input class="design-input" id="ps-sumup-key" type="password" placeholder="sup_sk_…" value="${escAdminHtml(s.sumup_api_key || '')}">
-          </div>
-          <div>
-            <label class="design-label">Merchant Code</label>
-            <input class="design-input" id="ps-sumup-merchant" type="text" placeholder="MXXXXX" value="${escAdminHtml(s.sumup_merchant_code || '')}">
-          </div>
-        </div>
-      </div>
-
-      <button class="btn btn-primary" style="margin-top:24px" onclick="savePaymentSettings()">Save Payment Settings</button>
     `;
   } catch (err) {
     el.innerHTML = '<div class="empty-state"><p>Failed to load payment settings</p></div>';
