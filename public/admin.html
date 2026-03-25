@@ -102,6 +102,10 @@
         <svg viewBox="0 0 20 20" fill="none"><path d="M3 7h14a1 1 0 011 1v4a1 1 0 01-1 1H3a1 1 0 01-1-1V8a1 1 0 011-1z" stroke="currentColor" stroke-width="1.5"/><circle cx="10" cy="10" r="1.5" stroke="currentColor" stroke-width="1.5"/><path d="M7 7V5m6 2V5M7 13v2m6-2v2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
         Vouchers
       </button>
+      <button class="sidebar-item" id="tab-discounts" onclick="switchTab('discounts')">
+        <svg viewBox="0 0 20 20" fill="none"><circle cx="7.5" cy="7.5" r="2" stroke="currentColor" stroke-width="1.5"/><circle cx="12.5" cy="12.5" r="2" stroke="currentColor" stroke-width="1.5"/><path d="M5 15L15 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        Discounts
+      </button>
     </nav>
 
     <div class="sidebar-footer">
@@ -249,6 +253,17 @@
       </div>
     </div>
 
+    <!-- DISCOUNTS TAB -->
+    <div class="tab-content hidden" id="content-discounts">
+      <div class="toolbar">
+        <div></div>
+        <button class="btn btn-primary btn-sm" onclick="openCreateDiscountModal()">+ Create Code</button>
+      </div>
+      <div class="card">
+        <div id="discounts-table"></div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -288,6 +303,17 @@
         <button class="btn btn-danger btn-full" id="confirm-delete-btn">Delete</button>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- CREATE DISCOUNT MODAL -->
+<div class="modal-overlay hidden" id="discount-form-modal" onclick="if(event.target.id==='discount-form-modal')closeAdminModal('discount-form-modal')">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <h2>Create Discount Code</h2>
+      <button class="modal-close" onclick="closeAdminModal('discount-form-modal')">✕</button>
+    </div>
+    <div class="modal-body" id="discount-form-body"></div>
   </div>
 </div>
 

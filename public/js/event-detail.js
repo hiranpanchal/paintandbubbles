@@ -429,10 +429,12 @@ function showError(msg) {
 // ---- BOOKING FLOW ----
 function openBooking() {
   if (!currentEvent) return;
-  currentBookingState.event          = currentEvent;
-  currentBookingState.quantity       = 1;
-  currentBookingState.voucherCode    = null;
+  currentBookingState.event           = currentEvent;
+  currentBookingState.quantity        = 1;
+  currentBookingState.voucherCode     = null;
   currentBookingState.voucherDiscount = 0;
+  currentBookingState.discountCode    = null;
+  currentBookingState.discountPence   = 0;
   showBookingStep1();
   openModal('booking-modal');
 }
@@ -482,6 +484,16 @@ function showBookingStep1() {
           <textarea id="b-notes" rows="2" placeholder="Dietary requirements, accessibility needs, etc.">${escHtml(currentBookingState.notes || '')}</textarea>
         </div>
         <div class="voucher-apply-section">
+          <button type="button" class="voucher-toggle" onclick="toggleDiscountInput()">🏷️ Have a discount code?</button>
+          <div id="discount-input-wrap" style="display:none">
+            <div style="display:flex;gap:8px;margin-top:8px">
+              <input type="text" id="b-discount-code" placeholder="e.g. SUMMER20" style="flex:1;text-transform:uppercase" value="${escHtml(currentBookingState.discountCode || '')}">
+              <button type="button" class="btn btn-outline" onclick="applyDiscountCode()">Apply</button>
+            </div>
+            <div id="discount-status" style="font-size:13px;margin-top:6px"></div>
+          </div>
+        </div>
+        <div class="voucher-apply-section" style="margin-top:6px">
           <button type="button" class="voucher-toggle" onclick="toggleVoucherInput()">🎁 Have a gift voucher?</button>
           <div id="voucher-input-wrap" style="display:none">
             <div style="display:flex;gap:8px;margin-top:8px">
@@ -520,11 +532,16 @@ function renderBookingSummary(event, qty) {
   if (event.price_pence === 0) {
     return `<div class="summary-row"><span>${qty}x ticket</span><span style="color:var(--green);font-weight:700;">Free</span></div>`;
   }
-  const discount = currentBookingState.voucherDiscount || 0;
+  const voucherDiscount = currentBookingState.voucherDiscount || 0;
+  const discountPence   = currentBookingState.discountPence || 0;
+  const discount = voucherDiscount + discountPence;
   const total = Math.max(0, subtotal - discount);
   let html = `<div class="summary-row"><span>${qty}x ticket${qty > 1 ? 's' : ''}</span><span>£${(event.price_pence / 100).toFixed(2)} each</span></div>`;
-  if (discount > 0) {
-    html += `<div class="summary-row" style="color:var(--green)"><span>🎁 Gift Voucher (${escHtml(currentBookingState.voucherCode)})</span><span>−£${(discount / 100).toFixed(2)}</span></div>`;
+  if (discountPence > 0) {
+    html += `<div class="summary-row" style="color:var(--green)"><span>🏷️ Discount (${escHtml(currentBookingState.discountCode)})</span><span>−£${(discountPence / 100).toFixed(2)}</span></div>`;
+  }
+  if (voucherDiscount > 0) {
+    html += `<div class="summary-row" style="color:var(--green)"><span>🎁 Gift Voucher (${escHtml(currentBookingState.voucherCode)})</span><span>−£${(voucherDiscount / 100).toFixed(2)}</span></div>`;
   }
   if (total === 0) {
     html += `<div class="summary-row total"><span>Total</span><span style="color:var(--green);">Free (voucher applied)</span></div>`;
@@ -548,11 +565,11 @@ async function proceedToPayment() {
   if (currentBookingState.event.price_pence === 0) { await confirmFreeBooking(); return; }
 
   const subtotal = currentBookingState.event.price_pence * currentBookingState.quantity;
-  const discount = currentBookingState.voucherDiscount || 0;
+  const discount = (currentBookingState.voucherDiscount || 0) + (currentBookingState.discountPence || 0);
   const total = Math.max(0, subtotal - discount);
 
-  if (total === 0 && currentBookingState.voucherCode) {
-    // Fully covered by voucher
+  if (total === 0 && (currentBookingState.voucherCode || currentBookingState.discountCode)) {
+    // Fully covered by voucher/discount
     await confirmVoucherCoveredBooking();
     return;
   }
@@ -606,6 +623,51 @@ async function confirmVoucherCoveredBooking() {
     alert(err.message || 'Booking failed. Please try again.');
   }
   setLoadingBtn(false);
+}
+
+// ---- DISCOUNT CODE INPUT ----
+function toggleDiscountInput() {
+  const wrap = document.getElementById('discount-input-wrap');
+  if (wrap) wrap.style.display = wrap.style.display === 'none' ? '' : 'none';
+}
+
+async function applyDiscountCode() {
+  const input = document.getElementById('b-discount-code');
+  const statusEl = document.getElementById('discount-status');
+  if (!input || !statusEl) return;
+
+  const code = input.value.trim().toUpperCase();
+  if (!code) {
+    statusEl.textContent = 'Please enter a discount code.';
+    statusEl.style.color = 'var(--coral)';
+    return;
+  }
+
+  statusEl.textContent = 'Checking…';
+  statusEl.style.color = 'var(--text-light)';
+
+  try {
+    const subtotal = currentBookingState.event.price_pence * currentBookingState.quantity;
+    const res = await fetch(`/api/discounts/validate?code=${encodeURIComponent(code)}&order_pence=${subtotal}`);
+    const data = await res.json();
+
+    if (data.valid) {
+      currentBookingState.discountCode  = code;
+      currentBookingState.discountPence = data.discount_pence;
+      statusEl.textContent = data.message;
+      statusEl.style.color = 'var(--green)';
+      const sumEl = document.getElementById('booking-summary');
+      if (sumEl) sumEl.innerHTML = renderBookingSummary(currentBookingState.event, currentBookingState.quantity);
+    } else {
+      currentBookingState.discountCode  = null;
+      currentBookingState.discountPence = 0;
+      statusEl.textContent = '✗ ' + (data.message || 'Invalid discount code.');
+      statusEl.style.color = 'var(--coral)';
+    }
+  } catch {
+    statusEl.textContent = 'Could not validate code. Please try again.';
+    statusEl.style.color = 'var(--coral)';
+  }
 }
 
 // ---- VOUCHER INPUT ----
@@ -728,7 +790,8 @@ async function mountStripeElements() {
   if (!currentBookingState.clientSecret) {
     try {
       const intentPayload = { booking_id: currentBookingState.booking.id };
-      if (currentBookingState.voucherCode) intentPayload.voucher_code = currentBookingState.voucherCode;
+      if (currentBookingState.voucherCode)  intentPayload.voucher_code   = currentBookingState.voucherCode;
+      if (currentBookingState.discountCode) intentPayload.discount_code  = currentBookingState.discountCode;
       const intentData = await apiFetch('/api/payments/create-intent', {
         method: 'POST',
         body: JSON.stringify(intentPayload)

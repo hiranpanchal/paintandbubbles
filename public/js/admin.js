@@ -80,7 +80,7 @@ function switchTab(tab) {
   document.getElementById(`content-${tab}`).classList.remove('hidden');
   document.getElementById(`tab-${tab}`).classList.add('active');
 
-  const titles = { overview: 'Overview', events: 'Events', bookings: 'Bookings', customers: 'Customers', payments: 'Payments', design: 'Design', faq: 'FAQ', reviews: 'Reviews', users: 'Users', content: 'Content', enquiries: 'Enquiries', vouchers: 'Gift Vouchers' };
+  const titles = { overview: 'Overview', events: 'Events', bookings: 'Bookings', customers: 'Customers', payments: 'Payments', design: 'Design', faq: 'FAQ', reviews: 'Reviews', users: 'Users', content: 'Content', enquiries: 'Enquiries', vouchers: 'Gift Vouchers', discounts: 'Discount Codes' };
   document.getElementById('page-title').textContent = titles[tab] || tab;
 
   // Close sidebar on mobile
@@ -101,6 +101,7 @@ function switchTab(tab) {
   else if (tab === 'content')   loadContentTab();
   else if (tab === 'enquiries') loadEnquiries();
   else if (tab === 'vouchers')  loadAdminVouchers();
+  else if (tab === 'discounts') loadAdminDiscounts();
 }
 
 function toggleSidebar() {
@@ -2952,5 +2953,163 @@ async function cancelVoucher(id) {
     loadAdminVouchers();
   } catch (err) {
     toast(err.message || 'Failed to cancel voucher.', 'error');
+  }
+}
+
+// ---- DISCOUNT CODES ----
+async function loadAdminDiscounts() {
+  const el = document.getElementById('discounts-table');
+  if (!el) return;
+  el.innerHTML = '<div class="loading-state"><div class="spinner"></div></div>';
+  try {
+    const codes = await apiFetch('/api/discounts');
+    if (!codes.length) {
+      el.innerHTML = '<div class="empty-state"><p>No discount codes yet. Click <strong>Create Code</strong> to add one.</p></div>';
+      return;
+    }
+    el.innerHTML = `
+      <table class="data-table">
+        <thead><tr>
+          <th>Code</th>
+          <th>Name</th>
+          <th>Discount</th>
+          <th>Uses</th>
+          <th>Expires</th>
+          <th>Status</th>
+          <th></th>
+        </tr></thead>
+        <tbody>${codes.map(dc => `
+          <tr>
+            <td><code style="font-size:13px;font-weight:700;letter-spacing:0.5px">${escAdminHtml(dc.code)}</code></td>
+            <td>${escAdminHtml(dc.name || '—')}</td>
+            <td>${dc.discount_type === 'percentage' ? `${dc.discount_value}%` : `£${(dc.discount_value / 100).toFixed(2)}`} off</td>
+            <td>${dc.used_count}${dc.max_uses ? ` / ${dc.max_uses}` : ''}</td>
+            <td class="hide-mobile">${dc.expires_at ? formatDate(dc.expires_at.split('T')[0]) : '—'}</td>
+            <td>
+              <button class="btn btn-ghost btn-sm" style="padding:2px 8px;font-size:11px;${dc.is_active ? '' : 'opacity:0.6'}"
+                onclick="toggleDiscount(${dc.id})">${dc.is_active ? discountBadge('active') : discountBadge('inactive')}</button>
+            </td>
+            <td>
+              <button class="btn btn-ghost btn-sm" onclick="deleteDiscount(${dc.id})" title="Delete">✕</button>
+            </td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`;
+  } catch (err) {
+    el.innerHTML = `<div class="empty-state"><p>${err.message}</p></div>`;
+  }
+}
+
+function discountBadge(status) {
+  if (status === 'active') return '<span style="background:#D1FAE5;color:#065F46;padding:3px 10px;border-radius:50px;font-size:11px;font-weight:700;">Active</span>';
+  return '<span style="background:#F3F4F6;color:#6B7280;padding:3px 10px;border-radius:50px;font-size:11px;font-weight:700;">Inactive</span>';
+}
+
+function generateDiscountCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const seg = (n) => Array.from({length: n}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+  return seg(4) + seg(4);
+}
+
+function openCreateDiscountModal() {
+  const body = document.getElementById('discount-form-body');
+  const code = generateDiscountCode();
+  body.innerHTML = `
+    <div class="form-group">
+      <label>Code <span style="color:var(--text-light);font-size:12px">Customers enter this at checkout</span></label>
+      <div style="display:flex;gap:8px">
+        <input type="text" id="dc-code" value="${code}" style="text-transform:uppercase;flex:1;font-weight:700;letter-spacing:1px">
+        <button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('dc-code').value=generateDiscountCode()">Regenerate</button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Name / Description <span style="color:var(--text-light);font-size:12px">Optional — shown to customer on apply</span></label>
+      <input type="text" id="dc-name" placeholder="e.g. Summer Sale 2026">
+    </div>
+    <div class="form-group">
+      <label>Discount Type</label>
+      <select id="dc-type" onchange="updateDiscountValueLabel()">
+        <option value="percentage">Percentage (%)</option>
+        <option value="fixed">Fixed Amount (£)</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label id="dc-value-label">Discount Value (%)</label>
+      <input type="number" id="dc-value" min="1" placeholder="e.g. 20" style="max-width:140px">
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <div class="form-group">
+        <label>Max Uses <span style="color:var(--text-light);font-size:12px">Leave blank for unlimited</span></label>
+        <input type="number" id="dc-max-uses" min="1" placeholder="e.g. 50">
+      </div>
+      <div class="form-group">
+        <label>Expiry Date <span style="color:var(--text-light);font-size:12px">Optional</span></label>
+        <input type="date" id="dc-expires">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Minimum Order Value <span style="color:var(--text-light);font-size:12px">Optional — £0 means no minimum</span></label>
+      <input type="number" id="dc-min-order" min="0" step="0.01" placeholder="e.g. 25.00" style="max-width:140px">
+    </div>
+    <div style="display:flex;gap:12px;margin-top:8px">
+      <button class="btn btn-ghost btn-full" onclick="closeAdminModal('discount-form-modal')">Cancel</button>
+      <button class="btn btn-primary btn-full" onclick="saveDiscount()">Create Code</button>
+    </div>`;
+  document.getElementById('discount-form-modal').classList.remove('hidden');
+}
+
+function updateDiscountValueLabel() {
+  const type = document.getElementById('dc-type').value;
+  document.getElementById('dc-value-label').textContent = type === 'percentage' ? 'Discount Value (%)' : 'Discount Value (£)';
+}
+
+async function saveDiscount() {
+  const code = document.getElementById('dc-code').value.toUpperCase().trim();
+  const name = document.getElementById('dc-name').value.trim();
+  const type = document.getElementById('dc-type').value;
+  const value = parseFloat(document.getElementById('dc-value').value);
+  const maxUses = document.getElementById('dc-max-uses').value;
+  const expires = document.getElementById('dc-expires').value;
+  const minOrder = document.getElementById('dc-min-order').value;
+
+  if (!code) { toast('Code is required.', 'error'); return; }
+  if (!value || value <= 0) { toast('Enter a valid discount value.', 'error'); return; }
+  if (type === 'percentage' && value > 100) { toast('Percentage cannot exceed 100.', 'error'); return; }
+
+  try {
+    await apiFetch('/api/discounts', {
+      method: 'POST',
+      body: JSON.stringify({
+        code, name, discount_type: type, discount_value: value,
+        max_uses: maxUses || null,
+        expires_at: expires || null,
+        min_order_pence: minOrder ? parseFloat(minOrder) : 0
+      })
+    });
+    toast('Discount code created.');
+    closeAdminModal('discount-form-modal');
+    loadAdminDiscounts();
+  } catch (err) {
+    toast(err.message || 'Failed to create code.', 'error');
+  }
+}
+
+async function toggleDiscount(id) {
+  try {
+    await apiFetch(`/api/discounts/${id}/toggle`, { method: 'PATCH' });
+    loadAdminDiscounts();
+  } catch (err) {
+    toast(err.message || 'Failed to update code.', 'error');
+  }
+}
+
+async function deleteDiscount(id) {
+  if (!confirm('Delete this discount code permanently?')) return;
+  try {
+    await apiFetch(`/api/discounts/${id}`, { method: 'DELETE' });
+    toast('Discount code deleted.');
+    loadAdminDiscounts();
+  } catch (err) {
+    toast(err.message || 'Failed to delete code.', 'error');
   }
 }

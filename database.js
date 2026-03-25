@@ -403,6 +403,34 @@ db.exec(`
   ins.run('about_banner_images', '[]');
 }
 
+// Create discount_codes table
+db.exec(`
+  CREATE TABLE IF NOT EXISTS discount_codes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    code TEXT UNIQUE NOT NULL,
+    name TEXT DEFAULT '',
+    discount_type TEXT NOT NULL DEFAULT 'percentage',
+    discount_value INTEGER NOT NULL,
+    min_order_pence INTEGER DEFAULT 0,
+    max_uses INTEGER,
+    used_count INTEGER DEFAULT 0,
+    expires_at TEXT,
+    is_active INTEGER DEFAULT 1,
+    created_at TEXT DEFAULT (datetime('now'))
+  )
+`);
+
+// Migrate bookings: add discount_code and discount_pence columns if missing
+{
+  const cols = db.prepare('PRAGMA table_info(bookings)').all();
+  if (!cols.find(c => c.name === 'discount_code')) {
+    db.prepare('ALTER TABLE bookings ADD COLUMN discount_code TEXT').run();
+  }
+  if (!cols.find(c => c.name === 'discount_pence')) {
+    db.prepare('ALTER TABLE bookings ADD COLUMN discount_pence INTEGER DEFAULT 0').run();
+  }
+}
+
 // Seed sample events if empty
 const eventCount = db.prepare('SELECT COUNT(*) as count FROM events').get();
 if (eventCount.count === 0) {

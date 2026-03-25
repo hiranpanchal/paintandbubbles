@@ -64,7 +64,7 @@ router.post('/create-intent', async (req, res) => {
   const stripe = getStripe();
   if (!stripe) return res.status(500).json({ error: 'Stripe is not configured' });
 
-  const { booking_id, voucher_code } = req.body;
+  const { booking_id, voucher_code, discount_code } = req.body;
   if (!booking_id) return res.status(400).json({ error: 'booking_id required' });
 
   const booking = db.prepare(`
@@ -80,21 +80,37 @@ router.post('/create-intent', async (req, res) => {
 
   let amount = booking.total_pence;
   let voucherDiscount = 0;
+  let discountPence = 0;
 
   if (voucher_code) {
     const voucher = db.prepare('SELECT * FROM gift_vouchers WHERE code = ?').get(voucher_code.toUpperCase().trim());
     if (voucher && voucher.status === 'active') {
       voucherDiscount = Math.min(voucher.amount_pence, amount);
       amount = Math.max(0, amount - voucherDiscount);
-      // Store voucher info on booking
       db.prepare('UPDATE bookings SET voucher_code=?, voucher_discount_pence=? WHERE id=?')
         .run(voucher_code.toUpperCase().trim(), voucherDiscount, booking_id);
     }
   }
 
-  // If fully covered by voucher, no payment needed — client should handle this case
+  if (discount_code) {
+    const dc = db.prepare('SELECT * FROM discount_codes WHERE code = ?').get(discount_code.toUpperCase().trim());
+    if (dc && dc.is_active && !(dc.max_uses !== null && dc.used_count >= dc.max_uses) &&
+        !(dc.expires_at && new Date(dc.expires_at) < new Date())) {
+      if (dc.discount_type === 'percentage') {
+        discountPence = Math.round((amount * dc.discount_value) / 100);
+      } else {
+        discountPence = dc.discount_value;
+      }
+      discountPence = Math.min(discountPence, amount);
+      amount = Math.max(0, amount - discountPence);
+      db.prepare('UPDATE bookings SET discount_code=?, discount_pence=? WHERE id=?')
+        .run(discount_code.toUpperCase().trim(), discountPence, booking_id);
+    }
+  }
+
+  // If fully covered by voucher/discount, no payment needed — client should handle this case
   if (amount === 0) {
-    return res.json({ clientSecret: null, paymentIntentId: null, amount: 0, voucherDiscount });
+    return res.json({ clientSecret: null, paymentIntentId: null, amount: 0, voucherDiscount, discountPence });
   }
 
   try {
@@ -104,7 +120,7 @@ router.post('/create-intent', async (req, res) => {
       metadata: { booking_id: String(booking_id), event_title: booking.event_title, customer_name: booking.customer_name },
       receipt_email: booking.customer_email
     });
-    res.json({ clientSecret: paymentIntent.client_secret, paymentIntentId: paymentIntent.id, amount, voucherDiscount });
+    res.json({ clientSecret: paymentIntent.client_secret, paymentIntentId: paymentIntent.id, amount, voucherDiscount, discountPence });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
