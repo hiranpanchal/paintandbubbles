@@ -2099,3 +2099,30 @@ h4 { font-family: var(--font-h4); }
   padding: 60px 0;
   font-size: 1.1rem;
 }
+
+/* ---- PAYMENT METHOD PICKER ---- */
+.payment-method-options {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+}
+.payment-method-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 12px;
+  border: 2px solid #e8e0e4;
+  border-radius: 12px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-dark, #3a2c35);
+  transition: border-color 0.15s, background 0.15s;
+}
+.payment-method-btn.active {
+  border-color: var(--rose, #C4748A);
+  background: rgba(196,116,138,0.05);
+}

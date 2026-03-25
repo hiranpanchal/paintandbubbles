@@ -95,7 +95,9 @@ router.patch('/:id/status', requireAdmin, (req, res) => {
 
 // POST /api/bookings/:id/confirm — called after successful payment
 router.post('/:id/confirm', async (req, res) => {
-  const { stripe_payment_intent_id } = req.body;
+  const { payment_reference, stripe_payment_intent_id } = req.body;
+  const ref = payment_reference || stripe_payment_intent_id || null; // backwards compat
+
   const booking = db.prepare(`
     SELECT b.*, c.name as customer_name, c.email as customer_email,
            e.title as event_title, e.date as event_date, e.time as event_time,
@@ -108,14 +110,14 @@ router.post('/:id/confirm', async (req, res) => {
 
   if (!booking) return res.status(404).json({ error: 'Booking not found' });
 
-  db.prepare('UPDATE bookings SET status = ?, stripe_payment_intent_id = ? WHERE id = ?')
-    .run('confirmed', stripe_payment_intent_id, req.params.id);
+  db.prepare('UPDATE bookings SET status = ?, payment_reference = ? WHERE id = ?')
+    .run('confirmed', ref, req.params.id);
 
-  // Record payment
-  db.prepare(`
-    INSERT INTO payments (booking_id, stripe_payment_intent_id, amount_pence, status)
-    VALUES (?, ?, ?, 'succeeded')
-  `).run(req.params.id, stripe_payment_intent_id, booking.total_pence);
+  // Record payment (only for free bookings via this route — paid ones are recorded in the provider-specific route)
+  if (!ref) {
+    db.prepare(`INSERT INTO payments (booking_id, amount_pence, status) VALUES (?, ?, 'succeeded')`)
+      .run(req.params.id, booking.total_pence || 0);
+  }
 
   // Send confirmation email (non-blocking)
   sendBookingConfirmation(booking).catch(err => console.error('Email error:', err));

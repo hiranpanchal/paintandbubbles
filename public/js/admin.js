@@ -619,6 +619,98 @@ function debouncedCustomerSearch() {
   customerSearchTimeout = setTimeout(loadAdminCustomers, 350);
 }
 
+// ---- PAYMENTS TAB SWITCHING ----
+function switchPaymentsTab(tab) {
+  const nav = document.getElementById('payments-sub-nav');
+  if (nav) {
+    nav.querySelectorAll('.design-tab-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.tab === tab);
+    });
+  }
+  document.getElementById('payments-subtab-transactions').style.display = tab === 'transactions' ? '' : 'none';
+  document.getElementById('payments-subtab-settings').style.display    = tab === 'settings'     ? '' : 'none';
+  if (tab === 'settings') loadPaymentsSettings();
+}
+
+async function loadPaymentsSettings() {
+  const el = document.getElementById('payments-subtab-settings');
+  el.innerHTML = '<div class="loading-state"><div class="spinner"></div></div>';
+  try {
+    const s = await apiFetch('/api/payments/provider-settings');
+    el.innerHTML = `
+      <div class="design-section-title" style="margin-bottom:8px">Payment Providers</div>
+      <p style="color:#888;font-size:14px;margin-bottom:28px">Enable one or both providers. Customers will see a choice if both are active. Leave credentials blank to use environment variables if set.</p>
+
+      <div class="design-card">
+        <div class="design-card-title" style="display:flex;align-items:center;justify-content:space-between">
+          <span style="font-size:17px;font-weight:700">Stripe</span>
+          <label class="pay-toggle">
+            <input type="checkbox" id="ps-stripe-enabled" ${s.stripe_enabled === 'true' ? 'checked' : ''}>
+            <span class="pay-toggle-track"><span class="pay-toggle-thumb"></span></span>
+          </label>
+        </div>
+        <div class="design-card-body" style="display:flex;flex-direction:column;gap:14px;margin-top:16px">
+          <div>
+            <label class="design-label">Publishable Key</label>
+            <input class="design-input" id="ps-stripe-pk" type="text" placeholder="pk_live_…" value="${escAdminHtml(s.stripe_publishable_key || '')}">
+          </div>
+          <div>
+            <label class="design-label">Secret Key</label>
+            <input class="design-input" id="ps-stripe-sk" type="password" placeholder="sk_live_…" value="${escAdminHtml(s.stripe_secret_key || '')}">
+          </div>
+          <div>
+            <label class="design-label">Webhook Secret</label>
+            <input class="design-input" id="ps-stripe-ws" type="password" placeholder="whsec_…" value="${escAdminHtml(s.stripe_webhook_secret || '')}">
+            <p style="font-size:12px;color:#aaa;margin-top:4px">Webhook endpoint: <code>${location.origin}/api/payments/webhook</code></p>
+          </div>
+        </div>
+      </div>
+
+      <div class="design-card" style="margin-top:20px">
+        <div class="design-card-title" style="display:flex;align-items:center;justify-content:space-between">
+          <span style="font-size:17px;font-weight:700">SumUp</span>
+          <label class="pay-toggle">
+            <input type="checkbox" id="ps-sumup-enabled" ${s.sumup_enabled === 'true' ? 'checked' : ''}>
+            <span class="pay-toggle-track"><span class="pay-toggle-thumb"></span></span>
+          </label>
+        </div>
+        <div class="design-card-body" style="display:flex;flex-direction:column;gap:14px;margin-top:16px">
+          <div>
+            <label class="design-label">API Key</label>
+            <input class="design-input" id="ps-sumup-key" type="password" placeholder="sup_sk_…" value="${escAdminHtml(s.sumup_api_key || '')}">
+          </div>
+          <div>
+            <label class="design-label">Merchant Code</label>
+            <input class="design-input" id="ps-sumup-merchant" type="text" placeholder="MXXXXX" value="${escAdminHtml(s.sumup_merchant_code || '')}">
+          </div>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" style="margin-top:24px" onclick="savePaymentSettings()">Save Payment Settings</button>
+    `;
+  } catch (err) {
+    el.innerHTML = '<div class="empty-state"><p>Failed to load payment settings</p></div>';
+  }
+}
+
+async function savePaymentSettings() {
+  const body = {
+    stripe_enabled:       document.getElementById('ps-stripe-enabled').checked ? 'true' : 'false',
+    stripe_publishable_key: document.getElementById('ps-stripe-pk').value.trim(),
+    stripe_secret_key:    document.getElementById('ps-stripe-sk').value.trim(),
+    stripe_webhook_secret: document.getElementById('ps-stripe-ws').value.trim(),
+    sumup_enabled:        document.getElementById('ps-sumup-enabled').checked ? 'true' : 'false',
+    sumup_api_key:        document.getElementById('ps-sumup-key').value.trim(),
+    sumup_merchant_code:  document.getElementById('ps-sumup-merchant').value.trim()
+  };
+  try {
+    await apiFetch('/api/payments/provider-settings', { method: 'POST', body: JSON.stringify(body) });
+    toast('Payment settings saved', 'success');
+  } catch (err) {
+    toast('Failed to save settings', 'error');
+  }
+}
+
 // ---- PAYMENTS ----
 async function loadAdminPayments() {
   document.getElementById('payment-stats-grid').innerHTML = '<div class="stat-card loading"><div class="spinner"></div></div>'.repeat(3);

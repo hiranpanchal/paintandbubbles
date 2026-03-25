@@ -1385,3 +1385,17 @@ body {
   background: rgba(196,116,138,0.05);
 }
 .gallery-drop-zone p { margin: 8px 0 0; font-size: 0.9rem; }
+
+/* Payment provider toggle switch */
+.pay-toggle { position: relative; display: inline-flex; align-items: center; cursor: pointer; }
+.pay-toggle input { position: absolute; opacity: 0; width: 0; height: 0; }
+.pay-toggle-track {
+  width: 44px; height: 24px; border-radius: 12px; background: #ddd;
+  transition: background 0.2s; display: flex; align-items: center; padding: 2px;
+}
+.pay-toggle input:checked + .pay-toggle-track { background: var(--rose, #C4748A); }
+.pay-toggle-thumb {
+  width: 20px; height: 20px; border-radius: 50%; background: #fff;
+  transition: transform 0.2s; box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+}
+.pay-toggle input:checked + .pay-toggle-track .pay-toggle-thumb { transform: translateX(20px); }

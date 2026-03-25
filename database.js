@@ -330,6 +330,42 @@ if (settingsCount.count === 0) {
   }
 }
 
+// Migrate bookings table: add payment_reference column if missing
+{
+  const cols = db.prepare("PRAGMA table_info(bookings)").all();
+  if (!cols.find(c => c.name === 'payment_reference')) {
+    db.prepare('ALTER TABLE bookings ADD COLUMN payment_reference TEXT').run();
+    console.log('Migrated bookings: added payment_reference column.');
+  }
+}
+
+// Migrate payments table: add payment_reference and provider columns if missing
+{
+  const cols = db.prepare("PRAGMA table_info(payments)").all();
+  if (!cols.find(c => c.name === 'payment_reference')) {
+    db.prepare('ALTER TABLE payments ADD COLUMN payment_reference TEXT').run();
+    // Copy existing stripe IDs into the new column
+    db.prepare("UPDATE payments SET payment_reference = stripe_payment_intent_id WHERE stripe_payment_intent_id IS NOT NULL").run();
+    console.log('Migrated payments: added payment_reference column.');
+  }
+  if (!cols.find(c => c.name === 'provider')) {
+    db.prepare("ALTER TABLE payments ADD COLUMN provider TEXT DEFAULT 'stripe'").run();
+    console.log('Migrated payments: added provider column.');
+  }
+}
+
+// Ensure payment provider settings exist
+{
+  const ins = db.prepare('INSERT OR IGNORE INTO site_settings (key, value) VALUES (?, ?)');
+  ins.run('stripe_enabled', 'false');
+  ins.run('stripe_publishable_key', '');
+  ins.run('stripe_secret_key', '');
+  ins.run('stripe_webhook_secret', '');
+  ins.run('sumup_enabled', 'false');
+  ins.run('sumup_api_key', '');
+  ins.run('sumup_merchant_code', '');
+}
+
 // Seed sample events if empty
 const eventCount = db.prepare('SELECT COUNT(*) as count FROM events').get();
 if (eventCount.count === 0) {

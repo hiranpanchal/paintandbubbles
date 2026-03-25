@@ -188,16 +188,27 @@
 
     <!-- PAYMENTS TAB -->
     <div class="tab-content hidden" id="content-payments">
-      <div class="stats-grid" id="payment-stats-grid" style="grid-template-columns:repeat(3,1fr)"></div>
-      <div class="content-row">
-        <div class="card">
-          <div class="card-header"><h3 class="card-title">Revenue by Event</h3></div>
-          <div id="revenue-by-event"></div>
+      <div class="design-tabs-nav content-page-tabs" id="payments-sub-nav">
+        <button class="design-tab-btn active" onclick="switchPaymentsTab('transactions')" data-tab="transactions">Transactions</button>
+        <button class="design-tab-btn" onclick="switchPaymentsTab('settings')" data-tab="settings">Payment Settings</button>
+      </div>
+
+      <div id="payments-subtab-transactions">
+        <div class="stats-grid" id="payment-stats-grid" style="grid-template-columns:repeat(3,1fr)"></div>
+        <div class="content-row">
+          <div class="card">
+            <div class="card-header"><h3 class="card-title">Revenue by Event</h3></div>
+            <div id="revenue-by-event"></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><h3 class="card-title">Transaction History</h3></div>
+            <div id="payments-table"></div>
+          </div>
         </div>
-        <div class="card">
-          <div class="card-header"><h3 class="card-title">Transaction History</h3></div>
-          <div id="payments-table"></div>
-        </div>
+      </div>
+
+      <div id="payments-subtab-settings" style="display:none">
+        <div class="loading-state"><div class="spinner"></div></div>
       </div>
     </div>
 

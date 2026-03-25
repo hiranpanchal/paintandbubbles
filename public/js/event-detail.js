@@ -3,6 +3,7 @@
    ============================================= */
 
 let stripe = null;
+let paymentConfig = { stripe_enabled: false, sumup_enabled: false, stripe_publishable_key: '' };
 let currentEvent = null;
 let currentBookingState = {};
 let siteSettings = {};
@@ -10,7 +11,7 @@ let siteSettings = {};
 // ---- INIT ----
 document.addEventListener('DOMContentLoaded', async () => {
   await applyDesignSettings();
-  fetchStripePK();
+  fetchPaymentConfig();
 
   const id = getEventIdFromUrl();
   if (!id) {
@@ -193,12 +194,14 @@ async function renderReviewsSection() {
   } catch { if (section) section.style.display = 'none'; }
 }
 
-async function fetchStripePK() {
+async function fetchPaymentConfig() {
   try {
     const res = await fetch('/api/payments/config');
     if (res.ok) {
-      const { publishableKey } = await res.json();
-      if (publishableKey) stripe = Stripe(publishableKey);
+      paymentConfig = await res.json();
+      if (paymentConfig.stripe_enabled && paymentConfig.stripe_publishable_key) {
+        stripe = Stripe(paymentConfig.stripe_publishable_key);
+      }
     }
   } catch {}
 }
@@ -525,13 +528,6 @@ async function proceedToPayment() {
     });
     currentBookingState.booking  = data.booking;
     currentBookingState.customer = data.customer;
-
-    const intentData = await apiFetch('/api/payments/create-intent', {
-      method: 'POST',
-      body: JSON.stringify({ booking_id: data.booking.id })
-    });
-    currentBookingState.clientSecret    = intentData.clientSecret;
-    currentBookingState.paymentIntentId = intentData.paymentIntentId;
     showPaymentStep();
   } catch (err) {
     alert(err.message || 'Failed to create booking. Please try again.');
@@ -544,7 +540,7 @@ async function confirmFreeBooking() {
   try {
     const { event, name, email, phone, notes, quantity } = currentBookingState;
     const data = await apiFetch('/api/bookings', { method: 'POST', body: JSON.stringify({ event_id: event.id, name, email, phone, notes, quantity }) });
-    await apiFetch(`/api/bookings/${data.booking.id}/confirm`, { method: 'POST', body: JSON.stringify({ stripe_payment_intent_id: null }) });
+    await apiFetch(`/api/bookings/${data.booking.id}/confirm`, { method: 'POST', body: JSON.stringify({ payment_reference: null }) });
     currentBookingState.booking = data.booking;
     closeModal('booking-modal');
     showConfirmation(data.booking, data.customer, event);
@@ -557,6 +553,23 @@ async function confirmFreeBooking() {
 function showPaymentStep() {
   const event = currentBookingState.event;
   const total = (event.price_pence * currentBookingState.quantity / 100).toFixed(2);
+  const bothEnabled = paymentConfig.stripe_enabled && paymentConfig.sumup_enabled;
+
+  // If both providers are active, show a method picker first
+  const methodPicker = bothEnabled ? `
+    <div class="form-section" id="payment-method-picker">
+      <h3>Choose how to pay</h3>
+      <div class="payment-method-options">
+        <button class="payment-method-btn active" id="pm-stripe" onclick="selectPaymentMethod('stripe')">
+          <svg viewBox="0 0 60 25" fill="none" xmlns="http://www.w3.org/2000/svg" height="22"><path d="M5 20C5 11.716 11.716 5 20 5h20c8.284 0 15 6.716 15 15v0c0 8.284-6.716 15-15 15H20C11.716 35 5 28.284 5 20v0z" fill="#635BFF"/><path d="M24.576 16.128c0-.768.633-1.063 1.68-1.063 1.502 0 3.403.455 4.905 1.267v-4.642C29.603 11.266 28.05 11 26.496 11c-3.985 0-6.624 2.082-6.624 5.562 0 5.422 7.466 4.556 7.466 6.895 0 .91-.789 1.204-1.892 1.204-1.64 0-3.74-.672-5.398-1.583v4.7C21.51 28.603 23.292 29 25.075 29c4.08 0 6.888-2.024 6.888-5.56 0-5.854-7.387-4.819-7.387-7.312z" fill="#fff"/></svg>
+          Card (Stripe)
+        </button>
+        <button class="payment-method-btn" id="pm-sumup" onclick="selectPaymentMethod('sumup')">
+          <svg viewBox="0 0 80 30" fill="none" xmlns="http://www.w3.org/2000/svg" height="22"><rect width="80" height="30" rx="6" fill="#00D66B"/><text x="8" y="21" font-family="Arial,sans-serif" font-size="14" font-weight="bold" fill="white">SumUp</text></svg>
+          Card (SumUp)
+        </button>
+      </div>
+    </div>` : '';
 
   document.getElementById('booking-modal-body').innerHTML = `
     <div class="booking-header">
@@ -570,8 +583,8 @@ function showPaymentStep() {
         <div class="booking-step"></div>
       </div>
       <div class="booking-summary" style="margin-bottom:20px;">${renderBookingSummary(event, currentBookingState.quantity)}</div>
+      ${methodPicker}
       <div class="form-section">
-        <h3>Card Details</h3>
         <div id="payment-element"></div>
         <div id="payment-message" class="hidden"></div>
       </div>
@@ -579,24 +592,109 @@ function showPaymentStep() {
       <button class="btn btn-ghost btn-full" style="margin-top:8px;" onclick="showBookingStep1()">← Back</button>
     </div>`;
 
-  mountStripeElements();
+  // Default: mount whichever provider is enabled (Stripe takes priority if both)
+  currentBookingState.activeProvider = paymentConfig.stripe_enabled ? 'stripe' : 'sumup';
+  mountActivePaymentProvider();
 }
 
-function mountStripeElements() {
-  if (!stripe || !currentBookingState.clientSecret) {
-    document.getElementById('payment-element').innerHTML = '<p style="color:var(--coral);font-size:14px;">Payment system unavailable. Please add your Stripe keys.</p>';
+function selectPaymentMethod(provider) {
+  currentBookingState.activeProvider = provider;
+  document.getElementById('pm-stripe').classList.toggle('active', provider === 'stripe');
+  document.getElementById('pm-sumup').classList.toggle('active', provider === 'sumup');
+  document.getElementById('payment-element').innerHTML = '';
+  currentBookingState.stripeElements = null;
+  mountActivePaymentProvider();
+}
+
+async function mountActivePaymentProvider() {
+  const provider = currentBookingState.activeProvider;
+  if (provider === 'stripe') {
+    await mountStripeElements();
+  } else {
+    await mountSumUpCheckout();
+  }
+}
+
+async function mountStripeElements() {
+  const el = document.getElementById('payment-element');
+  if (!stripe) {
+    el.innerHTML = '<p style="color:var(--coral);font-size:14px;">Stripe is not configured. Please contact us to book.</p>';
     return;
+  }
+  // Create Stripe payment intent if not already done
+  if (!currentBookingState.clientSecret) {
+    try {
+      const intentData = await apiFetch('/api/payments/create-intent', {
+        method: 'POST',
+        body: JSON.stringify({ booking_id: currentBookingState.booking.id })
+      });
+      currentBookingState.clientSecret    = intentData.clientSecret;
+      currentBookingState.paymentIntentId = intentData.paymentIntentId;
+    } catch (err) {
+      el.innerHTML = `<p style="color:var(--coral);font-size:14px;">${escHtml(err.message || 'Could not initialise payment. Please try again.')}</p>`;
+      return;
+    }
   }
   const elements = stripe.elements({ clientSecret: currentBookingState.clientSecret, appearance: {
     theme: 'stripe',
     variables: { colorPrimary: '#C4748A', borderRadius: '10px', fontFamily: 'Nunito, sans-serif' }
   }});
-  const paymentEl = elements.create('payment');
-  paymentEl.mount('#payment-element');
+  elements.create('payment').mount('#payment-element');
   currentBookingState.stripeElements = elements;
 }
 
+async function mountSumUpCheckout() {
+  const el = document.getElementById('payment-element');
+  el.innerHTML = '<div style="text-align:center;padding:20px"><div class="spinner"></div></div>';
+  try {
+    const data = await apiFetch('/api/payments/sumup-checkout', {
+      method: 'POST',
+      body: JSON.stringify({ booking_id: currentBookingState.booking.id })
+    });
+    currentBookingState.sumupCheckoutId = data.checkoutId;
+    el.innerHTML = '<div id="sumup-card"></div><div id="payment-message" class="hidden"></div>';
+
+    // Load SumUp SDK dynamically
+    if (!window.SumUpCard) {
+      await new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = 'https://gateway.sumup.com/gateway/ecom/card/v2/sdk.js';
+        s.onload = resolve; s.onerror = reject;
+        document.head.appendChild(s);
+      });
+    }
+    SumUpCard.mount({
+      id: 'sumup-card',
+      checkoutId: currentBookingState.sumupCheckoutId,
+      onResponse: async (type, body) => {
+        if (type === 'success') {
+          try {
+            await apiFetch('/api/payments/sumup-confirm', {
+              method: 'POST',
+              body: JSON.stringify({ checkout_id: currentBookingState.sumupCheckoutId, booking_id: currentBookingState.booking.id })
+            });
+            closeModal('booking-modal');
+            showConfirmation(currentBookingState.booking, currentBookingState.customer, currentBookingState.event);
+          } catch {
+            alert('Payment taken but confirmation failed. Please contact us with your booking reference.');
+          }
+        } else if (type === 'error') {
+          const msgEl = document.getElementById('payment-message');
+          if (msgEl) { msgEl.textContent = body?.message || 'Payment failed. Please try again.'; msgEl.classList.remove('hidden'); }
+        }
+      }
+    });
+  } catch (err) {
+    el.innerHTML = `<p style="color:var(--coral);font-size:14px;">${escHtml(err.message || 'Could not initialise SumUp payment.')}</p>`;
+  }
+}
+
 async function submitPayment() {
+  const provider = currentBookingState.activeProvider;
+
+  // SumUp handles its own submission via the SDK widget — this button is Stripe only
+  if (provider === 'sumup') return;
+
   const elements = currentBookingState.stripeElements;
   if (!stripe || !elements) return;
 
@@ -617,7 +715,7 @@ async function submitPayment() {
   try {
     await apiFetch(`/api/bookings/${currentBookingState.booking.id}/confirm`, {
       method: 'POST',
-      body: JSON.stringify({ stripe_payment_intent_id: paymentIntent.id })
+      body: JSON.stringify({ payment_reference: paymentIntent.id })
     });
     closeModal('booking-modal');
     showConfirmation(currentBookingState.booking, currentBookingState.customer, currentBookingState.event);
