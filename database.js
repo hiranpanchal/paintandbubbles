@@ -330,6 +330,37 @@ if (settingsCount.count === 0) {
   }
 }
 
+// Create gift_vouchers table
+db.exec(`
+  CREATE TABLE IF NOT EXISTS gift_vouchers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    code TEXT UNIQUE NOT NULL,
+    amount_pence INTEGER NOT NULL,
+    purchaser_name TEXT NOT NULL,
+    purchaser_email TEXT NOT NULL,
+    recipient_name TEXT,
+    recipient_email TEXT,
+    message TEXT,
+    status TEXT DEFAULT 'pending',
+    payment_reference TEXT,
+    used_booking_id INTEGER,
+    created_at TEXT DEFAULT (datetime('now'))
+  )
+`);
+
+// Migrate bookings table: add voucher_code and voucher_discount_pence columns if missing
+{
+  const cols = db.prepare("PRAGMA table_info(bookings)").all();
+  if (!cols.find(c => c.name === 'voucher_code')) {
+    db.prepare('ALTER TABLE bookings ADD COLUMN voucher_code TEXT').run();
+    console.log('Migrated bookings: added voucher_code column.');
+  }
+  if (!cols.find(c => c.name === 'voucher_discount_pence')) {
+    db.prepare('ALTER TABLE bookings ADD COLUMN voucher_discount_pence INTEGER DEFAULT 0').run();
+    console.log('Migrated bookings: added voucher_discount_pence column.');
+  }
+}
+
 // Migrate bookings table: add payment_reference column if missing
 {
   const cols = db.prepare("PRAGMA table_info(bookings)").all();

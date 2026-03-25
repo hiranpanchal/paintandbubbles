@@ -2198,3 +2198,136 @@ h4 { font-family: var(--font-h4); }
   background: #fff;
   transform: scale(1.25);
 }
+
+/* =============================================
+   GIFT VOUCHERS PAGE
+   ============================================= */
+
+.voucher-hero {
+  background: linear-gradient(135deg, var(--rose-dark) 0%, var(--rose-deep) 50%, var(--rose) 100%);
+}
+
+.voucher-section {
+  padding: 60px 0 80px;
+  background: var(--bg);
+}
+
+.voucher-card {
+  max-width: 560px;
+  margin: 0 auto;
+  background: #fff;
+  border-radius: 20px;
+  box-shadow: 0 8px 40px rgba(160,80,110,0.13);
+  padding: 40px 40px;
+}
+
+@media (max-width: 600px) {
+  .voucher-card {
+    padding: 28px 20px;
+    border-radius: 16px;
+  }
+}
+
+.voucher-card-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text-dark);
+  margin: 0 0 16px;
+}
+
+.voucher-amount-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.voucher-amount-btn {
+  padding: 10px 20px;
+  border-radius: 50px;
+  border: 2px solid var(--border);
+  background: #fff;
+  color: var(--text-dark);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.18s, background 0.18s, color 0.18s;
+}
+
+.voucher-amount-btn:hover {
+  border-color: var(--rose);
+  background: var(--card-bg);
+}
+
+.voucher-amount-btn.active {
+  border-color: var(--rose);
+  background: var(--rose);
+  color: #fff;
+}
+
+.voucher-code-display {
+  font-family: monospace;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 4px;
+  background: linear-gradient(135deg, var(--rose-deep), var(--rose));
+  color: #fff;
+  border-radius: 14px;
+  padding: 20px 24px;
+  text-align: center;
+  margin: 20px 0;
+  word-break: break-all;
+}
+
+.voucher-success {
+  text-align: center;
+  padding: 16px 0;
+}
+
+.voucher-success-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+}
+
+.voucher-success-title {
+  font-size: 22px;
+  font-weight: 900;
+  color: var(--text-dark);
+  margin: 0 0 10px;
+}
+
+.voucher-success-sub {
+  color: var(--text-light);
+  font-size: 14px;
+  font-weight: 500;
+  margin: 0 0 8px;
+}
+
+.voucher-success-hint {
+  color: var(--text-light);
+  font-size: 13px;
+  margin: 0 0 8px;
+}
+
+/* Voucher redemption in booking modal */
+.voucher-apply-section {
+  margin-top: 14px;
+}
+
+.voucher-toggle {
+  background: none;
+  border: none;
+  color: var(--rose);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+  font-family: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.voucher-toggle:hover {
+  color: var(--rose-deep);
+}

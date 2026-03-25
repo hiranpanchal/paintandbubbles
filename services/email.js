@@ -244,4 +244,124 @@ async function sendEnquiryNotification(submission, notificationEmail) {
   console.log(`Enquiry notification sent to ${notificationEmail}`);
 }
 
-module.exports = { sendBookingConfirmation, sendEnquiryNotification };
+async function sendGiftVoucher(voucher) {
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    console.log('Email not configured — skipping gift voucher email for voucher', voucher.id);
+    return;
+  }
+
+  const transporter = createTransporter();
+  const siteUrl = process.env.SITE_URL || 'http://localhost:3000';
+  const amount = formatPrice(voucher.amount_pence);
+  const recipientLine = voucher.recipient_name ? `<p style="margin:0 0 16px;color:#5C4F57;font-size:14px;font-weight:500;">This voucher is for <strong>${voucher.recipient_name}</strong>.</p>` : '';
+  const messageLine = voucher.message ? `
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#F9F5F6;border-left:3px solid #C4748A;border-radius:0 8px 8px 0;margin-bottom:24px;">
+      <tr><td style="padding:16px 20px;">
+        <p style="margin:0 0 4px;color:#A85D72;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.8px;">Personal Message</p>
+        <p style="margin:0;color:#2C2028;font-size:14px;font-weight:500;line-height:1.75;white-space:pre-wrap;">${voucher.message}</p>
+      </td></tr>
+    </table>` : '';
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body style="margin:0;padding:0;background:#FDF8F9;font-family:'Nunito','Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#FDF8F9;padding:40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 8px 40px rgba(160,80,110,0.15);">
+
+          <!-- Header / Hero -->
+          <tr>
+            <td style="background:linear-gradient(135deg,#2C0F18 0%,#6B2D42 50%,#C4748A 100%);padding:44px 48px;text-align:center;">
+              <div style="margin-bottom:16px;">
+                <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,0.3);margin:0 3px;"></span>
+                <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:rgba(255,212,222,0.4);margin:0 3px;"></span>
+                <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:rgba(143,168,181,0.4);margin:0 3px;"></span>
+              </div>
+              <h1 style="margin:0 0 4px;color:#ffffff;font-size:32px;font-weight:700;font-family:'Dancing Script',cursive;letter-spacing:0.5px;">Paint &amp; Bubbles</h1>
+              <p style="margin:10px 0 0;color:rgba(255,255,255,0.85);font-size:14px;font-weight:600;letter-spacing:0.3px;">🎁 You've received a Gift Voucher!</p>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding:40px 48px;">
+              <p style="margin:0 0 6px;color:#9E8E96;font-size:14px;font-weight:600;">Hi ${voucher.purchaser_name},</p>
+              <p style="margin:0 0 28px;color:#2C2028;font-size:18px;font-weight:800;">Your gift voucher is ready to share! 🎨</p>
+
+              ${recipientLine}
+
+              <!-- Voucher Code Box -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
+                <tr>
+                  <td style="background:linear-gradient(135deg,#6B2D42,#C4748A);border-radius:16px;padding:28px 24px;text-align:center;">
+                    <p style="margin:0 0 8px;color:rgba(255,255,255,0.8);font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;">Gift Voucher Code</p>
+                    <p style="margin:0 0 12px;color:#ffffff;font-size:30px;font-weight:700;font-family:monospace;letter-spacing:4px;">${voucher.code}</p>
+                    <p style="margin:0;color:rgba(255,255,255,0.9);font-size:16px;font-weight:700;">Worth ${amount}</p>
+                  </td>
+                </tr>
+              </table>
+
+              ${messageLine}
+
+              <!-- Instructions -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="background:#F0F5F7;border-radius:12px;margin-bottom:28px;">
+                <tr>
+                  <td style="padding:20px 24px;">
+                    <p style="margin:0 0 8px;color:#2C2028;font-size:14px;font-weight:800;">How to use this voucher 🖌</p>
+                    <p style="margin:0;color:#5C4F57;font-size:13px;font-weight:500;line-height:1.7;">Present this code at checkout when booking any Paint &amp; Bubbles event. The voucher value will be deducted from your booking total.</p>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:0;color:#9E8E96;font-size:13px;font-weight:500;line-height:1.7;">Got a question? Simply reply to this email and we'll get back to you as soon as possible.</p>
+              <p style="margin:16px 0 0;color:#C4748A;font-size:16px;font-weight:700;">Happy creating! 🥂✨</p>
+              <div style="margin-top:24px;">
+                <a href="${siteUrl}/events" style="display:inline-block;background:linear-gradient(135deg,#6B2D42,#C4748A);color:#fff;text-decoration:none;padding:14px 32px;border-radius:50px;font-size:14px;font-weight:700;">Browse Events →</a>
+              </div>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background:#FFF6F8;padding:24px 48px;text-align:center;border-top:1px solid #FFE8EE;">
+              <p style="margin:0 0 6px;color:#2C2028;font-size:18px;font-weight:700;font-family:'Dancing Script',cursive;">Paint &amp; Bubbles</p>
+              <p style="margin:0;color:#9E8E96;font-size:12px;font-weight:500;">Questions? Reply to this email  •  <a href="${siteUrl}" style="color:#C4748A;text-decoration:none;font-weight:700;">${siteUrl}</a></p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
+
+  const subject = `🎁 Your Paint & Bubbles Gift Voucher — ${voucher.code}`;
+  const from = process.env.EMAIL_FROM || 'Paint & Bubbles <noreply@paintandbubbles.com>';
+
+  await transporter.sendMail({ from, to: voucher.purchaser_email, subject, html });
+  console.log(`Gift voucher email sent to ${voucher.purchaser_email}`);
+
+  // Also send to recipient if different from purchaser
+  if (voucher.recipient_email && voucher.recipient_email !== voucher.purchaser_email) {
+    const recipientHtml = html.replace(
+      `Hi ${voucher.purchaser_name},`,
+      `Hi ${voucher.recipient_name || 'there'},`
+    ).replace(
+      'Your gift voucher is ready to share! 🎨',
+      `${voucher.purchaser_name} has sent you a gift voucher! 🎨`
+    );
+    await transporter.sendMail({ from, to: voucher.recipient_email, subject, html: recipientHtml });
+    console.log(`Gift voucher email also sent to recipient ${voucher.recipient_email}`);
+  }
+}
+
+module.exports = { sendBookingConfirmation, sendEnquiryNotification, sendGiftVoucher };

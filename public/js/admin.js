@@ -80,7 +80,7 @@ function switchTab(tab) {
   document.getElementById(`content-${tab}`).classList.remove('hidden');
   document.getElementById(`tab-${tab}`).classList.add('active');
 
-  const titles = { overview: 'Overview', events: 'Events', bookings: 'Bookings', customers: 'Customers', payments: 'Payments', design: 'Design', faq: 'FAQ', reviews: 'Reviews', users: 'Users', content: 'Content', enquiries: 'Enquiries' };
+  const titles = { overview: 'Overview', events: 'Events', bookings: 'Bookings', customers: 'Customers', payments: 'Payments', design: 'Design', faq: 'FAQ', reviews: 'Reviews', users: 'Users', content: 'Content', enquiries: 'Enquiries', vouchers: 'Gift Vouchers' };
   document.getElementById('page-title').textContent = titles[tab] || tab;
 
   // Close sidebar on mobile
@@ -100,6 +100,7 @@ function switchTab(tab) {
   else if (tab === 'users')     loadAdminUsers();
   else if (tab === 'content')   loadContentTab();
   else if (tab === 'enquiries') loadEnquiries();
+  else if (tab === 'vouchers')  loadAdminVouchers();
 }
 
 function toggleSidebar() {
@@ -2883,4 +2884,73 @@ async function deleteEnquiry(id) {
     await apiFetch(`/api/contact/${id}`, { method: 'DELETE' });
     document.getElementById(`enq-row-${id}`)?.remove();
   } catch { alert('Failed to delete.'); }
+}
+
+// ---- GIFT VOUCHERS ----
+async function loadAdminVouchers() {
+  const el = document.getElementById('vouchers-table');
+  if (!el) return;
+  el.innerHTML = '<div class="loading-state"><div class="spinner"></div></div>';
+  try {
+    const vouchers = await apiFetch('/api/vouchers');
+    if (!vouchers || vouchers.length === 0) {
+      el.innerHTML = '<div class="empty-state"><p>No gift vouchers yet</p></div>';
+      return;
+    }
+    el.innerHTML = `
+      <table class="data-table">
+        <thead><tr>
+          <th>Code</th>
+          <th>Amount</th>
+          <th>Purchaser</th>
+          <th>Recipient</th>
+          <th>Status</th>
+          <th>Date</th>
+          <th>Actions</th>
+        </tr></thead>
+        <tbody>${vouchers.map(v => `
+          <tr id="voucher-row-${v.id}">
+            <td><code style="font-family:monospace;font-weight:700;color:var(--rose)">${escAdminHtml(v.code)}</code></td>
+            <td><strong>${formatPrice(v.amount_pence)}</strong></td>
+            <td>
+              <div style="font-weight:600">${escAdminHtml(v.purchaser_name)}</div>
+              <div style="color:var(--text-light);font-size:11px">${escAdminHtml(v.purchaser_email)}</div>
+            </td>
+            <td>
+              ${v.recipient_name ? `<div style="font-weight:600">${escAdminHtml(v.recipient_name)}</div>` : ''}
+              ${v.recipient_email ? `<div style="color:var(--text-light);font-size:11px">${escAdminHtml(v.recipient_email)}</div>` : '<span style="color:var(--text-light);">—</span>'}
+            </td>
+            <td>${voucherStatusBadge(v.status)}</td>
+            <td class="hide-mobile">${formatDate(v.created_at ? v.created_at.split('T')[0] : '')}</td>
+            <td>
+              ${v.status === 'active' ? `<button class="btn btn-ghost btn-sm" onclick="cancelVoucher(${v.id})">Cancel</button>` : ''}
+            </td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`;
+  } catch (err) {
+    el.innerHTML = '<div class="empty-state"><p>Failed to load vouchers</p></div>';
+  }
+}
+
+function voucherStatusBadge(status) {
+  const map = {
+    active:    { bg: '#D1FAE5', color: '#065F46', label: 'Active' },
+    used:      { bg: '#F3F4F6', color: '#6B7280', label: 'Used' },
+    pending:   { bg: '#FEF3C7', color: '#92400E', label: 'Pending' },
+    cancelled: { bg: '#FEE2E2', color: '#991B1B', label: 'Cancelled' },
+  };
+  const s = map[status] || { bg: '#F3F4F6', color: '#6B7280', label: status };
+  return `<span style="background:${s.bg};color:${s.color};padding:3px 10px;border-radius:50px;font-size:11px;font-weight:700;">${s.label}</span>`;
+}
+
+async function cancelVoucher(id) {
+  if (!confirm('Cancel this gift voucher? The code will no longer be usable.')) return;
+  try {
+    await apiFetch(`/api/vouchers/${id}`, { method: 'DELETE' });
+    toast('Voucher cancelled.');
+    loadAdminVouchers();
+  } catch (err) {
+    toast(err.message || 'Failed to cancel voucher.', 'error');
+  }
 }

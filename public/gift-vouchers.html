@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gift Vouchers — Paint &amp; Bubbles</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://js.stripe.com/v3/"></script>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="site-header">
+  <div class="container header-inner">
+    <a href="/" class="logo">
+      <img src="/logo.png" alt="Paint &amp; Bubbles" class="logo-img"
+           onerror="this.style.display='none';document.getElementById('logo-fallback').style.display='block'">
+      <span class="logo-text" id="logo-fallback" style="display:none">Paint <span class="logo-and">&amp;</span> Bubbles</span>
+    </a>
+    <nav class="main-nav" id="main-nav">
+      <button class="nav-btn" onclick="window.location.href='/'">Home</button>
+      <button class="nav-btn" onclick="window.location.href='/about'">About</button>
+      <button class="nav-btn" onclick="window.location.href='/events'">Events</button>
+      <button class="nav-btn" onclick="window.location.href='/reviews'">Reviews</button>
+      <button class="nav-btn" onclick="window.location.href='/faq'">FAQ</button>
+      <button class="nav-btn" onclick="window.location.href='/gallery'">Gallery</button>
+      <button class="nav-btn active" onclick="window.location.href='/gift-vouchers'">Gift Vouchers</button>
+      <button class="nav-btn" onclick="window.location.href='/private-events'">Private Events</button>
+      <a href="/contact" class="btn btn-ghost btn-sm">Contact Us</a>
+    </nav>
+    <button class="nav-burger" onclick="toggleMobileNav()" aria-label="Open menu">
+      <svg class="burger-icon-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      <svg class="burger-icon-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg>
+    </button>
+  </div>
+</header>
+<script>
+function toggleMobileNav(){document.querySelector('.site-header').classList.toggle('nav-open');}
+document.addEventListener('click',function(e){if(!e.target.closest('.site-header'))document.querySelector('.site-header').classList.remove('nav-open');});
+</script>
+
+<!-- HERO -->
+<section class="faq-hero voucher-hero">
+  <div class="container">
+    <h1 class="faq-hero-title">Give the Gift of Creativity</h1>
+    <p class="faq-hero-sub">Treat someone special to a Paint &amp; Bubbles experience — all materials, guidance and fun included.</p>
+  </div>
+</section>
+
+<!-- VOUCHER FORM -->
+<section class="voucher-section">
+  <div class="container">
+    <div class="voucher-card" id="voucher-card">
+
+      <!-- Step 1: Choose amount & details -->
+      <div id="voucher-step-1">
+        <div class="booking-steps" style="margin-bottom:24px;">
+          <div class="booking-step active" id="vstep-1"></div>
+          <div class="booking-step" id="vstep-2"></div>
+          <div class="booking-step" id="vstep-3"></div>
+        </div>
+
+        <h2 class="voucher-card-title">Choose Your Amount</h2>
+
+        <div class="voucher-amount-grid" id="voucher-amount-grid">
+          <button class="voucher-amount-btn" onclick="selectAmount(2500)">£25</button>
+          <button class="voucher-amount-btn" onclick="selectAmount(3500)">£35</button>
+          <button class="voucher-amount-btn" onclick="selectAmount(5000)">£50</button>
+          <button class="voucher-amount-btn" onclick="selectAmount(7500)">£75</button>
+          <button class="voucher-amount-btn" onclick="selectAmount(10000)">£100</button>
+        </div>
+
+        <div class="form-group" style="margin-top:16px;">
+          <label>Or enter a custom amount (£5–£500)</label>
+          <div style="position:relative;">
+            <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--text-light);font-weight:600;">£</span>
+            <input type="number" id="voucher-custom-amount" min="5" max="500" step="1"
+                   placeholder="e.g. 60"
+                   oninput="onCustomAmount(this.value)"
+                   style="padding-left:32px;">
+          </div>
+        </div>
+
+        <hr style="margin:24px 0;border:none;border-top:1px solid var(--border);">
+
+        <h2 class="voucher-card-title">Your Details</h2>
+        <div class="form-group">
+          <label>Your Name *</label>
+          <input type="text" id="v-purchaser-name" placeholder="Jane Smith">
+        </div>
+        <div class="form-group">
+          <label>Your Email *</label>
+          <input type="email" id="v-purchaser-email" placeholder="jane@example.com">
+        </div>
+
+        <hr style="margin:24px 0;border:none;border-top:1px solid var(--border);">
+
+        <h2 class="voucher-card-title">Recipient (Optional)</h2>
+        <div class="form-group">
+          <label>Recipient's Name</label>
+          <input type="text" id="v-recipient-name" placeholder="e.g. Sarah">
+        </div>
+        <div class="form-group">
+          <label>Recipient's Email <span style="color:var(--text-light);font-weight:400">(send them a copy)</span></label>
+          <input type="email" id="v-recipient-email" placeholder="sarah@example.com">
+        </div>
+        <div class="form-group">
+          <label>Personal Message</label>
+          <textarea id="v-message" rows="3" placeholder="Happy birthday! Enjoy your creative experience…"></textarea>
+        </div>
+
+        <div id="voucher-step1-error" style="color:var(--coral);font-size:13px;margin-bottom:12px;display:none;"></div>
+
+        <button class="btn btn-primary btn-full" id="voucher-proceed-btn" onclick="proceedToVoucherPayment()">
+          Continue to Payment →
+        </button>
+      </div>
+
+      <!-- Step 2: Payment -->
+      <div id="voucher-step-2" style="display:none;">
+        <div class="booking-steps" style="margin-bottom:24px;">
+          <div class="booking-step done" id="vstep-1b"></div>
+          <div class="booking-step active" id="vstep-2b"></div>
+          <div class="booking-step" id="vstep-3b"></div>
+        </div>
+
+        <h2 class="voucher-card-title">Payment</h2>
+        <div id="voucher-summary" class="booking-summary" style="margin-bottom:20px;"></div>
+
+        <div class="form-section">
+          <div id="voucher-payment-element"></div>
+          <div id="voucher-payment-message" class="hidden" style="color:var(--coral);font-size:13px;margin-top:8px;"></div>
+        </div>
+
+        <button class="btn btn-primary btn-full" id="voucher-pay-btn" onclick="submitVoucherPayment()" style="margin-top:16px;">
+          Pay Now
+        </button>
+        <button class="btn btn-ghost btn-full" style="margin-top:8px;" onclick="backToVoucherStep1()">← Back</button>
+      </div>
+
+      <!-- Step 3: Success -->
+      <div id="voucher-step-3" style="display:none;">
+        <div class="booking-steps" style="margin-bottom:24px;">
+          <div class="booking-step done"></div>
+          <div class="booking-step done"></div>
+          <div class="booking-step done"></div>
+        </div>
+
+        <div class="voucher-success">
+          <div class="voucher-success-icon">🎉</div>
+          <h2 class="voucher-success-title">Your Gift Voucher is Ready!</h2>
+          <p class="voucher-success-sub">Check your email for a copy of the voucher. You can also copy the code below.</p>
+          <div class="voucher-code-display" id="voucher-code-display"></div>
+          <p class="voucher-success-hint">Present this code at checkout when booking any Paint &amp; Bubbles event.</p>
+          <a href="/events" class="btn btn-primary" style="margin-top:16px;">Browse Events →</a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="site-footer">
+  <div class="container footer-inner">
+    <div class="footer-brand">Paint &amp; Bubbles</div>
+    <p class="footer-tagline">Creative events for everyone</p>
+    <div class="footer-cards">
+      <span class="card-badge visa">
+        <svg viewBox="0 0 48 30" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="48" height="30" rx="4" fill="#1A1F71"/><text x="24" y="20" text-anchor="middle" font-family="Arial,sans-serif" font-size="14" font-weight="bold" font-style="italic" fill="white" letter-spacing="1">VISA</text></svg>
+      </span>
+      <span class="card-badge mastercard">
+        <svg viewBox="0 0 48 30" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="48" height="30" rx="4" fill="#fff"/><circle cx="19" cy="13" r="7" fill="#EB001B"/><circle cx="29" cy="13" r="7" fill="#F79E1B"/><path d="M24 7a7 7 0 010 12A7 7 0 0124 7z" fill="#FF5F00"/><text x="24" y="27" text-anchor="middle" font-family="Arial,sans-serif" font-size="6.5" font-weight="bold" fill="#333" letter-spacing="0.3">CREDIT</text></svg>
+      </span>
+      <span class="card-badge mastercard-debit">
+        <svg viewBox="0 0 48 30" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="48" height="30" rx="4" fill="#fff"/><circle cx="19" cy="13" r="7" fill="#EB001B"/><circle cx="29" cy="13" r="7" fill="#F79E1B"/><path d="M24 7a7 7 0 010 12A7 7 0 0124 7z" fill="#FF5F00"/><text x="24" y="27" text-anchor="middle" font-family="Arial,sans-serif" font-size="6.5" font-weight="bold" fill="#333" letter-spacing="0.3">DEBIT</text></svg>
+      </span>
+      <span class="card-badge amex">
+        <svg viewBox="0 0 48 30" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="48" height="30" rx="4" fill="#2E77BC"/><text x="24" y="19" text-anchor="middle" font-family="Arial,sans-serif" font-size="11" font-weight="bold" fill="white" letter-spacing="0.5">AMEX</text></svg>
+      </span>
+    </div>
+  </div>
+</footer>
+
+<script src="/js/gift-vouchers.js"></script>
+</body>
+</html>

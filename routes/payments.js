@@ -64,7 +64,7 @@ router.post('/create-intent', async (req, res) => {
   const stripe = getStripe();
   if (!stripe) return res.status(500).json({ error: 'Stripe is not configured' });
 
-  const { booking_id } = req.body;
+  const { booking_id, voucher_code } = req.body;
   if (!booking_id) return res.status(400).json({ error: 'booking_id required' });
 
   const booking = db.prepare(`
@@ -78,14 +78,33 @@ router.post('/create-intent', async (req, res) => {
   if (!booking) return res.status(404).json({ error: 'Booking not found' });
   if (booking.status === 'confirmed') return res.status(400).json({ error: 'Booking already confirmed' });
 
+  let amount = booking.total_pence;
+  let voucherDiscount = 0;
+
+  if (voucher_code) {
+    const voucher = db.prepare('SELECT * FROM gift_vouchers WHERE code = ?').get(voucher_code.toUpperCase().trim());
+    if (voucher && voucher.status === 'active') {
+      voucherDiscount = Math.min(voucher.amount_pence, amount);
+      amount = Math.max(0, amount - voucherDiscount);
+      // Store voucher info on booking
+      db.prepare('UPDATE bookings SET voucher_code=?, voucher_discount_pence=? WHERE id=?')
+        .run(voucher_code.toUpperCase().trim(), voucherDiscount, booking_id);
+    }
+  }
+
+  // If fully covered by voucher, no payment needed — client should handle this case
+  if (amount === 0) {
+    return res.json({ clientSecret: null, paymentIntentId: null, amount: 0, voucherDiscount });
+  }
+
   try {
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: booking.total_pence,
+      amount,
       currency: 'gbp',
       metadata: { booking_id: String(booking_id), event_title: booking.event_title, customer_name: booking.customer_name },
       receipt_email: booking.customer_email
     });
-    res.json({ clientSecret: paymentIntent.client_secret, paymentIntentId: paymentIntent.id });
+    res.json({ clientSecret: paymentIntent.client_secret, paymentIntentId: paymentIntent.id, amount, voucherDiscount });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -189,6 +208,16 @@ router.post('/webhook', async (req, res) => {
           db.prepare(`INSERT INTO payments (booking_id, payment_reference, amount_pence, status, provider) VALUES (?, ?, ?, 'succeeded', 'stripe')`)
             .run(bookingId, intent.id, booking.total_pence);
         }
+      }
+    }
+    // Handle gift voucher payment
+    const voucherId = intent.metadata.voucher_id;
+    if (voucherId) {
+      const voucher = db.prepare('SELECT * FROM gift_vouchers WHERE id = ?').get(voucherId);
+      if (voucher && voucher.status === 'pending') {
+        db.prepare("UPDATE gift_vouchers SET status='active', payment_reference=? WHERE id=?").run(intent.id, voucherId);
+        const { sendGiftVoucher } = require('../services/email');
+        sendGiftVoucher(voucher).catch(console.error);
       }
     }
   }

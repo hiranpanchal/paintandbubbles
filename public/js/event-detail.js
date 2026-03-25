@@ -429,8 +429,10 @@ function showError(msg) {
 // ---- BOOKING FLOW ----
 function openBooking() {
   if (!currentEvent) return;
-  currentBookingState.event    = currentEvent;
-  currentBookingState.quantity = 1;
+  currentBookingState.event          = currentEvent;
+  currentBookingState.quantity       = 1;
+  currentBookingState.voucherCode    = null;
+  currentBookingState.voucherDiscount = 0;
   showBookingStep1();
   openModal('booking-modal');
 }
@@ -479,6 +481,16 @@ function showBookingStep1() {
           <label>Special requirements (optional)</label>
           <textarea id="b-notes" rows="2" placeholder="Dietary requirements, accessibility needs, etc.">${escHtml(currentBookingState.notes || '')}</textarea>
         </div>
+        <div class="voucher-apply-section">
+          <button type="button" class="voucher-toggle" onclick="toggleVoucherInput()">🎁 Have a gift voucher?</button>
+          <div id="voucher-input-wrap" style="display:none">
+            <div style="display:flex;gap:8px;margin-top:8px">
+              <input type="text" id="b-voucher-code" placeholder="e.g. PB-XXXX-XXXX" style="flex:1;text-transform:uppercase" value="${escHtml(currentBookingState.voucherCode || '')}">
+              <button type="button" class="btn btn-outline" onclick="applyVoucher()">Apply</button>
+            </div>
+            <div id="voucher-status" style="font-size:13px;margin-top:6px"></div>
+          </div>
+        </div>
       </div>
       <div class="booking-summary" id="booking-summary">${renderBookingSummary(event, 1)}</div>
       <button class="btn btn-primary btn-full" onclick="proceedToPayment()">
@@ -508,9 +520,18 @@ function renderBookingSummary(event, qty) {
   if (event.price_pence === 0) {
     return `<div class="summary-row"><span>${qty}x ticket</span><span style="color:var(--green);font-weight:700;">Free</span></div>`;
   }
-  return `
-    <div class="summary-row"><span>${qty}x ticket${qty > 1 ? 's' : ''}</span><span>£${(event.price_pence / 100).toFixed(2)} each</span></div>
-    <div class="summary-row total"><span>Total</span><span>£${(subtotal / 100).toFixed(2)}</span></div>`;
+  const discount = currentBookingState.voucherDiscount || 0;
+  const total = Math.max(0, subtotal - discount);
+  let html = `<div class="summary-row"><span>${qty}x ticket${qty > 1 ? 's' : ''}</span><span>£${(event.price_pence / 100).toFixed(2)} each</span></div>`;
+  if (discount > 0) {
+    html += `<div class="summary-row" style="color:var(--green)"><span>🎁 Gift Voucher (${escHtml(currentBookingState.voucherCode)})</span><span>−£${(discount / 100).toFixed(2)}</span></div>`;
+  }
+  if (total === 0) {
+    html += `<div class="summary-row total"><span>Total</span><span style="color:var(--green);">Free (voucher applied)</span></div>`;
+  } else {
+    html += `<div class="summary-row total"><span>Total</span><span>£${(total / 100).toFixed(2)}</span></div>`;
+  }
+  return html;
 }
 
 async function proceedToPayment() {
@@ -525,6 +546,16 @@ async function proceedToPayment() {
   Object.assign(currentBookingState, { name, email, phone, notes });
 
   if (currentBookingState.event.price_pence === 0) { await confirmFreeBooking(); return; }
+
+  const subtotal = currentBookingState.event.price_pence * currentBookingState.quantity;
+  const discount = currentBookingState.voucherDiscount || 0;
+  const total = Math.max(0, subtotal - discount);
+
+  if (total === 0 && currentBookingState.voucherCode) {
+    // Fully covered by voucher
+    await confirmVoucherCoveredBooking();
+    return;
+  }
 
   setLoadingBtn(true, 'Creating booking…');
   try {
@@ -554,6 +585,72 @@ async function confirmFreeBooking() {
     alert(err.message || 'Booking failed. Please try again.');
   }
   setLoadingBtn(false);
+}
+
+async function confirmVoucherCoveredBooking() {
+  setLoadingBtn(true, 'Confirming…');
+  try {
+    const { event, name, email, phone, notes, quantity, voucherCode } = currentBookingState;
+    const data = await apiFetch('/api/bookings', { method: 'POST', body: JSON.stringify({ event_id: event.id, name, email, phone, notes, quantity }) });
+    await apiFetch(`/api/bookings/${data.booking.id}/confirm`, { method: 'POST', body: JSON.stringify({ payment_reference: 'voucher:' + voucherCode }) });
+    currentBookingState.booking = data.booking;
+    // Redeem voucher (non-blocking)
+    fetch('/api/vouchers/redeem', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: voucherCode, booking_id: data.booking.id })
+    }).catch(console.error);
+    closeModal('booking-modal');
+    showConfirmation(data.booking, data.customer, event);
+  } catch (err) {
+    alert(err.message || 'Booking failed. Please try again.');
+  }
+  setLoadingBtn(false);
+}
+
+// ---- VOUCHER INPUT ----
+function toggleVoucherInput() {
+  const wrap = document.getElementById('voucher-input-wrap');
+  if (wrap) wrap.style.display = wrap.style.display === 'none' ? '' : 'none';
+}
+
+async function applyVoucher() {
+  const input = document.getElementById('b-voucher-code');
+  const statusEl = document.getElementById('voucher-status');
+  if (!input || !statusEl) return;
+
+  const code = input.value.trim().toUpperCase();
+  if (!code) {
+    statusEl.textContent = 'Please enter a voucher code.';
+    statusEl.style.color = 'var(--coral)';
+    return;
+  }
+
+  statusEl.textContent = 'Checking…';
+  statusEl.style.color = 'var(--text-light)';
+
+  try {
+    const res = await fetch(`/api/vouchers/validate?code=${encodeURIComponent(code)}`);
+    const data = await res.json();
+
+    if (data.valid) {
+      currentBookingState.voucherCode = code;
+      currentBookingState.voucherDiscount = data.amount_pence;
+      statusEl.textContent = '✓ ' + data.message;
+      statusEl.style.color = 'var(--green)';
+      // Refresh summary
+      const sumEl = document.getElementById('booking-summary');
+      if (sumEl) sumEl.innerHTML = renderBookingSummary(currentBookingState.event, currentBookingState.quantity);
+    } else {
+      currentBookingState.voucherCode = null;
+      currentBookingState.voucherDiscount = 0;
+      statusEl.textContent = '✗ ' + (data.message || 'Invalid voucher code.');
+      statusEl.style.color = 'var(--coral)';
+    }
+  } catch {
+    statusEl.textContent = 'Could not validate voucher. Please try again.';
+    statusEl.style.color = 'var(--coral)';
+  }
 }
 
 function showPaymentStep() {
@@ -630,9 +727,11 @@ async function mountStripeElements() {
   // Create Stripe payment intent if not already done
   if (!currentBookingState.clientSecret) {
     try {
+      const intentPayload = { booking_id: currentBookingState.booking.id };
+      if (currentBookingState.voucherCode) intentPayload.voucher_code = currentBookingState.voucherCode;
       const intentData = await apiFetch('/api/payments/create-intent', {
         method: 'POST',
-        body: JSON.stringify({ booking_id: currentBookingState.booking.id })
+        body: JSON.stringify(intentPayload)
       });
       currentBookingState.clientSecret    = intentData.clientSecret;
       currentBookingState.paymentIntentId = intentData.paymentIntentId;
@@ -679,6 +778,14 @@ async function mountSumUpCheckout() {
               method: 'POST',
               body: JSON.stringify({ checkout_id: currentBookingState.sumupCheckoutId, booking_id: currentBookingState.booking.id })
             });
+            // Redeem voucher if one was applied (non-blocking)
+            if (currentBookingState.voucherCode) {
+              fetch('/api/vouchers/redeem', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code: currentBookingState.voucherCode, booking_id: currentBookingState.booking.id })
+              }).catch(console.error);
+            }
             closeModal('booking-modal');
             showConfirmation(currentBookingState.booking, currentBookingState.customer, currentBookingState.event);
           } catch {
@@ -723,6 +830,14 @@ async function submitPayment() {
       method: 'POST',
       body: JSON.stringify({ payment_reference: paymentIntent.id })
     });
+    // Redeem voucher if one was applied (non-blocking)
+    if (currentBookingState.voucherCode) {
+      fetch('/api/vouchers/redeem', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: currentBookingState.voucherCode, booking_id: currentBookingState.booking.id })
+      }).catch(console.error);
+    }
     closeModal('booking-modal');
     showConfirmation(currentBookingState.booking, currentBookingState.customer, currentBookingState.event);
   } catch {
