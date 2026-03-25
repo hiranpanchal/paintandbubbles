@@ -259,6 +259,12 @@ function renderEventDetail(event) {
         <!-- LEFT: Details -->
         <div class="ed-main">
 
+          ${event.image_url ? `
+          <!-- Event Image -->
+          <div class="ed-event-image">
+            <img src="${escHtml(event.image_url)}" alt="${escHtml(event.title)}">
+          </div>` : ''}
+
           <!-- Description -->
           <div class="ed-section">
             <h2 class="ed-section-title">About this event</h2>

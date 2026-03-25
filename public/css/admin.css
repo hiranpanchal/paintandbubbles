@@ -1386,6 +1386,23 @@ body {
 }
 .gallery-drop-zone p { margin: 8px 0 0; font-size: 0.9rem; }
 
+/* Event form image drop zone */
+.ef-image-zone {
+  border: 2px dashed #d0c8cf;
+  border-radius: 12px;
+  padding: 24px;
+  text-align: center;
+  color: #9c8a94;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  background: #fdf8f9;
+}
+.ef-image-zone.drag-over {
+  border-color: var(--rose, #C4748A);
+  background: rgba(196,116,138,0.05);
+}
+.ef-image-zone p { margin: 8px 0 0; font-size: 0.9rem; }
+
 /* Payment provider toggle switch */
 .pay-toggle { position: relative; display: inline-flex; align-items: center; cursor: pointer; }
 .pay-toggle input { position: absolute; opacity: 0; width: 0; height: 0; }

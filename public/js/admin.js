@@ -312,8 +312,21 @@ function renderEventForm(event = null) {
       </div>
     </div>
     <div class="form-group">
-      <label>Image URL (optional)</label>
-      <input type="url" id="ef-image" value="${escHtml(event?.image_url || '')}" placeholder="https://...">
+      <label>Event Image (optional)</label>
+      <input type="hidden" id="ef-image" value="${escHtml(event?.image_url || '')}">
+      <div class="ef-image-zone" id="ef-image-zone" onclick="document.getElementById('ef-image-file').click()"
+           ondragover="event.preventDefault();this.classList.add('drag-over')"
+           ondragleave="this.classList.remove('drag-over')"
+           ondrop="event.preventDefault();this.classList.remove('drag-over');handleEventImageDrop(event.dataTransfer.files[0])">
+        ${event?.image_url
+          ? `<img src="${escHtml(event.image_url)}" id="ef-image-preview" style="max-height:140px;max-width:100%;border-radius:8px;display:block;margin:0 auto">
+             <p style="margin-top:8px;font-size:12px;color:var(--text-light)">Click or drag to replace</p>`
+          : `<svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></svg>
+             <p>Drop image here or click to upload</p>`
+        }
+      </div>
+      <input type="file" id="ef-image-file" accept="image/*" style="display:none" onchange="handleEventImageFile(this.files[0])">
+      ${event?.image_url ? `<button type="button" class="btn btn-ghost btn-sm" style="margin-top:6px;font-size:12px" onclick="clearEventImage()">✕ Remove image</button>` : ''}
     </div>
     ${isEdit ? `
     <div class="form-group">
@@ -363,6 +376,41 @@ async function saveEvent(id) {
   } catch (err) {
     toast(err.message || 'Failed to save event', 'error');
   }
+}
+
+// ---- EVENT IMAGE UPLOAD ----
+async function handleEventImageFile(file) {
+  if (!file) return;
+  const zone = document.getElementById('ef-image-zone');
+  if (zone) { zone.style.opacity = '0.5'; zone.style.pointerEvents = 'none'; }
+  try {
+    const fd = new FormData();
+    fd.append('image', file);
+    const res = await fetch('/api/design/upload', { method: 'POST', headers: { Authorization: `Bearer ${authToken}` }, body: fd });
+    const data = await res.json();
+    if (!data.url) throw new Error('Upload failed');
+    document.getElementById('ef-image').value = data.url;
+    if (zone) {
+      zone.innerHTML = `<img src="${escAdminHtml(data.url)}" id="ef-image-preview" style="max-height:140px;max-width:100%;border-radius:8px;display:block;margin:0 auto"><p style="margin-top:8px;font-size:12px;color:var(--text-light)">Click or drag to replace</p>`;
+      zone.style.opacity = '';
+      zone.style.pointerEvents = '';
+    }
+  } catch (err) {
+    toast('Image upload failed', 'error');
+    if (zone) { zone.style.opacity = ''; zone.style.pointerEvents = ''; }
+  }
+}
+
+function handleEventImageDrop(file) {
+  if (file && file.type.startsWith('image/')) handleEventImageFile(file);
+}
+
+function clearEventImage() {
+  document.getElementById('ef-image').value = '';
+  const zone = document.getElementById('ef-image-zone');
+  if (zone) zone.innerHTML = `<svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></svg><p>Drop image here or click to upload</p>`;
+  const removeBtn = document.querySelector('[onclick="clearEventImage()"]');
+  if (removeBtn) removeBtn.remove();
 }
 
 function confirmDelete(id) {

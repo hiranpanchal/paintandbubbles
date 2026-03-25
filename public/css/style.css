@@ -1442,6 +1442,22 @@ h4 { font-family: var(--font-h4); }
   flex-shrink: 0;
 }
 
+/* Event image */
+.ed-event-image {
+  margin-bottom: 36px;
+  border-radius: 16px;
+  overflow: hidden;
+  line-height: 0;
+}
+.ed-event-image img {
+  width: 100%;
+  height: auto;
+  max-height: 420px;
+  object-fit: cover;
+  display: block;
+  border-radius: 16px;
+}
+
 /* Two-column layout */
 .ed-layout {
   display: grid;
