@@ -208,17 +208,41 @@ function renderAboutPage(s) {
     }
   }
 
-  // Image
-  const imgWrap = document.getElementById('aboutpage-image-wrap');
-  const img = document.getElementById('aboutpage-img');
-  if (imgWrap && img) {
-    if (s.aboutpage_image_url) {
-      img.src = s.aboutpage_image_url;
-      img.style.display = '';
-    } else {
-      imgWrap.classList.add('about-image-placeholder');
-    }
+  // About banner carousel
+  initAboutCarousel(s);
+}
+
+function initAboutCarousel(s) {
+  const carousel = document.getElementById('about-carousel');
+  const dotsEl   = document.getElementById('about-carousel-dots');
+  if (!carousel) return;
+
+  let images = [];
+  try { images = JSON.parse(s.about_banner_images || '[]'); } catch {}
+  if (!images.length && s.about_image_url) images = [s.about_image_url];
+  if (!images.length) return;
+
+  carousel.innerHTML = images.map((url, i) => `
+    <div class="about-carousel-slide${i === 0 ? ' active' : ''}">
+      <img src="${escHtml(url)}" alt="Paint and Bubbles">
+    </div>`).join('');
+
+  if (images.length > 1 && dotsEl) {
+    dotsEl.innerHTML = images.map((_, i) => `
+      <button class="about-carousel-dot${i === 0 ? ' active' : ''}" onclick="goToAboutSlide(${i})"></button>`).join('');
+
+    let current = 0;
+    clearInterval(window._aboutCarouselTimer);
+    window._aboutCarouselTimer = setInterval(() => {
+      current = (current + 1) % images.length;
+      goToAboutSlide(current);
+    }, 4000);
   }
+}
+
+function goToAboutSlide(index) {
+  document.querySelectorAll('.about-carousel-slide').forEach((el, i) => el.classList.toggle('active', i === index));
+  document.querySelectorAll('.about-carousel-dot').forEach((el, i) => el.classList.toggle('active', i === index));
 }
 
 function escHtml(str) {

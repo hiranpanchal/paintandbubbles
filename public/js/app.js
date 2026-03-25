@@ -86,11 +86,8 @@ async function applyDesignSettings() {
       }
     }
 
-    // About image
-    if (s.about_image_url) {
-      const img = document.querySelector('.about-image-inner img');
-      if (img) { img.src = s.about_image_url; img.style.display = ''; }
-    }
+    // About banner carousel
+    initAboutCarousel(s);
 
     // Footer tagline
     setText('.footer-tagline', s.footer_tagline);
@@ -651,4 +648,38 @@ function setLoadingBtn(loading, text) {
   if (!btn) return;
   btn.disabled = loading;
   if (text && loading) btn.textContent = text;
+}
+
+// ---- ABOUT CAROUSEL ----
+function initAboutCarousel(s) {
+  const carousel = document.getElementById('about-carousel');
+  const dotsEl   = document.getElementById('about-carousel-dots');
+  if (!carousel) return;
+
+  let images = [];
+  try { images = JSON.parse(s.about_banner_images || '[]'); } catch {}
+  if (!images.length && s.about_image_url) images = [s.about_image_url];
+  if (!images.length) return;
+
+  carousel.innerHTML = images.map((url, i) => `
+    <div class="about-carousel-slide${i === 0 ? ' active' : ''}">
+      <img src="${escHtml(url)}" alt="Paint and Bubbles">
+    </div>`).join('');
+
+  if (images.length > 1 && dotsEl) {
+    dotsEl.innerHTML = images.map((_, i) => `
+      <button class="about-carousel-dot${i === 0 ? ' active' : ''}" onclick="goToAboutSlide(${i})"></button>`).join('');
+
+    let current = 0;
+    clearInterval(window._aboutCarouselTimer);
+    window._aboutCarouselTimer = setInterval(() => {
+      current = (current + 1) % images.length;
+      goToAboutSlide(current);
+    }, 4000);
+  }
+}
+
+function goToAboutSlide(index) {
+  document.querySelectorAll('.about-carousel-slide').forEach((el, i) => el.classList.toggle('active', i === index));
+  document.querySelectorAll('.about-carousel-dot').forEach((el, i) => el.classList.toggle('active', i === index));
 }

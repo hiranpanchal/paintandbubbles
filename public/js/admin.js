@@ -1103,6 +1103,18 @@ function renderDesignPanel() {
       </div>
       <div class="design-card" style="margin-top:24px">
         <div class="design-card-header">
+          <h3 class="design-card-title">About Banner Images</h3>
+          <p class="design-card-desc">Images that slide automatically on the About section. Upload multiple for a moving banner.</p>
+        </div>
+        <div id="about-banner-admin-grid" class="gallery-admin-grid"></div>
+        <div id="about-banner-drop-zone" class="gallery-drop-zone" onclick="triggerAboutBannerUpload()">
+          <svg width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></svg>
+          <p>Drop images here or click to upload</p>
+        </div>
+        <input type="file" id="about-banner-file-input" accept="image/*" multiple style="display:none" onchange="handleAboutBannerFileInput(this)">
+      </div>
+      <div class="design-card" style="margin-top:24px">
+        <div class="design-card-header">
           <h3 class="design-card-title">Gallery Images</h3>
           <p class="design-card-desc">Images displayed on the public gallery page. Drag &amp; drop or click to upload. Supports multiple images.</p>
         </div>
@@ -1217,6 +1229,8 @@ function renderDesignPanel() {
     </div>`;
 
   initDropZones();
+  renderAboutBannerGrid();
+  initAboutBannerDropZone();
   renderGalleryGrid();
   initGalleryDropZone();
 }
@@ -1600,6 +1614,99 @@ function initDropZones() {
 
 function triggerFileInput(key) {
   document.getElementById(`fi-${key}`).click();
+}
+
+// ---- ABOUT BANNER IMAGES ----
+async function renderAboutBannerGrid() {
+  const grid = document.getElementById('about-banner-admin-grid');
+  if (!grid) return;
+  const settings = await fetch('/api/design/settings', {
+    headers: { Authorization: `Bearer ${authToken}` }
+  }).then(r => r.json());
+  let images = [];
+  try { images = JSON.parse(settings.about_banner_images || '[]'); } catch {}
+  if (!images.length) { grid.innerHTML = ''; return; }
+  grid.innerHTML = images.map((url, i) => `
+    <div class="gallery-admin-item">
+      <img src="${escAdminHtml(url)}" alt="Banner image ${i + 1}">
+      <button class="gallery-admin-remove" onclick="removeAboutBannerImage(${i})" title="Remove">✕</button>
+    </div>`).join('');
+}
+
+async function uploadAboutBannerImage(file) {
+  const fd = new FormData();
+  fd.append('image', file);
+  const res = await fetch('/api/design/upload', { method: 'POST', headers: { Authorization: `Bearer ${authToken}` }, body: fd });
+  const data = await res.json();
+  if (!data.url) throw new Error('Upload failed');
+  const settings = await fetch('/api/design/settings', { headers: { Authorization: `Bearer ${authToken}` } }).then(r => r.json());
+  let images = [];
+  try { images = JSON.parse(settings.about_banner_images || '[]'); } catch {}
+  images.push(data.url);
+  await fetch('/api/design/settings', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+    body: JSON.stringify({ about_banner_images: JSON.stringify(images) })
+  });
+  return data.url;
+}
+
+async function removeAboutBannerImage(index) {
+  const settings = await fetch('/api/design/settings', { headers: { Authorization: `Bearer ${authToken}` } }).then(r => r.json());
+  let images = [];
+  try { images = JSON.parse(settings.about_banner_images || '[]'); } catch {}
+  images.splice(index, 1);
+  await fetch('/api/design/settings', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+    body: JSON.stringify({ about_banner_images: JSON.stringify(images) })
+  });
+  renderAboutBannerGrid();
+  toast('Image removed', 'success');
+}
+
+function triggerAboutBannerUpload() {
+  document.getElementById('about-banner-file-input').click();
+}
+
+async function handleAboutBannerFileInput(input) {
+  const files = Array.from(input.files);
+  if (!files.length) return;
+  const zone = document.getElementById('about-banner-drop-zone');
+  if (zone) zone.style.opacity = '0.5';
+  try {
+    for (const file of files) await uploadAboutBannerImage(file);
+    await renderAboutBannerGrid();
+    toast('About banner updated', 'success');
+  } catch (err) {
+    toast('Upload failed — please try again', 'error');
+  } finally {
+    if (zone) zone.style.opacity = '';
+    input.value = '';
+  }
+}
+
+function initAboutBannerDropZone() {
+  const zone = document.getElementById('about-banner-drop-zone');
+  if (!zone) return;
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+  zone.addEventListener('drop', async e => {
+    e.preventDefault();
+    zone.classList.remove('drag-over');
+    const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+    if (!files.length) return;
+    zone.style.opacity = '0.5';
+    try {
+      for (const file of files) await uploadAboutBannerImage(file);
+      await renderAboutBannerGrid();
+      toast('About banner updated', 'success');
+    } catch (err) {
+      toast('Upload failed — please try again', 'error');
+    } finally {
+      zone.style.opacity = '';
+    }
+  });
 }
 
 // ---- GALLERY IMAGES ----

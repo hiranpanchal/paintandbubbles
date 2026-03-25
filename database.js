@@ -366,6 +366,12 @@ if (settingsCount.count === 0) {
   ins.run('sumup_merchant_code', '');
 }
 
+// Ensure about banner images setting exists
+{
+  const ins = db.prepare('INSERT OR IGNORE INTO site_settings (key, value) VALUES (?, ?)');
+  ins.run('about_banner_images', '[]');
+}
+
 // Seed sample events if empty
 const eventCount = db.prepare('SELECT COUNT(*) as count FROM events').get();
 if (eventCount.count === 0) {
