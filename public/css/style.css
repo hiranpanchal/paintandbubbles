@@ -11,6 +11,11 @@
   --font-h3:   'Nunito', sans-serif;
   --font-h4:   'Nunito', sans-serif;
 
+  /* Banner / hero gradient (overridden at runtime by design settings) */
+  --banner-start: #2C0F18;
+  --banner-mid:   #6B2D42;
+  --banner-end:   #C4748A;
+
   /* Brand Palette — inspired by the Paint & Bubbles watercolour logo */
   --rose:        #C4748A;
   --rose-deep:   #A85D72;
@@ -198,7 +203,7 @@ h4 { font-family: var(--font-h4); }
 
 /* ---- HERO ---- */
 .hero {
-  background: linear-gradient(135deg, #2C0F18 0%, #6B2D42 45%, #C4748A 100%);
+  background: linear-gradient(135deg, var(--banner-start) 0%, var(--banner-mid) 45%, var(--banner-end) 100%);
   padding: 180px 0 0;
   position: relative;
   overflow: hidden;
@@ -298,7 +303,7 @@ h4 { font-family: var(--font-h4); }
 
 /* ---- EVENTS PAGE HERO ---- */
 .events-page-hero {
-  background: linear-gradient(135deg, #2C0F18 0%, #6B2D42 45%, #C4748A 100%);
+  background: linear-gradient(135deg, var(--banner-start) 0%, var(--banner-mid) 45%, var(--banner-end) 100%);
   padding: 40px 0 0;
   position: relative;
   overflow: hidden;
@@ -499,7 +504,7 @@ h4 { font-family: var(--font-h4); }
   overflow: hidden;
   height: 100%;
   min-height: 380px;
-  background: linear-gradient(135deg, #6B2D42, var(--rose));
+  background: linear-gradient(135deg, var(--banner-mid), var(--banner-end));
   box-shadow: var(--shadow-lg);
 }
 
@@ -652,7 +657,7 @@ h4 { font-family: var(--font-h4); }
 
 .event-card-image {
   height: 180px;
-  background: linear-gradient(135deg, #6B2D42, var(--rose));
+  background: linear-gradient(135deg, var(--banner-mid), var(--banner-end));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -816,7 +821,7 @@ h4 { font-family: var(--font-h4); }
 /* Event Detail Modal */
 .event-detail-image {
   height: 220px;
-  background: linear-gradient(135deg, #6B2D42, var(--rose));
+  background: linear-gradient(135deg, var(--banner-mid), var(--banner-end));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -889,7 +894,7 @@ h4 { font-family: var(--font-h4); }
 
 /* Booking Form */
 .booking-header {
-  background: linear-gradient(135deg, #6B2D42, var(--rose));
+  background: linear-gradient(135deg, var(--banner-mid), var(--banner-end));
   padding: 28px;
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   color: white;
@@ -1090,7 +1095,7 @@ h4 { font-family: var(--font-h4); }
 .confirm-detail-row span:last-child  { font-weight: 700; color: var(--text-dark); text-align: right; }
 
 .booking-ref {
-  background: linear-gradient(135deg, #6B2D42, var(--rose));
+  background: linear-gradient(135deg, var(--banner-mid), var(--banner-end));
   color: white;
   border-radius: 12px;
   padding: 12px 24px;
@@ -1131,7 +1136,7 @@ h4 { font-family: var(--font-h4); }
 
 /* ---- FAQ PAGE ---- */
 .faq-hero {
-  background: linear-gradient(135deg, #2C0F18 0%, #6B2D42 45%, #C4748A 100%);
+  background: linear-gradient(135deg, var(--banner-start) 0%, var(--banner-mid) 45%, var(--banner-end) 100%);
   padding: 56px 0;
   text-align: center;
 }
@@ -2220,7 +2225,7 @@ h4 { font-family: var(--font-h4); }
    ============================================= */
 
 .voucher-hero {
-  background: linear-gradient(135deg, var(--rose-dark) 0%, var(--rose-deep) 50%, var(--rose) 100%);
+  background: linear-gradient(135deg, var(--banner-start) 0%, var(--banner-mid) 50%, var(--banner-end) 100%);
 }
 
 .voucher-section {

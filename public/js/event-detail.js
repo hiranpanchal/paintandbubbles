@@ -52,7 +52,10 @@ async function applyDesignSettings() {
     if (s.color_bg_trust)   vars.push(`--bg-trust: ${s.color_bg_trust}`);
     if (s.color_bg_events)  vars.push(`--bg-events: ${s.color_bg_events}`);
     if (s.color_bg_social)  vars.push(`--bg-social: ${s.color_bg_social}`);
-    if (s.color_bg_footer)  vars.push(`--bg-footer: ${s.color_bg_footer}`);
+    if (s.color_bg_footer)      vars.push(`--bg-footer: ${s.color_bg_footer}`);
+    if (s.color_banner_start)   vars.push(`--banner-start: ${s.color_banner_start}`);
+    if (s.color_banner_mid)     vars.push(`--banner-mid: ${s.color_banner_mid}`);
+    if (s.color_banner_end)     vars.push(`--banner-end: ${s.color_banner_end}`);
     if (vars.length) {
       const st = document.createElement('style');
       st.textContent = `:root { ${vars.join('; ')} }`;
@@ -216,7 +219,7 @@ function renderEventDetail(event) {
 
   const heroBg = event.image_url
     ? `style="background: linear-gradient(to bottom, rgba(28,10,18,0.65) 0%, rgba(28,10,18,0.45) 60%, rgba(28,10,18,0.75) 100%), url(${escHtml(event.image_url)}) center/cover no-repeat;"`
-    : `style="background: linear-gradient(135deg, var(--rose-dark) 0%, var(--rose-deep) 50%, var(--rose) 100%);"`;
+    : `style="background: linear-gradient(135deg, var(--banner-start) 0%, var(--banner-mid) 50%, var(--banner-end) 100%);"`;
 
   const spotsColor = isSoldOut ? 'var(--coral)' : isLowStock ? 'var(--amber)' : 'var(--green)';
   const spotsText  = isSoldOut

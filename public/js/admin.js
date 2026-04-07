@@ -1203,6 +1203,17 @@ function renderDesignPanel() {
             ${renderColorField('color_bg_footer', 'Footer',          s.color_bg_footer || '#2C0F18')}
           </div>
         </div>
+        <div class="design-card">
+          <div class="design-card-header">
+            <h3 class="design-card-title">Banner Gradients</h3>
+            <span class="design-hint">Gradient colours used on all page header banners</span>
+          </div>
+          <div class="design-card-body">
+            ${renderColorField('color_banner_start', 'Start (dark end)',  s.color_banner_start || '#2C0F18')}
+            ${renderColorField('color_banner_mid',   'Middle',            s.color_banner_mid   || '#6B2D42')}
+            ${renderColorField('color_banner_end',   'End (light end)',   s.color_banner_end   || '#C4748A')}
+          </div>
+        </div>
       </div>
     </div>
 
