@@ -23,7 +23,10 @@ async function applyDesignSettings() {
     if (s.color_bg_trust)   vars.push(`--bg-trust: ${s.color_bg_trust}`);
     if (s.color_bg_events)  vars.push(`--bg-events: ${s.color_bg_events}`);
     if (s.color_bg_social)  vars.push(`--bg-social: ${s.color_bg_social}`);
-    if (s.color_bg_footer)  vars.push(`--bg-footer: ${s.color_bg_footer}`);
+    if (s.color_bg_footer)      vars.push(`--bg-footer: ${s.color_bg_footer}`);
+    if (s.color_banner_start)   vars.push(`--banner-start: ${s.color_banner_start}`);
+    if (s.color_banner_mid)     vars.push(`--banner-mid: ${s.color_banner_mid}`);
+    if (s.color_banner_end)     vars.push(`--banner-end: ${s.color_banner_end}`);
     if (vars.length) {
       const st = document.createElement('style');
       st.textContent = `:root { ${vars.join('; ')} }`;
