@@ -237,6 +237,7 @@ function renderEventsTable(events) {
           <td>
             <div class="actions">
               <button class="btn btn-ghost btn-xs" onclick="openEventForm(${e.id})">Edit</button>
+              <button class="btn btn-ghost btn-xs" onclick="cloneEvent(${e.id})" title="Duplicate this event">Clone</button>
               <button class="btn btn-xs" style="background:#fee2e2;color:#dc2626;border:none" onclick="confirmDelete(${e.id})">Delete</button>
             </div>
           </td>
@@ -444,6 +445,30 @@ function clearEventImage() {
   if (zone) zone.innerHTML = `<svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></svg><p>Drop image here or click to upload</p>`;
   const removeBtn = document.querySelector('[onclick="clearEventImage()"]');
   if (removeBtn) removeBtn.remove();
+}
+
+async function cloneEvent(id) {
+  try {
+    const event = await apiFetch(`/api/events/${id}`);
+    const payload = {
+      title: `${event.title} (Copy)`,
+      description: event.description,
+      category: event.category,
+      date: event.date,
+      time: event.time,
+      duration_minutes: event.duration_minutes,
+      location: event.location,
+      capacity: event.capacity,
+      price_pence: event.price_pence,
+      image_url: event.image_url || null,
+      is_active: 0,
+    };
+    await apiFetch('/api/events', { method: 'POST', body: JSON.stringify(payload), headers: authHeaders() });
+    toast('Event cloned — it\'s hidden by default', 'success');
+    loadAdminEvents();
+  } catch (err) {
+    toast(err.message || 'Failed to clone event', 'error');
+  }
 }
 
 function confirmDelete(id) {
