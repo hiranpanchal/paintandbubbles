@@ -131,6 +131,7 @@ db.prepare("UPDATE admin_users SET role = 'super_admin' WHERE role = 'admin' AND
 // Migrate: add class_attended and review_date columns if they don't exist yet
 try { db.exec("ALTER TABLE reviews ADD COLUMN class_attended TEXT DEFAULT ''"); } catch {}
 try { db.exec("ALTER TABLE reviews ADD COLUMN review_date TEXT DEFAULT ''"); } catch {}
+try { db.exec("ALTER TABLE reviews ADD COLUMN image_url TEXT DEFAULT ''"); } catch {}
 
 // Seed admin user if not exists
 const adminUsername = process.env.ADMIN_USERNAME || 'admin';

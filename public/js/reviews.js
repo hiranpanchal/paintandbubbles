@@ -136,6 +136,7 @@ async function loadReviews() {
       <div class="reviews-page-cards">
         ${reviews.map(r => `
           <div class="review-card">
+            ${r.image_url ? `<div class="review-card-image"><img src="${escHtml(r.image_url)}" alt="Review photo"></div>` : ''}
             <div class="review-card-top">
               <div class="review-card-stars">${'★'.repeat(r.rating)}${'☆'.repeat(5 - r.rating)}</div>
               <div class="review-tp-logo">

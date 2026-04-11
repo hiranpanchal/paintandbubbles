@@ -405,6 +405,39 @@ function handleEventImageDrop(file) {
   if (file && file.type.startsWith('image/')) handleEventImageFile(file);
 }
 
+// ---- REVIEW IMAGE UPLOAD ----
+async function handleReviewImageFile(file) {
+  if (!file) return;
+  const zone = document.getElementById('review-image-zone');
+  if (zone) { zone.style.opacity = '0.5'; zone.style.pointerEvents = 'none'; }
+  try {
+    const fd = new FormData();
+    fd.append('image', file);
+    const res = await fetch('/api/design/upload', { method: 'POST', headers: { Authorization: `Bearer ${authToken}` }, body: fd });
+    const data = await res.json();
+    if (!data.url) throw new Error('Upload failed');
+    document.getElementById('review-form-image').value = data.url;
+    if (zone) {
+      zone.innerHTML = `<img src="${escAdminHtml(data.url)}" style="max-height:120px;max-width:100%;border-radius:8px;display:block;margin:0 auto"><p style="margin-top:6px;font-size:12px;color:var(--text-light)">Click or drag to replace · <a href="#" onclick="clearReviewImage();return false" style="color:var(--rose)">Remove</a></p>`;
+      zone.style.opacity = '';
+      zone.style.pointerEvents = '';
+    }
+  } catch {
+    toast('Image upload failed', 'error');
+    if (zone) { zone.style.opacity = ''; zone.style.pointerEvents = ''; }
+  }
+}
+
+function handleReviewImageDrop(file) {
+  if (file && file.type.startsWith('image/')) handleReviewImageFile(file);
+}
+
+function clearReviewImage() {
+  document.getElementById('review-form-image').value = '';
+  const zone = document.getElementById('review-image-zone');
+  if (zone) zone.innerHTML = `<svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></svg><p>Drop photo here or click to upload</p>`;
+}
+
 function clearEventImage() {
   document.getElementById('ef-image').value = '';
   const zone = document.getElementById('ef-image-zone');
@@ -2080,6 +2113,19 @@ function renderReviewsTab(reviews) {
           <textarea id="review-form-body" rows="4" placeholder="What did they say?"></textarea>
         </div>
         <div class="form-group">
+          <label>Photo <span style="color:var(--text-light);font-weight:400">(optional)</span></label>
+          <input type="hidden" id="review-form-image">
+          <div class="ef-image-zone" id="review-image-zone"
+               onclick="document.getElementById('review-image-file').click()"
+               ondragover="event.preventDefault();this.classList.add('drag-over')"
+               ondragleave="this.classList.remove('drag-over')"
+               ondrop="event.preventDefault();this.classList.remove('drag-over');handleReviewImageDrop(event.dataTransfer.files[0])">
+            <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></svg>
+            <p>Drop photo here or click to upload</p>
+          </div>
+          <input type="file" id="review-image-file" accept="image/*" style="display:none" onchange="handleReviewImageFile(this.files[0])">
+        </div>
+        <div class="form-group">
           <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
             <input type="checkbox" id="review-form-published" style="width:16px;height:16px">
             Publish immediately
@@ -2111,6 +2157,7 @@ function openReviewForm(id = null) {
   document.getElementById('review-form-date').value = '';
   document.getElementById('review-form-body').value = '';
   document.getElementById('review-form-published').checked = false;
+  document.getElementById('review-form-image').value = '';
   pickStar(5);
 
   if (id) {
@@ -2124,6 +2171,12 @@ function openReviewForm(id = null) {
       document.getElementById('review-form-body').value = r.body;
       document.getElementById('review-form-published').checked = !!r.is_published;
       pickStar(r.rating);
+      // Populate image zone
+      document.getElementById('review-form-image').value = r.image_url || '';
+      const zone = document.getElementById('review-image-zone');
+      if (zone && r.image_url) {
+        zone.innerHTML = `<img src="${escAdminHtml(r.image_url)}" style="max-height:120px;max-width:100%;border-radius:8px;display:block;margin:0 auto"><p style="margin-top:6px;font-size:12px;color:var(--text-light)">Click or drag to replace · <a href="#" onclick="clearReviewImage();return false" style="color:var(--rose)">Remove</a></p>`;
+      }
     });
   }
   document.getElementById('review-modal').classList.remove('hidden');
@@ -2142,15 +2195,16 @@ async function saveReview() {
   const rating = parseInt(document.getElementById('review-form-rating').value);
   const body = document.getElementById('review-form-body').value.trim();
   const is_published = document.getElementById('review-form-published').checked ? 1 : 0;
+  const image_url = document.getElementById('review-form-image').value.trim();
 
   if (!author_name || !body) { toast('Author name and review text are required', 'error'); return; }
 
   try {
     if (id) {
-      await apiFetch(`/api/reviews/${id}`, { method: 'PUT', body: JSON.stringify({ author_name, class_attended, author_location, review_date, rating, body, is_published }) });
+      await apiFetch(`/api/reviews/${id}`, { method: 'PUT', body: JSON.stringify({ author_name, class_attended, author_location, review_date, rating, body, is_published, image_url }) });
       toast('Review updated');
     } else {
-      await apiFetch('/api/reviews', { method: 'POST', body: JSON.stringify({ author_name, class_attended, author_location, review_date, rating, body, is_published }) });
+      await apiFetch('/api/reviews', { method: 'POST', body: JSON.stringify({ author_name, class_attended, author_location, review_date, rating, body, is_published, image_url }) });
       toast('Review added');
     }
     closeReviewForm();
