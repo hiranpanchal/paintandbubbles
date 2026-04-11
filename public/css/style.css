@@ -16,6 +16,9 @@
   --banner-mid:   #6B2D42;
   --banner-end:   #C4748A;
 
+  /* Divider / separator line colour */
+  --divider: #C4A35A;
+
   /* Brand Palette — inspired by the Paint & Bubbles watercolour logo */
   --rose:        #C4748A;
   --rose-deep:   #A85D72;
@@ -1088,7 +1091,7 @@ h4 { font-family: var(--font-h4); }
   gap: 16px;
   padding: 9px 0;
   font-size: 14px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--divider);
 }
 .confirm-detail-row:last-child { border: none; }
 .confirm-detail-row span:first-child { color: var(--text-light); font-weight: 600; }
@@ -1167,7 +1170,7 @@ h4 { font-family: var(--font-h4); }
 }
 
 .faq-item {
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--divider);
 }
 
 .faq-question {
@@ -1484,7 +1487,7 @@ h4 { font-family: var(--font-h4); }
   color: var(--text-dark);
   margin-bottom: 16px;
   padding-bottom: 12px;
-  border-bottom: 2px solid var(--border);
+  border-bottom: 2px solid var(--divider);
 }
 
 .ed-description {
