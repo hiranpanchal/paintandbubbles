@@ -1290,19 +1290,33 @@ h4 { font-family: var(--font-h4); }
 }
 
 /* ---- FOOTER ---- */
-.site-footer { background: var(--bg-footer); padding: 36px 0; }
+.site-footer { background: var(--bg-footer); padding: 56px 0; }
 
 .footer-inner {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   text-align: center;
 }
 
 .footer-brand {
   font-family: 'Dancing Script', cursive;
   font-size: 26px;
+  font-weight: 700;
+  color: white;
+}
+
+.footer-logo-img {
+  height: 70px;
+  width: auto;
+  object-fit: contain;
+  display: block;
+}
+
+.footer-logo-text {
+  font-family: 'Dancing Script', cursive;
+  font-size: 32px;
   font-weight: 700;
   color: white;
 }

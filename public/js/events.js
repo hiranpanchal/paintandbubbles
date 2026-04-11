@@ -63,6 +63,12 @@ async function applyDesignSettings() {
     }
 
     // Footer tagline
+    if (s.footer_logo_url) {
+      const fImg = document.querySelector('.footer-logo-img');
+      if (fImg) { fImg.src = s.footer_logo_url; fImg.style.display = ''; }
+      const fFb = document.getElementById('footer-logo-fallback');
+      if (fFb) fFb.style.display = 'none';
+    }
     if (s.footer_tagline) {
       const el = document.querySelector('.footer-tagline');
       if (el) el.textContent = s.footer_tagline;

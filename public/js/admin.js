@@ -1193,8 +1193,12 @@ function renderDesignPanel() {
     <div class="design-tab-panel" id="dtab-images">
       <div class="design-images-grid">
         <div class="design-card">
-          <div class="design-card-header"><h3 class="design-card-title">Logo</h3></div>
+          <div class="design-card-header"><h3 class="design-card-title">Header Logo</h3></div>
           <div class="design-card-body">${renderDropZone('logo_url', s.logo_url)}</div>
+        </div>
+        <div class="design-card">
+          <div class="design-card-header"><h3 class="design-card-title">Footer Logo</h3></div>
+          <div class="design-card-body">${renderDropZone('footer_logo_url', s.footer_logo_url)}</div>
         </div>
         <div class="design-card">
           <div class="design-card-header"><h3 class="design-card-title">Hero Background</h3></div>

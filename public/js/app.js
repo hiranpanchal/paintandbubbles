@@ -92,6 +92,14 @@ async function applyDesignSettings() {
     // About banner carousel
     initAboutCarousel(s);
 
+    // Footer logo
+    if (s.footer_logo_url) {
+      const fImg = document.querySelector('.footer-logo-img');
+      if (fImg) { fImg.src = s.footer_logo_url; fImg.style.display = ''; }
+      const fFb = document.getElementById('footer-logo-fallback');
+      if (fFb) fFb.style.display = 'none';
+    }
+
     // Footer tagline
     setText('.footer-tagline', s.footer_tagline);
 
