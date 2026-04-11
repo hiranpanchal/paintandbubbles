@@ -92,7 +92,7 @@ h4 { font-family: var(--font-h4); }
   display: flex;
   align-items: center;
   gap: 24px;
-  height: 68px;
+  height: 88px;
 }
 
 .logo {
@@ -105,7 +105,7 @@ h4 { font-family: var(--font-h4); }
 }
 
 .logo-img {
-  height: 46px;
+  height: 62px;
   width: auto;
   object-fit: contain;
 }
@@ -113,7 +113,7 @@ h4 { font-family: var(--font-h4); }
 /* Script text logo (fallback / used by default) */
 .logo-text {
   font-family: 'Dancing Script', cursive;
-  font-size: 26px;
+  font-size: 32px;
   font-weight: 700;
   color: var(--text-dark);
   line-height: 1;
