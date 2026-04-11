@@ -392,6 +392,22 @@ function renderEventDetail(event) {
             </div>
           </div>
 
+          ${event.location ? `
+          <div class="ed-map-card">
+            <iframe
+              loading="lazy"
+              referrerpolicy="no-referrer-when-downgrade"
+              src="https://maps.google.com/maps?q=${encodeURIComponent(event.location)}&output=embed&z=15"
+              title="Event location map">
+            </iframe>
+            <div class="ed-map-card-footer">
+              <span class="ed-map-card-address">${escHtml(event.location)}</span>
+              <a class="ed-map-card-link"
+                 href="https://maps.google.com/?q=${encodeURIComponent(event.location)}"
+                 target="_blank" rel="noopener">Get directions →</a>
+            </div>
+          </div>` : ''}
+
           ${siteSettings.please_note_text ? `
           <div class="ed-please-note">
             <h3 class="ed-please-note-title">${escHtml(siteSettings.please_note_title || 'Please Note')}</h3>
