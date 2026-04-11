@@ -186,9 +186,18 @@ function renderGalleryPage(s) {
     return;
   }
 
-  grid.innerHTML = images.map((url, i) => `
-    <div class="gallery-item">
-      <img src="${escHtml(url)}" alt="Gallery image ${i + 1}">
+  // Distribute images into explicit columns so all columns start at the same top
+  const colCount = window.innerWidth <= 480 ? 1 : window.innerWidth <= 768 ? 2 : 3;
+  const cols = Array.from({ length: colCount }, () => []);
+  images.forEach((url, i) => cols[i % colCount].push({ url, i }));
+
+  grid.innerHTML = cols.map(col => `
+    <div class="gallery-col">
+      ${col.map(({ url, i }) => `
+        <div class="gallery-item">
+          <img src="${escHtml(url)}" alt="Gallery image ${i + 1}">
+        </div>
+      `).join('')}
     </div>
   `).join('');
 }
