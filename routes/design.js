@@ -44,7 +44,7 @@ router.get('/vars.css', (req, res) => {
   const s = {};
   rows.forEach(r => (s[r.key] = r.value));
 
-  const map = {
+  const colorMap = {
     color_rose:         '--rose',
     color_rose_deep:    '--rose-deep',
     color_rose_dark:    '--rose-dark',
@@ -61,14 +61,45 @@ router.get('/vars.css', (req, res) => {
     color_divider:      '--divider',
   };
 
-  const vars = Object.entries(map)
+  const getFontStack = (name) => {
+    const cursive = ['Dancing Script','Pacifico','Caveat','Satisfy','Great Vibes','Lobster'];
+    const serif   = ['Playfair Display','Merriweather','Lora','Cormorant Garamond','DM Serif Display','EB Garamond'];
+    if (cursive.includes(name)) return `'${name}', cursive`;
+    if (serif.includes(name))   return `'${name}', serif`;
+    return `'${name}', sans-serif`;
+  };
+
+  const fontKeys = ['font_body','font_h1','font_h2','font_h3','font_h4','font_hero_highlight'];
+  const fontCssVars = { font_body: '--font-body', font_h1: '--font-h1', font_h2: '--font-h2', font_h3: '--font-h3', font_h4: '--font-h4', font_hero_highlight: '--font-hero-highlight' };
+  const fontSelectors = { font_body: 'body, p, span, li, label, input, textarea, button, a', font_h1: 'h1', font_h2: 'h2', font_h3: 'h3', font_h4: 'h4', font_hero_highlight: '.hero-highlight' };
+
+  const defaultFonts = ['Nunito', 'Dancing Script'];
+  const customFonts = [...new Set(fontKeys.map(k => s[k]).filter(Boolean).filter(f => !defaultFonts.includes(f)))];
+
+  const colorVars = Object.entries(colorMap)
     .filter(([key]) => s[key])
     .map(([key, cssVar]) => `  ${cssVar}: ${s[key]};`)
     .join('\n');
 
+  const fontVarLines = fontKeys
+    .filter(k => s[k])
+    .map(k => `  ${fontCssVars[k]}: ${getFontStack(s[k])};`)
+    .join('\n');
+
+  const fontRules = fontKeys
+    .filter(k => s[k])
+    .map(k => `${fontSelectors[k]} { font-family: ${getFontStack(s[k])} !important; }`)
+    .join('\n');
+
+  const allVars = [colorVars, fontVarLines].filter(Boolean).join('\n');
+
+  const googleImport = customFonts.length
+    ? `@import url('https://fonts.googleapis.com/css2?family=${customFonts.map(f => f.replace(/ /g, '+') + ':wght@400;600;700').join('&family=')}&display=swap');\n`
+    : '';
+
   res.setHeader('Content-Type', 'text/css');
   res.setHeader('Cache-Control', 'no-store');
-  res.send(vars ? `:root {\n${vars}\n}` : '');
+  res.send(`${googleImport}${allVars ? `:root {\n${allVars}\n}\n` : ''}${fontRules}`);
 });
 
 // POST /api/design/settings — admin only
