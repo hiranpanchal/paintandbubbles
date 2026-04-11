@@ -392,7 +392,7 @@ async function handleEventImageFile(file) {
     if (!data.url) throw new Error('Upload failed');
     document.getElementById('ef-image').value = data.url;
     if (zone) {
-      zone.innerHTML = `<img src="${escAdminHtml(data.url)}" id="ef-image-preview" style="max-height:140px;max-width:100%;border-radius:8px;display:block;margin:0 auto"><p style="margin-top:8px;font-size:12px;color:var(--text-light)">Click or drag to replace</p>`;
+      zone.innerHTML = `<img src="${escHtml(data.url)}" id="ef-image-preview" style="max-height:140px;max-width:100%;border-radius:8px;display:block;margin:0 auto"><p style="margin-top:8px;font-size:12px;color:var(--text-light)">Click or drag to replace</p>`;
       zone.style.opacity = '';
       zone.style.pointerEvents = '';
     }
@@ -419,7 +419,7 @@ async function handleReviewImageFile(file) {
     if (!data.url) throw new Error('Upload failed');
     document.getElementById('review-form-image').value = data.url;
     if (zone) {
-      zone.innerHTML = `<img src="${escAdminHtml(data.url)}" style="max-height:120px;max-width:100%;border-radius:8px;display:block;margin:0 auto"><p style="margin-top:6px;font-size:12px;color:var(--text-light)">Click or drag to replace · <a href="#" onclick="clearReviewImage();return false" style="color:var(--rose)">Remove</a></p>`;
+      zone.innerHTML = `<img src="${escHtml(data.url)}" style="max-height:120px;max-width:100%;border-radius:8px;display:block;margin:0 auto"><p style="margin-top:6px;font-size:12px;color:var(--text-light)">Click or drag to replace · <a href="#" onclick="clearReviewImage();return false" style="color:var(--rose)">Remove</a></p>`;
       zone.style.opacity = '';
       zone.style.pointerEvents = '';
     }
@@ -763,15 +763,15 @@ async function loadPaymentsSettings() {
           <div class="pay-provider-body">
             <div class="form-group">
               <label>Publishable Key</label>
-              <input type="text" id="ps-stripe-pk" placeholder="pk_live_…" value="${escAdminHtml(s.stripe_publishable_key || '')}">
+              <input type="text" id="ps-stripe-pk" placeholder="pk_live_…" value="${escHtml(s.stripe_publishable_key || '')}">
             </div>
             <div class="form-group">
               <label>Secret Key</label>
-              <input type="password" id="ps-stripe-sk" placeholder="sk_live_…" value="${escAdminHtml(s.stripe_secret_key || '')}">
+              <input type="password" id="ps-stripe-sk" placeholder="sk_live_…" value="${escHtml(s.stripe_secret_key || '')}">
             </div>
             <div class="form-group" style="margin-bottom:0">
               <label>Webhook Secret</label>
-              <input type="password" id="ps-stripe-ws" placeholder="whsec_…" value="${escAdminHtml(s.stripe_webhook_secret || '')}">
+              <input type="password" id="ps-stripe-ws" placeholder="whsec_…" value="${escHtml(s.stripe_webhook_secret || '')}">
               <p class="pay-hint">Webhook endpoint: <code>${location.origin}/api/payments/webhook</code></p>
             </div>
           </div>
@@ -791,11 +791,11 @@ async function loadPaymentsSettings() {
           <div class="pay-provider-body">
             <div class="form-group">
               <label>API Key</label>
-              <input type="password" id="ps-sumup-key" placeholder="sup_sk_…" value="${escAdminHtml(s.sumup_api_key || '')}">
+              <input type="password" id="ps-sumup-key" placeholder="sup_sk_…" value="${escHtml(s.sumup_api_key || '')}">
             </div>
             <div class="form-group" style="margin-bottom:0">
               <label>Merchant Code</label>
-              <input type="text" id="ps-sumup-merchant" placeholder="MXXXXX" value="${escAdminHtml(s.sumup_merchant_code || '')}">
+              <input type="text" id="ps-sumup-merchant" placeholder="MXXXXX" value="${escHtml(s.sumup_merchant_code || '')}">
             </div>
           </div>
         </div>
@@ -1747,7 +1747,7 @@ async function renderAboutBannerGrid() {
   if (!images.length) { grid.innerHTML = ''; return; }
   grid.innerHTML = images.map((url, i) => `
     <div class="gallery-admin-item">
-      <img src="${escAdminHtml(url)}" alt="Banner image ${i + 1}">
+      <img src="${escHtml(url)}" alt="Banner image ${i + 1}">
       <button class="gallery-admin-remove" onclick="removeAboutBannerImage(${i})" title="Remove">✕</button>
     </div>`).join('');
 }
@@ -1843,7 +1843,7 @@ async function renderGalleryGrid() {
   }
   grid.innerHTML = images.map((url, i) => `
     <div class="gallery-admin-item">
-      <img src="${escAdminHtml(url)}" alt="Gallery image ${i+1}">
+      <img src="${escHtml(url)}" alt="Gallery image ${i+1}">
       <button class="gallery-admin-remove" onclick="removeGalleryImage(${i})" title="Remove">\u00d7</button>
     </div>
   `).join('');
@@ -2200,7 +2200,7 @@ function openReviewForm(id = null) {
       document.getElementById('review-form-image').value = r.image_url || '';
       const zone = document.getElementById('review-image-zone');
       if (zone && r.image_url) {
-        zone.innerHTML = `<img src="${escAdminHtml(r.image_url)}" style="max-height:120px;max-width:100%;border-radius:8px;display:block;margin:0 auto"><p style="margin-top:6px;font-size:12px;color:var(--text-light)">Click or drag to replace · <a href="#" onclick="clearReviewImage();return false" style="color:var(--rose)">Remove</a></p>`;
+        zone.innerHTML = `<img src="${escHtml(r.image_url)}" style="max-height:120px;max-width:100%;border-radius:8px;display:block;margin:0 auto"><p style="margin-top:6px;font-size:12px;color:var(--text-light)">Click or drag to replace · <a href="#" onclick="clearReviewImage();return false" style="color:var(--rose)">Remove</a></p>`;
       }
     });
   }
@@ -2968,7 +2968,7 @@ async function saveContentPage(page) {
   }
 }
 
-function escAdminHtml(str) {
+function escHtml(str) {
   return String(str || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
@@ -2988,10 +2988,10 @@ async function loadEnquiries() {
       </tr></thead>
       <tbody>${submissions.map(s => `
         <tr class="${s.is_read ? '' : 'unread-row'}" id="enq-row-${s.id}">
-          <td><strong>${escAdminHtml(s.name)}</strong></td>
-          <td><a href="mailto:${escAdminHtml(s.email)}">${escAdminHtml(s.email)}</a></td>
-          <td>${escAdminHtml(s.phone || '\u2014')}</td>
-          <td style="max-width:320px;white-space:pre-wrap">${escAdminHtml(s.message)}</td>
+          <td><strong>${escHtml(s.name)}</strong></td>
+          <td><a href="mailto:${escHtml(s.email)}">${escHtml(s.email)}</a></td>
+          <td>${escHtml(s.phone || '\u2014')}</td>
+          <td style="max-width:320px;white-space:pre-wrap">${escHtml(s.message)}</td>
           <td style="white-space:nowrap">${new Date(s.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</td>
           <td style="display:flex;gap:8px">
             ${!s.is_read ? `<button class="btn btn-ghost btn-sm" onclick="markEnquiryRead(${s.id})">Mark Read</button>` : '<span style="color:var(--text-light);font-size:13px">Read</span>'}
@@ -3049,15 +3049,15 @@ async function loadAdminVouchers() {
         </tr></thead>
         <tbody>${vouchers.map(v => `
           <tr id="voucher-row-${v.id}">
-            <td><code style="font-family:monospace;font-weight:700;color:var(--rose)">${escAdminHtml(v.code)}</code></td>
+            <td><code style="font-family:monospace;font-weight:700;color:var(--rose)">${escHtml(v.code)}</code></td>
             <td><strong>${formatPrice(v.amount_pence)}</strong></td>
             <td>
-              <div style="font-weight:600">${escAdminHtml(v.purchaser_name)}</div>
-              <div style="color:var(--text-light);font-size:11px">${escAdminHtml(v.purchaser_email)}</div>
+              <div style="font-weight:600">${escHtml(v.purchaser_name)}</div>
+              <div style="color:var(--text-light);font-size:11px">${escHtml(v.purchaser_email)}</div>
             </td>
             <td>
-              ${v.recipient_name ? `<div style="font-weight:600">${escAdminHtml(v.recipient_name)}</div>` : ''}
-              ${v.recipient_email ? `<div style="color:var(--text-light);font-size:11px">${escAdminHtml(v.recipient_email)}</div>` : '<span style="color:var(--text-light);">—</span>'}
+              ${v.recipient_name ? `<div style="font-weight:600">${escHtml(v.recipient_name)}</div>` : ''}
+              ${v.recipient_email ? `<div style="color:var(--text-light);font-size:11px">${escHtml(v.recipient_email)}</div>` : '<span style="color:var(--text-light);">—</span>'}
             </td>
             <td>${voucherStatusBadge(v.status)}</td>
             <td class="hide-mobile">${formatDate(v.created_at ? v.created_at.split('T')[0] : '')}</td>
@@ -3118,8 +3118,8 @@ async function loadAdminDiscounts() {
         </tr></thead>
         <tbody>${codes.map(dc => `
           <tr>
-            <td><code style="font-size:13px;font-weight:700;letter-spacing:0.5px">${escAdminHtml(dc.code)}</code></td>
-            <td>${escAdminHtml(dc.name || '—')}</td>
+            <td><code style="font-size:13px;font-weight:700;letter-spacing:0.5px">${escHtml(dc.code)}</code></td>
+            <td>${escHtml(dc.name || '—')}</td>
             <td>${dc.discount_type === 'percentage' ? `${dc.discount_value}%` : `£${(dc.discount_value / 100).toFixed(2)}`} off</td>
             <td>${dc.used_count}${dc.max_uses ? ` / ${dc.max_uses}` : ''}</td>
             <td class="hide-mobile">${dc.expires_at ? formatDate(dc.expires_at.split('T')[0]) : '—'}</td>
