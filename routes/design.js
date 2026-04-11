@@ -38,6 +38,39 @@ router.get('/settings', (req, res) => {
   res.json(settings);
 });
 
+// GET /api/design/vars.css — inline CSS variables for flash-free page load
+router.get('/vars.css', (req, res) => {
+  const rows = db.prepare('SELECT key, value FROM site_settings').all();
+  const s = {};
+  rows.forEach(r => (s[r.key] = r.value));
+
+  const map = {
+    color_rose:         '--rose',
+    color_rose_deep:    '--rose-deep',
+    color_rose_dark:    '--rose-dark',
+    color_bg:           '--bg',
+    color_text_dark:    '--text-dark',
+    color_bg_about:     '--bg-about',
+    color_bg_trust:     '--bg-trust',
+    color_bg_events:    '--bg-events',
+    color_bg_social:    '--bg-social',
+    color_bg_footer:    '--bg-footer',
+    color_banner_start: '--banner-start',
+    color_banner_mid:   '--banner-mid',
+    color_banner_end:   '--banner-end',
+    color_divider:      '--divider',
+  };
+
+  const vars = Object.entries(map)
+    .filter(([key]) => s[key])
+    .map(([key, cssVar]) => `  ${cssVar}: ${s[key]};`)
+    .join('\n');
+
+  res.setHeader('Content-Type', 'text/css');
+  res.setHeader('Cache-Control', 'no-store');
+  res.send(vars ? `:root {\n${vars}\n}` : '');
+});
+
 // POST /api/design/settings — admin only
 router.post('/settings', requireAdmin, (req, res) => {
   const upsert = db.prepare(`
