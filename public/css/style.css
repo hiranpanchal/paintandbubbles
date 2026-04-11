@@ -479,7 +479,7 @@ h4 { font-family: var(--font-h4); }
   gap: 16px;
   margin-top: 32px;
   padding-top: 32px;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--divider);
 }
 
 .about-pillar {
@@ -733,7 +733,7 @@ h4 { font-family: var(--font-h4); }
   align-items: center;
   justify-content: space-between;
   padding-top: 16px;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--divider);
 }
 
 .event-price      { font-size: 22px; font-weight: 900; color: var(--rose-deep); }
@@ -892,7 +892,7 @@ h4 { font-family: var(--font-h4); }
   justify-content: space-between;
   gap: 16px;
   padding-top: 20px;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--divider);
 }
 
 /* Booking Form */
@@ -1166,7 +1166,7 @@ h4 { font-family: var(--font-h4); }
 .faq-list {
   max-width: 860px;
   margin: 0 auto;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--divider);
 }
 
 .faq-item {
@@ -1613,7 +1613,7 @@ h4 { font-family: var(--font-h4); }
 .ed-booking-price {
   margin-bottom: 20px;
   padding-bottom: 20px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--divider);
 }
 .ed-price-amount {
   display: block;
@@ -1867,7 +1867,7 @@ h4 { font-family: var(--font-h4); }
   flex-direction: column;
   gap: 2px;
   padding-top: 6px;
-  border-top: 1px solid #f3f4f6;
+  border-top: 1px solid var(--divider);
 }
 
 .review-author-name {
@@ -1929,7 +1929,7 @@ h4 { font-family: var(--font-h4); }
 .review-form-section {
   padding: 64px 0;
   background: #fff;
-  border-top: 1px solid #f0e8ea;
+  border-top: 1px solid var(--divider);
 }
 
 .review-form-wrap {
