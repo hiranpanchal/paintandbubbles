@@ -21,6 +21,7 @@ let voucherState = {
 
 // ---- INIT ----
 document.addEventListener('DOMContentLoaded', async () => {
+  applyDesignSettings();
   try {
     const res = await fetch('/api/payments/config');
     if (res.ok) {
@@ -31,6 +32,38 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   } catch {}
 });
+
+async function applyDesignSettings() {
+  try {
+    const res = await fetch('/api/design/settings');
+    if (!res.ok) return;
+    const s = await res.json();
+    const vars = [];
+    if (s.color_rose)         vars.push(`--rose: ${s.color_rose}`);
+    if (s.color_rose_deep)    vars.push(`--rose-deep: ${s.color_rose_deep}`);
+    if (s.color_rose_dark)    vars.push(`--rose-dark: ${s.color_rose_dark}`);
+    if (s.color_bg)           vars.push(`--bg: ${s.color_bg}`);
+    if (s.color_text_dark)    vars.push(`--text-dark: ${s.color_text_dark}`);
+    if (s.color_bg_footer)    vars.push(`--bg-footer: ${s.color_bg_footer}`);
+    if (s.color_banner_start) vars.push(`--banner-start: ${s.color_banner_start}`);
+    if (s.color_banner_mid)   vars.push(`--banner-mid: ${s.color_banner_mid}`);
+    if (s.color_banner_end)   vars.push(`--banner-end: ${s.color_banner_end}`);
+    if (vars.length) {
+      const st = document.createElement('style');
+      st.textContent = `:root { ${vars.join('; ')} }`;
+      document.head.appendChild(st);
+    }
+    if (s.logo_url) {
+      document.querySelectorAll('.logo-img').forEach(img => { img.src = s.logo_url; img.style.display = ''; });
+      const fb = document.getElementById('logo-fallback');
+      if (fb) fb.style.display = 'none';
+    }
+    if (s.footer_tagline) {
+      const el = document.querySelector('.footer-tagline');
+      if (el) el.textContent = s.footer_tagline;
+    }
+  } catch {}
+}
 
 // ---- AMOUNT SELECTION ----
 function selectAmount(pence) {
