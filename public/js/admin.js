@@ -3066,10 +3066,11 @@ async function loadContentTab() {
                 <div class="form-row" style="margin-bottom:12px">
                   <div class="form-group">
                     <label>Field Type</label>
-                    <select id="acf-type">
+                    <select id="acf-type" onchange="onAcfTypeChange()">
                       <option value="checkbox">Tick Box (Checkbox)</option>
                       <option value="text">Short Text</option>
                       <option value="textarea">Long Text</option>
+                      <option value="select">Dropdown</option>
                     </select>
                   </div>
                   <div class="form-group">
@@ -3082,7 +3083,11 @@ async function loadContentTab() {
                 </div>
                 <div class="form-group" style="margin-bottom:12px">
                   <label>Label / Question</label>
-                  <input type="text" id="acf-label" placeholder="e.g. Yes, add me to the WhatsApp list">
+                  <input type="text" id="acf-label" placeholder="e.g. How did you hear about us?">
+                </div>
+                <div class="form-group" id="acf-options-wrap" style="display:none;margin-bottom:12px">
+                  <label>Dropdown Options <span style="font-weight:400;color:var(--text-light)">(one per line)</span></label>
+                  <textarea id="acf-options" rows="4" placeholder="e.g.&#10;Google&#10;Instagram&#10;Word of mouth&#10;Other"></textarea>
                 </div>
                 <div style="display:flex;gap:10px">
                   <button class="btn btn-primary btn-sm" onclick="saveContactFormField()">Add Field</button>
@@ -3215,7 +3220,7 @@ async function loadContactFormFields() {
 function renderContactFormFieldsAdmin() {
   const list = document.getElementById('contact-fields-list');
   if (!list) return;
-  const TYPE_LABELS = { checkbox: '☑ Tick Box', text: '✏ Short Text', textarea: '📝 Long Text' };
+  const TYPE_LABELS = { checkbox: '☑ Tick Box', text: '✏ Short Text', textarea: '📝 Long Text', select: '▾ Dropdown' };
   if (!_contactFormFields.length) {
     list.innerHTML = '<p style="color:var(--text-light);font-size:0.88rem;margin:0">No extra fields yet. Click "+ Add Field" to add one.</p>';
     return;
@@ -3224,11 +3229,16 @@ function renderContactFormFieldsAdmin() {
     <div class="form-field-item">
       <div class="form-field-item-info">
         <div class="form-field-item-label">${escHtml(f.label)}</div>
-        <div class="form-field-item-meta">${escHtml(TYPE_LABELS[f.type] || f.type)} &bull; ${f.required ? '<span style="color:var(--coral)">Required</span>' : 'Optional'}</div>
+        <div class="form-field-item-meta">${escHtml(TYPE_LABELS[f.type] || f.type)}${f.type === 'select' && f.options ? ` (${f.options.length} options)` : ''} &bull; ${f.required ? '<span style="color:var(--coral)">Required</span>' : 'Optional'}</div>
       </div>
       <button class="form-field-item-del" onclick="deleteContactFormField(${i})">Delete</button>
     </div>
   `).join('');
+}
+
+function onAcfTypeChange() {
+  const type = document.getElementById('acf-type').value;
+  document.getElementById('acf-options-wrap').style.display = type === 'select' ? '' : 'none';
 }
 
 function openAddContactFieldForm() {
@@ -3236,6 +3246,8 @@ function openAddContactFieldForm() {
   document.getElementById('acf-label').value = '';
   document.getElementById('acf-type').value = 'checkbox';
   document.getElementById('acf-required').value = 'false';
+  document.getElementById('acf-options').value = '';
+  document.getElementById('acf-options-wrap').style.display = 'none';
   document.getElementById('acf-label').focus();
 }
 
@@ -3248,8 +3260,16 @@ async function saveContactFormField() {
   const type  = document.getElementById('acf-type').value;
   const required = document.getElementById('acf-required').value === 'true';
   if (!label) { toast('Please enter a label for the field', 'error'); return; }
+  if (type === 'select') {
+    const opts = document.getElementById('acf-options').value.split('\n').map(o => o.trim()).filter(Boolean);
+    if (opts.length < 2) { toast('Please enter at least 2 options (one per line)', 'error'); return; }
+  }
   const id = 'field_' + Date.now();
-  _contactFormFields.push({ id, type, label, required });
+  const field = { id, type, label, required };
+  if (type === 'select') {
+    field.options = document.getElementById('acf-options').value.split('\n').map(o => o.trim()).filter(Boolean);
+  }
+  _contactFormFields.push(field);
   await persistContactFormFields();
   renderContactFormFieldsAdmin();
   closeAddContactFieldForm();

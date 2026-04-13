@@ -171,6 +171,16 @@ function renderContactFormFields(fieldsJson) {
         <textarea id="cf-field-${escHtml(f.id)}" data-field-id="${escHtml(f.id)}" data-field-type="textarea" rows="3" ${f.required ? 'required' : ''}></textarea>
       </div>`;
     }
+    if (f.type === 'select') {
+      const opts = (f.options || []).map(o => `<option value="${escHtml(o)}">${escHtml(o)}</option>`).join('');
+      return `<div class="form-group">
+        <label for="cf-field-${escHtml(f.id)}">${label}${req}</label>
+        <select id="cf-field-${escHtml(f.id)}" data-field-id="${escHtml(f.id)}" data-field-type="select" ${f.required ? 'required' : ''}>
+          <option value="">— Please select —</option>
+          ${opts}
+        </select>
+      </div>`;
+    }
     // default: text
     return `<div class="form-group">
       <label for="cf-field-${escHtml(f.id)}">${label}${req}</label>
@@ -213,7 +223,13 @@ async function submitContact(e) {
       msgEl.classList.remove('hidden');
       return;
     }
-    if (el.type !== 'checkbox' && !el.value.trim()) {
+    if (el.tagName === 'SELECT' && !el.value) {
+      msgEl.textContent = 'Please complete all required fields.';
+      msgEl.className = 'review-form-msg error';
+      msgEl.classList.remove('hidden');
+      return;
+    }
+    if (el.type !== 'checkbox' && el.tagName !== 'SELECT' && !el.value.trim()) {
       msgEl.textContent = 'Please complete all required fields.';
       msgEl.className = 'review-form-msg error';
       msgEl.classList.remove('hidden');
