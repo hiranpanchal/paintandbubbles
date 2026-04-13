@@ -795,17 +795,24 @@ function showPaymentStep() {
   mountActivePaymentProvider();
 }
 
+function syncPayBtn() {
+  const btn = document.getElementById('pay-btn');
+  if (btn) btn.style.display = currentBookingState.activeProvider === 'sumup' ? 'none' : '';
+}
+
 function selectPaymentMethod(provider) {
   currentBookingState.activeProvider = provider;
   document.getElementById('pm-stripe').classList.toggle('active', provider === 'stripe');
   document.getElementById('pm-sumup').classList.toggle('active', provider === 'sumup');
   document.getElementById('payment-element').innerHTML = '';
   currentBookingState.stripeElements = null;
+  syncPayBtn();
   mountActivePaymentProvider();
 }
 
 async function mountActivePaymentProvider() {
   const provider = currentBookingState.activeProvider;
+  syncPayBtn();
   if (provider === 'stripe') {
     await mountStripeElements();
   } else {
@@ -920,7 +927,9 @@ async function submitPayment() {
     msgEl.textContent = error.message;
     msgEl.classList.remove('hidden');
     document.getElementById('pay-btn').disabled = false;
-    document.getElementById('pay-btn').textContent = `Pay £${(currentBookingState.event.price_pence * currentBookingState.quantity / 100).toFixed(2)}`;
+    const subtotal = currentBookingState.event.price_pence * currentBookingState.quantity;
+    const disc = (currentBookingState.discountPence || 0) + (currentBookingState.voucherDiscount || 0);
+    document.getElementById('pay-btn').textContent = `Pay £${(Math.max(0, subtotal - disc) / 100).toFixed(2)}`;
     return;
   }
 
@@ -945,7 +954,10 @@ async function submitPayment() {
 }
 
 function showConfirmation(booking, customer, event) {
-  const total = event.price_pence === 0 ? 'Free' : `£${(booking.total_pence / 100).toFixed(2)}`;
+  const discountPence   = currentBookingState.discountPence   || 0;
+  const voucherDiscount = currentBookingState.voucherDiscount || 0;
+  const charged = Math.max(0, booking.total_pence - discountPence - voucherDiscount);
+  const total = event.price_pence === 0 ? 'Free' : charged === 0 ? 'Free (fully discounted)' : `£${(charged / 100).toFixed(2)}`;
   const ref   = `#PB${String(booking.id).padStart(5, '0')}`;
 
   document.getElementById('confirm-modal-body').innerHTML = `
