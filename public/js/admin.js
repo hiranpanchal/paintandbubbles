@@ -3277,26 +3277,20 @@ async function loadAdminCategories() {
       el.innerHTML = '<div class="empty-state"><p>No categories yet. Add your first one.</p></div>';
       return;
     }
-    el.innerHTML = `
-      <table class="admin-table">
-        <thead><tr>
-          <th>Category Name</th>
-          <th style="text-align:center">Events</th>
-          <th style="text-align:right">Actions</th>
-        </tr></thead>
-        <tbody>
-          ${cats.map(c => `
-            <tr>
-              <td><strong>${escHtml(c.name)}</strong></td>
-              <td style="text-align:center">
-                <span class="badge" style="background:var(--bg-trust);color:var(--text)">${c.event_count}</span>
-              </td>
-              <td style="text-align:right">
-                <button class="btn btn-sm btn-danger" onclick="deleteCategory(${c.id}, '${escHtml(c.name)}', ${c.event_count})">Delete</button>
-              </td>
-            </tr>`).join('')}
-        </tbody>
-      </table>`;
+    el.innerHTML = `<div class="category-grid">${cats.map(c => `
+      <div class="category-card">
+        <div class="category-card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h4v4H3zM3 13h4v4H3zM9 7h12M9 10h8M9 13h12M9 16h8"/></svg>
+        </div>
+        <div class="category-card-info">
+          <div class="category-card-name">${escHtml(c.name)}</div>
+          <div class="category-card-count">${c.event_count} event${c.event_count !== 1 ? 's' : ''}</div>
+        </div>
+        <button class="category-delete-btn" onclick="deleteCategory(${c.id}, '${escHtml(c.name)}', ${c.event_count})" title="Delete category">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M5 5l10 10M15 5L5 15"/></svg>
+        </button>
+      </div>`).join('')}
+    </div>`;
   } catch (err) {
     el.innerHTML = `<div class="empty-state"><p>${escHtml(err.message)}</p></div>`;
   }
