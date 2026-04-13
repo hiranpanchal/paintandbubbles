@@ -432,6 +432,25 @@ db.exec(`
   }
 }
 
+// Create categories table
+db.exec(`
+  CREATE TABLE IF NOT EXISTS categories (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT UNIQUE NOT NULL,
+    created_at TEXT DEFAULT (datetime('now'))
+  )
+`);
+
+// Seed default categories if empty
+{
+  const count = db.prepare('SELECT COUNT(*) as count FROM categories').get();
+  if (count.count === 0) {
+    const ins = db.prepare('INSERT OR IGNORE INTO categories (name) VALUES (?)');
+    ['Painting', 'Craft', 'Pottery', 'Drawing', 'Sculpture', 'Other'].forEach(n => ins.run(n));
+    console.log('Seeded default categories.');
+  }
+}
+
 // Seed sample events if empty
 const eventCount = db.prepare('SELECT COUNT(*) as count FROM events').get();
 if (eventCount.count === 0) {

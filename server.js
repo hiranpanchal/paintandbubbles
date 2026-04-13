@@ -27,7 +27,8 @@ app.use('/api/faqs',      require('./routes/faqs'));
 app.use('/api/reviews',   require('./routes/reviews'));
 app.use('/api/contact',   require('./routes/contact'));
 app.use('/api/vouchers',  require('./routes/vouchers'));
-app.use('/api/discounts', require('./routes/discounts'));
+app.use('/api/discounts',   require('./routes/discounts'));
+app.use('/api/categories', require('./routes/categories'));
 
 // Serve frontend for all non-API routes
 app.get('/admin',       (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));

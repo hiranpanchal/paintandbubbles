@@ -106,6 +106,10 @@
         <svg viewBox="0 0 20 20" fill="none"><circle cx="7.5" cy="7.5" r="2" stroke="currentColor" stroke-width="1.5"/><circle cx="12.5" cy="12.5" r="2" stroke="currentColor" stroke-width="1.5"/><path d="M5 15L15 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
         Discounts
       </button>
+      <button class="sidebar-item" id="tab-categories" onclick="switchTab('categories')">
+        <svg viewBox="0 0 20 20" fill="none"><path d="M3 5h4v4H3zM3 11h4v4H3zM9 5h8M9 8h5M9 11h8M9 14h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Categories
+      </button>
     </nav>
 
     <div class="sidebar-footer">
@@ -264,6 +268,17 @@
       </div>
     </div>
 
+    <!-- CATEGORIES TAB -->
+    <div class="tab-content hidden" id="content-categories">
+      <div class="toolbar">
+        <div></div>
+        <button class="btn btn-primary btn-sm" onclick="openAddCategoryModal()">+ Add Category</button>
+      </div>
+      <div class="card">
+        <div id="categories-table"></div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -314,6 +329,13 @@
       <button class="modal-close" onclick="closeAdminModal('discount-form-modal')">✕</button>
     </div>
     <div class="modal-body" id="discount-form-body"></div>
+  </div>
+</div>
+
+<!-- GENERIC MODAL (reused for simple forms like Add Category) -->
+<div class="modal-overlay hidden" id="generic-modal" onclick="if(event.target.id==='generic-modal')closeAdminModal('generic-modal')">
+  <div class="modal modal-sm">
+    <div id="generic-modal-body"></div>
   </div>
 </div>
 

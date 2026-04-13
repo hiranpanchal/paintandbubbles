@@ -101,7 +101,8 @@ function switchTab(tab) {
   else if (tab === 'content')   loadContentTab();
   else if (tab === 'enquiries') loadEnquiries();
   else if (tab === 'vouchers')  loadAdminVouchers();
-  else if (tab === 'discounts') loadAdminDiscounts();
+  else if (tab === 'discounts')   loadAdminDiscounts();
+  else if (tab === 'categories')  loadAdminCategories();
 }
 
 function toggleSidebar() {
@@ -264,7 +265,7 @@ function openEventForm(eventId = null) {
   }
 }
 
-function renderEventForm(event = null) {
+async function renderEventForm(event = null) {
   const isEdit = !!event;
   document.getElementById('event-form-body').innerHTML = `
     <div class="form-row">
@@ -275,8 +276,7 @@ function renderEventForm(event = null) {
       <div class="form-group">
         <label>Category</label>
         <select id="ef-category">
-          ${['Painting','Craft','Pottery','Drawing','Sculpture','Other'].map(c =>
-            `<option value="${c}" ${event?.category === c ? 'selected' : ''}>${c}</option>`).join('')}
+          <option value="">Loading…</option>
         </select>
       </div>
     </div>
@@ -339,6 +339,17 @@ function renderEventForm(event = null) {
       <button class="btn btn-ghost btn-full" onclick="closeAdminModal('event-form-modal')">Cancel</button>
       <button class="btn btn-primary btn-full" onclick="saveEvent(${event?.id || 'null'})">${isEdit ? 'Save Changes' : 'Create Event'}</button>
     </div>`;
+
+  // Populate category dropdown from API
+  try {
+    const cats = await apiFetch('/api/categories');
+    const sel = document.getElementById('ef-category');
+    if (sel) {
+      sel.innerHTML = cats.map(c =>
+        `<option value="${escHtml(c.name)}" ${event?.category === c.name ? 'selected' : ''}>${escHtml(c.name)}</option>`
+      ).join('');
+    }
+  } catch {}
 }
 
 async function saveEvent(id) {
@@ -3253,5 +3264,89 @@ async function deleteDiscount(id) {
     loadAdminDiscounts();
   } catch (err) {
     toast(err.message || 'Failed to delete code.', 'error');
+  }
+}
+
+// ---- CATEGORIES ----
+async function loadAdminCategories() {
+  const el = document.getElementById('categories-table');
+  el.innerHTML = '<div class="loading-state"><div class="spinner"></div></div>';
+  try {
+    const cats = await apiFetch('/api/categories');
+    if (!cats.length) {
+      el.innerHTML = '<div class="empty-state"><p>No categories yet. Add your first one.</p></div>';
+      return;
+    }
+    el.innerHTML = `
+      <table class="admin-table">
+        <thead><tr>
+          <th>Category Name</th>
+          <th style="text-align:center">Events</th>
+          <th style="text-align:right">Actions</th>
+        </tr></thead>
+        <tbody>
+          ${cats.map(c => `
+            <tr>
+              <td><strong>${escHtml(c.name)}</strong></td>
+              <td style="text-align:center">
+                <span class="badge" style="background:var(--bg-trust);color:var(--text)">${c.event_count}</span>
+              </td>
+              <td style="text-align:right">
+                <button class="btn btn-sm btn-danger" onclick="deleteCategory(${c.id}, '${escHtml(c.name)}', ${c.event_count})">Delete</button>
+              </td>
+            </tr>`).join('')}
+        </tbody>
+      </table>`;
+  } catch (err) {
+    el.innerHTML = `<div class="empty-state"><p>${escHtml(err.message)}</p></div>`;
+  }
+}
+
+function openAddCategoryModal() {
+  const modal = document.getElementById('generic-modal');
+  const body  = document.getElementById('generic-modal-body');
+  body.innerHTML = `
+    <div class="modal-header">
+      <h2>Add Category</h2>
+      <button class="modal-close" onclick="closeAdminModal('generic-modal')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:24px">
+      <div class="form-group">
+        <label>Category Name *</label>
+        <input type="text" id="new-category-name" placeholder="e.g. Watercolour" style="text-transform:capitalize" autofocus>
+      </div>
+      <div style="display:flex;gap:12px;margin-top:20px">
+        <button class="btn btn-primary" onclick="submitAddCategory()">Add Category</button>
+        <button class="btn btn-ghost" onclick="closeAdminModal('generic-modal')">Cancel</button>
+      </div>
+    </div>`;
+  document.getElementById('generic-modal').classList.remove('hidden');
+}
+
+async function submitAddCategory() {
+  const name = document.getElementById('new-category-name')?.value.trim();
+  if (!name) { toast('Please enter a category name.', 'error'); return; }
+  try {
+    await apiFetch('/api/categories', { method: 'POST', body: JSON.stringify({ name }) });
+    toast('Category added.');
+    closeAdminModal('generic-modal');
+    loadAdminCategories();
+  } catch (err) {
+    toast(err.message || 'Failed to add category.', 'error');
+  }
+}
+
+async function deleteCategory(id, name, eventCount) {
+  if (eventCount > 0) {
+    toast(`Cannot delete "${name}" — ${eventCount} event(s) are assigned to it.`, 'error');
+    return;
+  }
+  if (!confirm(`Delete category "${name}"?`)) return;
+  try {
+    await apiFetch(`/api/categories/${id}`, { method: 'DELETE' });
+    toast('Category deleted.');
+    loadAdminCategories();
+  } catch (err) {
+    toast(err.message || 'Failed to delete category.', 'error');
   }
 }
