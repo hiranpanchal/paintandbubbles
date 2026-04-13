@@ -748,7 +748,9 @@ async function applyVoucher() {
 
 function showPaymentStep() {
   const event = currentBookingState.event;
-  const total = (event.price_pence * currentBookingState.quantity / 100).toFixed(2);
+  const subtotal = event.price_pence * currentBookingState.quantity;
+  const discount = (currentBookingState.voucherDiscount || 0) + (currentBookingState.discountPence || 0);
+  const total = (Math.max(0, subtotal - discount) / 100).toFixed(2);
   const bothEnabled = paymentConfig.stripe_enabled && paymentConfig.sumup_enabled;
 
   // If both providers are active, show a method picker first
@@ -846,9 +848,12 @@ async function mountSumUpCheckout() {
   const el = document.getElementById('payment-element');
   el.innerHTML = '<div style="text-align:center;padding:20px"><div class="spinner"></div></div>';
   try {
+    const sumupPayload = { booking_id: currentBookingState.booking.id };
+    if (currentBookingState.voucherCode)  sumupPayload.voucher_code  = currentBookingState.voucherCode;
+    if (currentBookingState.discountCode) sumupPayload.discount_code = currentBookingState.discountCode;
     const data = await apiFetch('/api/payments/sumup-checkout', {
       method: 'POST',
-      body: JSON.stringify({ booking_id: currentBookingState.booking.id })
+      body: JSON.stringify(sumupPayload)
     });
     currentBookingState.sumupCheckoutId = data.checkoutId;
     el.innerHTML = '<div id="sumup-card"></div><div id="payment-message" class="hidden"></div>';

@@ -132,7 +132,7 @@ router.post('/sumup-checkout', async (req, res) => {
   const merchantCode = getSetting('sumup_merchant_code', 'SUMUP_MERCHANT_CODE');
   if (!apiKey || !merchantCode) return res.status(500).json({ error: 'SumUp is not configured' });
 
-  const { booking_id } = req.body;
+  const { booking_id, voucher_code, discount_code } = req.body;
   if (!booking_id) return res.status(400).json({ error: 'booking_id required' });
 
   const booking = db.prepare(`
@@ -146,10 +146,37 @@ router.post('/sumup-checkout', async (req, res) => {
   if (!booking) return res.status(404).json({ error: 'Booking not found' });
   if (booking.status === 'confirmed') return res.status(400).json({ error: 'Booking already confirmed' });
 
+  // Apply discounts to get the correct amount to charge
+  let amount = booking.total_pence;
+
+  if (voucher_code) {
+    const voucher = db.prepare('SELECT * FROM gift_vouchers WHERE code = ?').get(voucher_code.toUpperCase().trim());
+    if (voucher && voucher.status === 'active') {
+      const voucherDiscount = Math.min(voucher.amount_pence, amount);
+      amount = Math.max(0, amount - voucherDiscount);
+      db.prepare('UPDATE bookings SET voucher_code=?, voucher_discount_pence=? WHERE id=?')
+        .run(voucher_code.toUpperCase().trim(), voucherDiscount, booking_id);
+    }
+  }
+
+  if (discount_code) {
+    const dc = db.prepare('SELECT * FROM discount_codes WHERE code = ?').get(discount_code.toUpperCase().trim());
+    if (dc && dc.is_active && !(dc.max_uses !== null && dc.used_count >= dc.max_uses) &&
+        !(dc.expires_at && new Date(dc.expires_at) < new Date())) {
+      let discountPence = dc.discount_type === 'percentage'
+        ? Math.round((amount * dc.discount_value) / 100)
+        : dc.discount_value;
+      discountPence = Math.min(discountPence, amount);
+      amount = Math.max(0, amount - discountPence);
+      db.prepare('UPDATE bookings SET discount_code=?, discount_pence=? WHERE id=?')
+        .run(discount_code.toUpperCase().trim(), discountPence, booking_id);
+    }
+  }
+
   try {
     const result = await sumupRequest('POST', '/v0.1/checkouts', {
       checkout_reference: `PB-${booking_id}-${Date.now()}`,
-      amount: parseFloat((booking.total_pence / 100).toFixed(2)),
+      amount: parseFloat((amount / 100).toFixed(2)),
       currency: 'GBP',
       merchant_code: merchantCode,
       description: `Paint & Bubbles — ${booking.event_title}`
