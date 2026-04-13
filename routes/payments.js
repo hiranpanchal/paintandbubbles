@@ -211,10 +211,11 @@ router.post('/sumup-confirm', async (req, res) => {
 
     const existing = db.prepare('SELECT id FROM payments WHERE payment_reference = ?').get(checkout_id);
     if (!existing) {
-      const booking = db.prepare('SELECT total_pence FROM bookings WHERE id = ?').get(booking_id);
+      const booking = db.prepare('SELECT total_pence, discount_pence, voucher_discount_pence FROM bookings WHERE id = ?').get(booking_id);
       if (booking) {
+        const charged = Math.max(0, booking.total_pence - (booking.discount_pence || 0) - (booking.voucher_discount_pence || 0));
         db.prepare(`INSERT INTO payments (booking_id, payment_reference, amount_pence, status, provider) VALUES (?, ?, ?, 'succeeded', 'sumup')`)
-          .run(booking_id, checkout_id, booking.total_pence);
+          .run(booking_id, checkout_id, charged);
       }
     }
     res.json({ success: true });
@@ -246,10 +247,11 @@ router.post('/webhook', async (req, res) => {
         .run('confirmed', intent.id, bookingId);
       const existing = db.prepare('SELECT id FROM payments WHERE payment_reference = ?').get(intent.id);
       if (!existing) {
-        const booking = db.prepare('SELECT total_pence FROM bookings WHERE id = ?').get(bookingId);
+        const booking = db.prepare('SELECT total_pence, discount_pence, voucher_discount_pence FROM bookings WHERE id = ?').get(bookingId);
         if (booking) {
+          const charged = Math.max(0, booking.total_pence - (booking.discount_pence || 0) - (booking.voucher_discount_pence || 0));
           db.prepare(`INSERT INTO payments (booking_id, payment_reference, amount_pence, status, provider) VALUES (?, ?, ?, 'succeeded', 'stripe')`)
-            .run(bookingId, intent.id, booking.total_pence);
+            .run(bookingId, intent.id, charged);
         }
       }
     }
