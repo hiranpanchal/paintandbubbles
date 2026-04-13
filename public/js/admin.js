@@ -311,8 +311,10 @@ function renderEventsTable(events) {
           <td>${e.is_active ? '<span class="badge badge-green">Active</span>' : '<span class="badge badge-gray">Hidden</span>'}</td>
           <td>
             <div class="actions">
+              <button class="btn btn-ghost btn-xs" onclick="window.open('/events/${e.id}','_blank')">View</button>
+              <button class="btn btn-ghost btn-xs" onclick="viewEventBookings(${e.id}, '${escHtml(e.title)}')">Bookings</button>
               <button class="btn btn-ghost btn-xs" onclick="openEventForm(${e.id})">Edit</button>
-              <button class="btn btn-ghost btn-xs" onclick="cloneEvent(${e.id})" title="Duplicate this event">Clone</button>
+              <button class="btn btn-ghost btn-xs" onclick="cloneEvent(${e.id})">Clone</button>
               <button class="btn btn-xs" style="background:#fee2e2;color:#dc2626;border:none" onclick="confirmDelete(${e.id})">Delete</button>
             </div>
           </td>
@@ -554,6 +556,93 @@ async function cloneEvent(id) {
   } catch (err) {
     toast(err.message || 'Failed to clone event', 'error');
   }
+}
+
+async function viewEventBookings(eventId, eventTitle) {
+  const modal = document.getElementById('generic-modal');
+  const body  = document.getElementById('generic-modal-body');
+  body.innerHTML = `
+    <div class="modal-header">
+      <div>
+        <h2>Bookings</h2>
+        <div style="font-size:13px;color:var(--text-mid);margin-top:2px">${escHtml(eventTitle)}</div>
+      </div>
+      <button class="modal-close" onclick="closeAdminModal('generic-modal')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:24px">
+      <div class="loading-state"><div class="spinner"></div></div>
+    </div>`;
+  modal.classList.remove('hidden');
+
+  try {
+    const bookings = await apiFetch(`/api/bookings?event_id=${eventId}`);
+    const confirmed = bookings.filter(b => b.status === 'confirmed');
+    const pending   = bookings.filter(b => b.status === 'pending');
+    const all = [...confirmed, ...pending];
+
+    if (!all.length) {
+      body.querySelector('.modal-body').innerHTML = '<p style="color:var(--text-mid);text-align:center;padding:32px 0">No bookings yet for this event.</p>';
+      return;
+    }
+
+    body.querySelector('.modal-body').innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <div style="font-size:13px;color:var(--text-mid)">
+          <strong style="color:var(--text)">${confirmed.length}</strong> confirmed &nbsp;·&nbsp;
+          <strong style="color:var(--text)">${pending.length}</strong> pending
+        </div>
+        <button class="btn btn-sm btn-ghost" onclick="downloadBookingsCSV(${eventId}, '${escHtml(eventTitle)}')">
+          ↓ Download CSV
+        </button>
+      </div>
+      <table class="data-table">
+        <thead><tr>
+          <th>Ref</th>
+          <th>Name</th>
+          <th>Phone</th>
+          <th>Email</th>
+          <th>Qty</th>
+          <th>Status</th>
+        </tr></thead>
+        <tbody>${all.map(b => `
+          <tr>
+            <td style="font-family:monospace;font-size:12px;color:var(--purple)">#PB${String(b.id).padStart(5,'0')}</td>
+            <td style="font-weight:600">${escHtml(b.customer_name)}</td>
+            <td>${escHtml(b.customer_phone || '—')}</td>
+            <td style="font-size:12px;color:var(--text-mid)">${escHtml(b.customer_email)}</td>
+            <td>${b.quantity}</td>
+            <td>${statusBadge(b.status)}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`;
+
+    // Store for CSV download
+    window._eventBookingsCache = { bookings: all, title: eventTitle };
+  } catch (err) {
+    body.querySelector('.modal-body').innerHTML = `<p style="color:var(--coral)">${escHtml(err.message || 'Failed to load bookings')}</p>`;
+  }
+}
+
+function downloadBookingsCSV(eventId, eventTitle) {
+  const data = window._eventBookingsCache;
+  if (!data) return;
+  const rows = [
+    ['Ref', 'Name', 'Email', 'Phone', 'Qty', 'Status'],
+    ...data.bookings.map(b => [
+      `#PB${String(b.id).padStart(5,'0')}`,
+      b.customer_name,
+      b.customer_email,
+      b.customer_phone || '',
+      b.quantity,
+      b.status
+    ])
+  ];
+  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `bookings-${eventTitle.replace(/[^a-z0-9]/gi,'-').toLowerCase()}.csv`;
+  a.click();
 }
 
 function confirmDelete(id) {
