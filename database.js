@@ -451,6 +451,21 @@ db.exec(`
   }
 }
 
+// Ensure homepage pillar (key points) settings exist
+{
+  const check = db.prepare("SELECT COUNT(*) as count FROM site_settings WHERE key = 'about_pillar_1_title'").get();
+  if (check.count === 0) {
+    const ins = db.prepare('INSERT OR IGNORE INTO site_settings (key, value) VALUES (?, ?)');
+    ins.run('about_pillar_1_title', 'All levels welcome');
+    ins.run('about_pillar_1_text',  'From first-timers to seasoned creatives');
+    ins.run('about_pillar_2_title', 'Everything included');
+    ins.run('about_pillar_2_text',  'Materials, guidance and drinks provided');
+    ins.run('about_pillar_3_title', 'Small groups');
+    ins.run('about_pillar_3_text',  'Intimate sessions for a personal experience');
+    console.log('Seeded homepage pillar defaults.');
+  }
+}
+
 // Seed sample events if empty
 const eventCount = db.prepare('SELECT COUNT(*) as count FROM events').get();
 if (eventCount.count === 0) {

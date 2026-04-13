@@ -2862,6 +2862,25 @@ async function loadContentTab() {
             </div>
           </div>
           <div class="design-card">
+            <div class="design-card-header">
+              <h3 class="design-card-title">Key Points</h3>
+              <span class="design-hint">The three bullet points shown below the about text</span>
+            </div>
+            <div class="design-card-body">
+              ${[1,2,3].map(n => `
+              <div class="form-row" style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border)">
+                <div class="form-group">
+                  <label>Point ${n} — Title</label>
+                  <input type="text" id="ds-about_pillar_${n}_title" value="${escHtml(s[`about_pillar_${n}_title`] || '')}">
+                </div>
+                <div class="form-group">
+                  <label>Point ${n} — Description</label>
+                  <input type="text" id="ds-about_pillar_${n}_text" value="${escHtml(s[`about_pillar_${n}_text`] || '')}">
+                </div>
+              </div>`).join('')}
+            </div>
+          </div>
+          <div class="design-card">
             <div class="design-card-header"><h3 class="design-card-title">Footer</h3></div>
             <div class="design-card-body">
               <div class="form-group">
@@ -3136,7 +3155,7 @@ function initContentPEQuill() {
 }
 
 const CONTENT_PAGE_KEYS = {
-  home:             ['hero_title','hero_title_highlight','hero_subtitle','hero_cta_primary_text','hero_cta_primary_url','hero_cta_secondary_text','hero_cta_secondary_url','about_title','about_body_1','about_body_2','footer_tagline'],
+  home:             ['hero_title','hero_title_highlight','hero_subtitle','hero_cta_primary_text','hero_cta_primary_url','hero_cta_secondary_text','hero_cta_secondary_url','about_title','about_body_1','about_body_2','about_pillar_1_title','about_pillar_1_text','about_pillar_2_title','about_pillar_2_text','about_pillar_3_title','about_pillar_3_text','footer_tagline'],
   about:            ['aboutpage_hero_title','aboutpage_hero_sub','aboutpage_label','aboutpage_title','aboutpage_body_1','aboutpage_body_2','aboutpage_body_3','aboutpage_pillar_1_title','aboutpage_pillar_1_text','aboutpage_pillar_2_title','aboutpage_pillar_2_text','aboutpage_pillar_3_title','aboutpage_pillar_3_text'],
   events:           ['included_title','included_items','please_note_title','please_note_text'],
   contact:          ['contact_hero_title','contact_hero_sub','contact_page_text','notification_email'],

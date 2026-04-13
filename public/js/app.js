@@ -139,6 +139,14 @@ async function applyDesignSettings() {
       const subEl = document.getElementById(`trust-sub-${i}`);
       if (subEl && s[`trust_${i}_sub`]) subEl.textContent = s[`trust_${i}_sub`];
     }
+
+    // About pillars (homepage key points)
+    [1,2,3].forEach(n => {
+      const titleEl = document.getElementById(`pillar-${n}-title`);
+      const textEl  = document.getElementById(`pillar-${n}-text`);
+      if (titleEl && s[`about_pillar_${n}_title`]) titleEl.textContent = s[`about_pillar_${n}_title`];
+      if (textEl  && s[`about_pillar_${n}_text`])  textEl.textContent  = s[`about_pillar_${n}_text`];
+    });
   } catch {}
 }
 
