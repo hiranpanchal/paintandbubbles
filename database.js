@@ -451,6 +451,27 @@ db.exec(`
   }
 }
 
+// Migrate contact_submissions: add custom_fields column if missing
+{
+  const cols = db.prepare("PRAGMA table_info(contact_submissions)").all();
+  if (!cols.find(c => c.name === 'custom_fields')) {
+    db.prepare('ALTER TABLE contact_submissions ADD COLUMN custom_fields TEXT DEFAULT NULL').run();
+    console.log('Migrated contact_submissions: added custom_fields column.');
+  }
+}
+
+// Seed contact_form_fields with default WhatsApp consent checkbox
+{
+  const check = db.prepare("SELECT COUNT(*) as count FROM site_settings WHERE key = 'contact_form_fields'").get();
+  if (check.count === 0) {
+    const defaultFields = JSON.stringify([
+      { id: 'whatsapp_consent', type: 'checkbox', label: "Yes, add me to the WhatsApp broadcast and mailing list", required: false }
+    ]);
+    db.prepare('INSERT OR IGNORE INTO site_settings (key, value) VALUES (?, ?)').run('contact_form_fields', defaultFields);
+    console.log('Seeded contact_form_fields defaults.');
+  }
+}
+
 // Ensure homepage pillar (key points) settings exist
 {
   const check = db.prepare("SELECT COUNT(*) as count FROM site_settings WHERE key = 'about_pillar_1_title'").get();

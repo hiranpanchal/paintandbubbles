@@ -48,6 +48,9 @@ async function applyDesignSettings() {
       if (el) el.textContent = s.footer_tagline;
     }
 
+    // Custom form fields
+    renderContactFormFields(s.contact_form_fields);
+
     // Contact page content
     if (s.contact_hero_title) {
       const el = document.getElementById('contact-hero-title');
@@ -145,32 +148,93 @@ function escHtml(str) {
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+// ---- CUSTOM FORM FIELDS ----
+function renderContactFormFields(fieldsJson) {
+  const container = document.getElementById('cf-custom-fields');
+  if (!container) return;
+  let fields = [];
+  try { fields = JSON.parse(fieldsJson || '[]'); } catch {}
+  if (!fields.length) { container.innerHTML = ''; return; }
+
+  container.innerHTML = fields.map(f => {
+    const label = escHtml(f.label || '');
+    const req = f.required ? ' <span class="req">*</span>' : '';
+    if (f.type === 'checkbox') {
+      return `<div class="form-group cf-checkbox-group">
+        <input type="checkbox" id="cf-field-${escHtml(f.id)}" data-field-id="${escHtml(f.id)}" data-field-type="checkbox" ${f.required ? 'required' : ''}>
+        <label for="cf-field-${escHtml(f.id)}">${label}${req}</label>
+      </div>`;
+    }
+    if (f.type === 'textarea') {
+      return `<div class="form-group">
+        <label for="cf-field-${escHtml(f.id)}">${label}${req}</label>
+        <textarea id="cf-field-${escHtml(f.id)}" data-field-id="${escHtml(f.id)}" data-field-type="textarea" rows="3" ${f.required ? 'required' : ''}></textarea>
+      </div>`;
+    }
+    // default: text
+    return `<div class="form-group">
+      <label for="cf-field-${escHtml(f.id)}">${label}${req}</label>
+      <input type="text" id="cf-field-${escHtml(f.id)}" data-field-id="${escHtml(f.id)}" data-field-type="text" ${f.required ? 'required' : ''}>
+    </div>`;
+  }).join('');
+}
+
+function collectCustomFields() {
+  const result = {};
+  document.querySelectorAll('#cf-custom-fields [data-field-id]').forEach(el => {
+    const id = el.dataset.fieldId;
+    result[id] = el.type === 'checkbox' ? el.checked : el.value.trim();
+  });
+  return result;
+}
+
 async function submitContact(e) {
   e.preventDefault();
   const btn = document.getElementById('contact-submit-btn');
   const msgEl = document.getElementById('contact-form-msg');
-  const name = document.getElementById('cf-name').value.trim();
-  const email = document.getElementById('cf-email').value.trim();
-  const phone = document.getElementById('cf-phone').value.trim();
+  const name    = document.getElementById('cf-name').value.trim();
+  const email   = document.getElementById('cf-email').value.trim();
+  const phone   = document.getElementById('cf-phone').value.trim();
   const message = document.getElementById('cf-message').value.trim();
-  if (!name || !email || !message) {
+
+  if (!name || !email || !phone || !message) {
     msgEl.textContent = 'Please fill in all required fields.';
     msgEl.className = 'review-form-msg error';
     msgEl.classList.remove('hidden');
     return;
   }
+
+  // Validate required custom fields
+  const requiredCustom = document.querySelectorAll('#cf-custom-fields [data-field-id][required]');
+  for (const el of requiredCustom) {
+    if (el.type === 'checkbox' && !el.checked) {
+      msgEl.textContent = 'Please complete all required fields.';
+      msgEl.className = 'review-form-msg error';
+      msgEl.classList.remove('hidden');
+      return;
+    }
+    if (el.type !== 'checkbox' && !el.value.trim()) {
+      msgEl.textContent = 'Please complete all required fields.';
+      msgEl.className = 'review-form-msg error';
+      msgEl.classList.remove('hidden');
+      return;
+    }
+  }
+
+  const custom_fields = collectCustomFields();
   btn.disabled = true; btn.textContent = 'Sending\u2026';
   try {
     const res = await fetch('/api/contact', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email, phone, message })
+      body: JSON.stringify({ name, email, phone, message, custom_fields })
     });
     if (!res.ok) throw new Error();
     msgEl.textContent = "Thanks! We'll be in touch soon.";
     msgEl.className = 'review-form-msg success';
     msgEl.classList.remove('hidden');
     document.getElementById('contact-form').reset();
+    // Re-render custom fields after reset (checkboxes go back to unchecked automatically)
   } catch {
     msgEl.textContent = 'Something went wrong. Please try again.';
     msgEl.className = 'review-form-msg error';

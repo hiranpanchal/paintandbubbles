@@ -5,11 +5,12 @@ const { sendEnquiryNotification } = require('../services/email');
 
 // POST /api/contact — public, submit contact form
 router.post('/', (req, res) => {
-  const { name, email, phone, message } = req.body;
-  if (!name || !email || !message) return res.status(400).json({ error: 'Name, email and message are required' });
+  const { name, email, phone, message, custom_fields } = req.body;
+  if (!name || !email || !phone || !message) return res.status(400).json({ error: 'Name, email, phone and message are required' });
+  const customJson = custom_fields && typeof custom_fields === 'object' ? JSON.stringify(custom_fields) : null;
   const result = db.prepare(
-    'INSERT INTO contact_submissions (name, email, phone, message) VALUES (?, ?, ?, ?)'
-  ).run(name.trim(), email.trim(), (phone || '').trim(), message.trim());
+    'INSERT INTO contact_submissions (name, email, phone, message, custom_fields) VALUES (?, ?, ?, ?, ?)'
+  ).run(name.trim(), email.trim(), phone.trim(), message.trim(), customJson);
 
   // Fetch the stored submission (includes created_at) and send notification (non-blocking)
   const submission = db.prepare('SELECT * FROM contact_submissions WHERE id = ?').get(result.lastInsertRowid);

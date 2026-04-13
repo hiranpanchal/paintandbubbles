@@ -3054,6 +3054,43 @@ async function loadContentTab() {
               </div>
             </div>
           </div>
+          <div class="design-card">
+            <div class="design-card-header">
+              <h3 class="design-card-title">Form Fields</h3>
+              <span class="design-hint">Extra fields shown on the contact form below the main message</span>
+            </div>
+            <div class="design-card-body">
+              <div id="contact-fields-list" class="form-field-list"></div>
+              <button class="btn btn-outline-sm" style="margin-top:14px" onclick="openAddContactFieldForm()">+ Add Field</button>
+              <div id="add-contact-field-form" class="add-field-form" style="display:none;margin-top:14px">
+                <div class="form-row" style="margin-bottom:12px">
+                  <div class="form-group">
+                    <label>Field Type</label>
+                    <select id="acf-type">
+                      <option value="checkbox">Tick Box (Checkbox)</option>
+                      <option value="text">Short Text</option>
+                      <option value="textarea">Long Text</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label>Required?</label>
+                    <select id="acf-required">
+                      <option value="false">Optional</option>
+                      <option value="true">Required</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="form-group" style="margin-bottom:12px">
+                  <label>Label / Question</label>
+                  <input type="text" id="acf-label" placeholder="e.g. Yes, add me to the WhatsApp list">
+                </div>
+                <div style="display:flex;gap:10px">
+                  <button class="btn btn-primary btn-sm" onclick="saveContactFormField()">Add Field</button>
+                  <button class="btn btn-outline-sm" onclick="closeAddContactFieldForm()">Cancel</button>
+                </div>
+              </div>
+            </div>
+          </div>
           <div class="design-save-bar">
             <button class="btn btn-primary" onclick="saveContentPage('contact')">Save Contact Page</button>
           </div>
@@ -3133,6 +3170,7 @@ function switchContentTab(tab) {
     panel.classList.toggle('hidden', panel.id !== `ctab-${tab}`);
   });
   if (tab === 'private-events') initContentPEQuill();
+  if (tab === 'contact') loadContactFormFields();
 }
 
 function initContentPEQuill() {
@@ -3163,6 +3201,79 @@ const CONTENT_PAGE_KEYS = {
   gallery:          ['gallery_hero_title','gallery_hero_sub'],
 };
 
+// ---- CONTACT FORM FIELDS ----
+let _contactFormFields = [];
+
+async function loadContactFormFields() {
+  try {
+    const settings = await apiFetch('/api/design/settings');
+    try { _contactFormFields = JSON.parse(settings.contact_form_fields || '[]'); } catch { _contactFormFields = []; }
+  } catch { _contactFormFields = []; }
+  renderContactFormFieldsAdmin();
+}
+
+function renderContactFormFieldsAdmin() {
+  const list = document.getElementById('contact-fields-list');
+  if (!list) return;
+  const TYPE_LABELS = { checkbox: '☑ Tick Box', text: '✏ Short Text', textarea: '📝 Long Text' };
+  if (!_contactFormFields.length) {
+    list.innerHTML = '<p style="color:var(--text-light);font-size:0.88rem;margin:0">No extra fields yet. Click "+ Add Field" to add one.</p>';
+    return;
+  }
+  list.innerHTML = _contactFormFields.map((f, i) => `
+    <div class="form-field-item">
+      <div class="form-field-item-info">
+        <div class="form-field-item-label">${escHtml(f.label)}</div>
+        <div class="form-field-item-meta">${escHtml(TYPE_LABELS[f.type] || f.type)} &bull; ${f.required ? '<span style="color:var(--coral)">Required</span>' : 'Optional'}</div>
+      </div>
+      <button class="form-field-item-del" onclick="deleteContactFormField(${i})">Delete</button>
+    </div>
+  `).join('');
+}
+
+function openAddContactFieldForm() {
+  document.getElementById('add-contact-field-form').style.display = '';
+  document.getElementById('acf-label').value = '';
+  document.getElementById('acf-type').value = 'checkbox';
+  document.getElementById('acf-required').value = 'false';
+  document.getElementById('acf-label').focus();
+}
+
+function closeAddContactFieldForm() {
+  document.getElementById('add-contact-field-form').style.display = 'none';
+}
+
+async function saveContactFormField() {
+  const label = document.getElementById('acf-label').value.trim();
+  const type  = document.getElementById('acf-type').value;
+  const required = document.getElementById('acf-required').value === 'true';
+  if (!label) { toast('Please enter a label for the field', 'error'); return; }
+  const id = 'field_' + Date.now();
+  _contactFormFields.push({ id, type, label, required });
+  await persistContactFormFields();
+  renderContactFormFieldsAdmin();
+  closeAddContactFieldForm();
+}
+
+async function deleteContactFormField(index) {
+  if (!confirm('Delete this field?')) return;
+  _contactFormFields.splice(index, 1);
+  await persistContactFormFields();
+  renderContactFormFieldsAdmin();
+}
+
+async function persistContactFormFields() {
+  try {
+    await apiFetch('/api/design/settings', {
+      method: 'POST',
+      body: JSON.stringify({ contact_form_fields: JSON.stringify(_contactFormFields) })
+    });
+    toast('Form fields saved', 'success');
+  } catch (err) {
+    toast(err.message || 'Failed to save', 'error');
+  }
+}
+
 async function saveContentPage(page) {
   if (page === 'events') syncIncludedItems();
   const data = {};
@@ -3186,6 +3297,19 @@ function escHtml(str) {
   return String(str || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
+function formatEnquiryCustomFields(json) {
+  if (!json) return '—';
+  let fields;
+  try { fields = JSON.parse(json); } catch { return '—'; }
+  const entries = Object.entries(fields);
+  if (!entries.length) return '—';
+  return entries.map(([key, val]) => {
+    const label = key.replace(/_/g,' ').replace(/\b\w/g, c => c.toUpperCase());
+    const display = val === true ? '✅ Yes' : val === false ? '—' : escHtml(String(val));
+    return `<div><strong>${escHtml(label)}:</strong> ${display}</div>`;
+  }).join('');
+}
+
 // ---- ENQUIRIES TAB ----
 async function loadEnquiries() {
   const el = document.getElementById('content-enquiries');
@@ -3198,14 +3322,15 @@ async function loadEnquiries() {
     }
     el.innerHTML = `<div class="card"><div class="table-wrap"><table class="data-table">
       <thead><tr>
-        <th>Name</th><th>Email</th><th>Phone</th><th>Message</th><th>Date</th><th></th>
+        <th>Name</th><th>Email</th><th>Phone</th><th>Message</th><th>Responses</th><th>Date</th><th></th>
       </tr></thead>
       <tbody>${submissions.map(s => `
         <tr class="${s.is_read ? '' : 'unread-row'}" id="enq-row-${s.id}">
           <td><strong>${escHtml(s.name)}</strong></td>
           <td><a href="mailto:${escHtml(s.email)}">${escHtml(s.email)}</a></td>
           <td>${escHtml(s.phone || '\u2014')}</td>
-          <td style="max-width:320px;white-space:pre-wrap">${escHtml(s.message)}</td>
+          <td style="max-width:280px;white-space:pre-wrap">${escHtml(s.message)}</td>
+          <td style="max-width:200px;font-size:0.82rem;color:var(--text-mid)">${formatEnquiryCustomFields(s.custom_fields)}</td>
           <td style="white-space:nowrap">${new Date(s.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</td>
           <td style="display:flex;gap:8px">
             ${!s.is_read ? `<button class="btn btn-ghost btn-sm" onclick="markEnquiryRead(${s.id})">Mark Read</button>` : '<span style="color:var(--text-light);font-size:13px">Read</span>'}

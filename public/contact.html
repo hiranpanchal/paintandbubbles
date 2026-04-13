@@ -65,13 +65,14 @@ document.addEventListener('click',function(e){if(!e.target.closest('.site-header
             <input type="email" id="cf-email" placeholder="your@email.com" required>
           </div>
           <div class="form-group">
-            <label for="cf-phone">Phone Number</label>
-            <input type="tel" id="cf-phone" placeholder="Optional">
+            <label for="cf-phone">Phone Number <span class="req">*</span></label>
+            <input type="tel" id="cf-phone" placeholder="Your phone number" required>
           </div>
           <div class="form-group">
             <label for="cf-message">Your Message <span class="req">*</span></label>
             <textarea id="cf-message" rows="6" placeholder="How can we help?" required></textarea>
           </div>
+          <div id="cf-custom-fields"></div>
           <div id="contact-form-msg" class="review-form-msg hidden"></div>
           <button type="submit" class="btn btn-primary" id="contact-submit-btn">Send Message</button>
         </form>

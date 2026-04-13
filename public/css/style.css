@@ -2420,3 +2420,26 @@ h4 { font-family: var(--font-h4); }
 .voucher-toggle:hover {
   color: var(--rose-deep);
 }
+
+/* ---- CONTACT FORM — CUSTOM FIELDS ---- */
+.cf-checkbox-group {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 4px 0 8px;
+}
+.cf-checkbox-group input[type="checkbox"] {
+  margin-top: 3px;
+  flex-shrink: 0;
+  width: 17px;
+  height: 17px;
+  accent-color: var(--rose);
+  cursor: pointer;
+}
+.cf-checkbox-group label {
+  font-size: 0.9rem;
+  line-height: 1.45;
+  cursor: pointer;
+  color: var(--text-dark);
+  margin: 0;
+}
