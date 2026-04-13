@@ -125,4 +125,12 @@ router.post('/:id/confirm', async (req, res) => {
   res.json({ success: true, bookingId: booking.id });
 });
 
+// DELETE /api/bookings/:id — admin only
+router.delete('/:id', requireAdmin, (req, res) => {
+  const booking = db.prepare('SELECT id FROM bookings WHERE id = ?').get(req.params.id);
+  if (!booking) return res.status(404).json({ error: 'Booking not found' });
+  db.prepare('DELETE FROM bookings WHERE id = ?').run(req.params.id);
+  res.json({ success: true });
+});
+
 module.exports = router;

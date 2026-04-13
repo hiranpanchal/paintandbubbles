@@ -233,8 +233,9 @@ async function viewBookingDetail(id) {
         </div>` : ''}
 
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:4px">
-          ${b.status !== 'confirmed' ? `<button class="btn btn-primary btn-sm" onclick="updateBookingStatus(${b.id},'confirmed');closeAdminModal('generic-modal');loadOverview()">Mark Confirmed</button>` : ''}
-          ${b.status !== 'cancelled' ? `<button class="btn btn-sm btn-ghost" onclick="updateBookingStatus(${b.id},'cancelled');closeAdminModal('generic-modal');loadOverview()">Cancel Booking</button>` : ''}
+          ${b.status !== 'confirmed' ? `<button class="btn btn-primary btn-sm" onclick="updateBookingStatus(${b.id},'confirmed');closeAdminModal('generic-modal')">Mark Confirmed</button>` : ''}
+          ${b.status !== 'cancelled' ? `<button class="btn btn-sm btn-ghost" onclick="updateBookingStatus(${b.id},'cancelled');closeAdminModal('generic-modal')">Cancel Booking</button>` : ''}
+          <button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:none;margin-left:auto" onclick="deleteBooking(${b.id})">Delete Booking</button>
         </div>
       </div>`;
   } catch (err) {
@@ -692,7 +693,7 @@ function renderBookingsTable(bookings) {
         <th>Actions</th>
       </tr></thead>
       <tbody>${bookings.map(b => `
-        <tr>
+        <tr class="clickable-row" onclick="viewBookingDetail(${b.id})" style="cursor:pointer">
           <td style="font-family:monospace;font-weight:700;color:var(--purple)">#PB${String(b.id).padStart(5,'0')}</td>
           <td>
             <div style="font-weight:600">${escHtml(b.customer_name)}</div>
@@ -703,12 +704,15 @@ function renderBookingsTable(bookings) {
           <td>${b.quantity}</td>
           <td><strong>${formatPrice(b.total_pence)}</strong></td>
           <td>${statusBadge(b.status)}</td>
-          <td>
-            <select class="btn btn-xs btn-ghost" onchange="updateBookingStatus(${b.id}, this.value)" style="padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;cursor:pointer">
-              ${['pending','confirmed','cancelled','refunded'].map(s =>
-                `<option value="${s}" ${b.status === s ? 'selected' : ''}>${s.charAt(0).toUpperCase() + s.slice(1)}</option>`
-              ).join('')}
-            </select>
+          <td onclick="event.stopPropagation()">
+            <div class="actions">
+              <select class="btn btn-xs btn-ghost" onchange="updateBookingStatus(${b.id}, this.value)" style="padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;cursor:pointer">
+                ${['pending','confirmed','cancelled','refunded'].map(s =>
+                  `<option value="${s}" ${b.status === s ? 'selected' : ''}>${s.charAt(0).toUpperCase() + s.slice(1)}</option>`
+                ).join('')}
+              </select>
+              <button class="btn btn-xs" style="background:#fee2e2;color:#dc2626;border:none" onclick="deleteBooking(${b.id})">Delete</button>
+            </div>
           </td>
         </tr>`).join('')}
       </tbody>
@@ -719,8 +723,21 @@ async function updateBookingStatus(id, status) {
   try {
     await apiFetch(`/api/bookings/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }), headers: authHeaders() });
     toast('Booking updated', 'success');
+    loadAdminBookings();
   } catch (err) {
     toast(err.message || 'Failed to update', 'error');
+  }
+}
+
+async function deleteBooking(id) {
+  if (!confirm('Permanently delete this booking? This cannot be undone.')) return;
+  try {
+    await apiFetch(`/api/bookings/${id}`, { method: 'DELETE' });
+    toast('Booking deleted.');
+    closeAdminModal('generic-modal');
+    loadAdminBookings();
+  } catch (err) {
+    toast(err.message || 'Failed to delete booking.', 'error');
   }
 }
 
