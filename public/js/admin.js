@@ -156,17 +156,91 @@ function renderRecentBookings(bookings) {
         <th>Date</th>
         <th>Status</th>
         <th>Amount</th>
+        <th></th>
       </tr></thead>
       <tbody>${bookings.map(b => `
-        <tr>
+        <tr class="clickable-row" onclick="viewBookingDetail(${b.id})" style="cursor:pointer">
           <td><div style="font-weight:600">${escHtml(b.customer_name)}</div><div style="color:var(--text-light);font-size:11px">${escHtml(b.customer_email)}</div></td>
           <td>${escHtml(b.event_title)}</td>
           <td class="hide-mobile">${formatDate(b.event_date)}</td>
           <td>${statusBadge(b.status)}</td>
           <td><strong>${formatPrice(b.total_pence)}</strong></td>
+          <td style="color:var(--text-light)">›</td>
         </tr>`).join('')}
       </tbody>
     </table>`;
+}
+
+async function viewBookingDetail(id) {
+  const modal = document.getElementById('generic-modal');
+  const body  = document.getElementById('generic-modal-body');
+  body.innerHTML = `
+    <div class="modal-header">
+      <h2>Booking Detail</h2>
+      <button class="modal-close" onclick="closeAdminModal('generic-modal')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:24px">
+      <div class="loading-state"><div class="spinner"></div></div>
+    </div>`;
+  modal.classList.remove('hidden');
+
+  try {
+    const b = await apiFetch(`/api/bookings/${id}`);
+    const ref = `#PB${String(b.id).padStart(5,'0')}`;
+    const discount = (b.discount_pence || 0) + (b.voucher_discount_pence || 0);
+    const charged  = Math.max(0, b.total_pence - discount);
+
+    body.innerHTML = `
+      <div class="modal-header">
+        <div>
+          <h2>${ref}</h2>
+          <div style="margin-top:2px">${statusBadge(b.status)}</div>
+        </div>
+        <button class="modal-close" onclick="closeAdminModal('generic-modal')">✕</button>
+      </div>
+      <div class="modal-body" style="padding:24px;display:flex;flex-direction:column;gap:20px">
+
+        <div class="booking-detail-section">
+          <div class="booking-detail-label">Customer</div>
+          <div class="booking-detail-value">${escHtml(b.customer_name)}</div>
+          <div class="booking-detail-sub">${escHtml(b.customer_email)}${b.customer_phone ? ' · ' + escHtml(b.customer_phone) : ''}</div>
+        </div>
+
+        <div class="booking-detail-section">
+          <div class="booking-detail-label">Event</div>
+          <div class="booking-detail-value">${escHtml(b.event_title)}</div>
+          <div class="booking-detail-sub">${formatDate(b.event_date)} at ${escHtml(b.event_time || '')} · ${b.quantity} ticket${b.quantity !== 1 ? 's' : ''}</div>
+        </div>
+
+        <div class="booking-detail-section">
+          <div class="booking-detail-label">Payment</div>
+          <div style="display:flex;flex-direction:column;gap:6px;margin-top:4px">
+            <div class="booking-detail-row-split"><span>Subtotal</span><span>${formatPrice(b.total_pence)}</span></div>
+            ${b.discount_pence > 0 ? `<div class="booking-detail-row-split" style="color:var(--green)"><span>🏷️ Discount (${escHtml(b.discount_code || '')})</span><span>−${formatPrice(b.discount_pence)}</span></div>` : ''}
+            ${b.voucher_discount_pence > 0 ? `<div class="booking-detail-row-split" style="color:var(--green)"><span>🎁 Voucher (${escHtml(b.voucher_code || '')})</span><span>−${formatPrice(b.voucher_discount_pence)}</span></div>` : ''}
+            <div class="booking-detail-row-split" style="font-weight:700;border-top:1px solid var(--border);padding-top:6px"><span>Total Charged</span><span style="color:var(--green)">${formatPrice(charged)}</span></div>
+          </div>
+        </div>
+
+        ${b.notes ? `<div class="booking-detail-section">
+          <div class="booking-detail-label">Notes</div>
+          <div class="booking-detail-value" style="font-weight:400;font-size:13px;color:var(--text-mid)">${escHtml(b.notes)}</div>
+        </div>` : ''}
+
+        ${b.payment_reference ? `<div class="booking-detail-section">
+          <div class="booking-detail-label">Payment Reference</div>
+          <div style="font-family:monospace;font-size:12px;color:var(--text-mid);word-break:break-all;margin-top:4px">${escHtml(b.payment_reference)}</div>
+        </div>` : ''}
+
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:4px">
+          ${b.status !== 'confirmed' ? `<button class="btn btn-primary btn-sm" onclick="updateBookingStatus(${b.id},'confirmed');closeAdminModal('generic-modal');loadOverview()">Mark Confirmed</button>` : ''}
+          ${b.status !== 'cancelled' ? `<button class="btn btn-sm btn-ghost" onclick="updateBookingStatus(${b.id},'cancelled');closeAdminModal('generic-modal');loadOverview()">Cancel Booking</button>` : ''}
+        </div>
+      </div>`;
+  } catch (err) {
+    body.innerHTML = `<div class="modal-header"><h2>Error</h2><button class="modal-close" onclick="closeAdminModal('generic-modal')">✕</button></div>
+      <div class="modal-body" style="padding:24px"><p style="color:var(--coral)">${escHtml(err.message || 'Failed to load booking')}</p></div>`;
+  }
 }
 
 function renderRevenueChart(months) {

@@ -1540,3 +1540,37 @@ body {
 }
 .category-delete-btn:hover { background: #ffe0e0; color: #c0392b; }
 .category-delete-btn svg { width: 14px; height: 14px; }
+
+/* ---- BOOKING DETAIL MODAL ---- */
+.booking-detail-section {
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+.booking-detail-section:last-of-type { border-bottom: none; padding-bottom: 0; }
+.booking-detail-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-mid);
+  margin-bottom: 4px;
+}
+.booking-detail-value {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+.booking-detail-sub {
+  font-size: 13px;
+  color: var(--text-mid);
+  margin-top: 2px;
+}
+.booking-detail-row-split {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: var(--text);
+}
+
+/* Clickable table rows */
+.clickable-row:hover { background: var(--bg-page) !important; }
