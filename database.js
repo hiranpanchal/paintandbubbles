@@ -487,6 +487,31 @@ db.exec(`
   }
 }
 
+// Ensure SEO settings exist
+{
+  const check = db.prepare("SELECT COUNT(*) as count FROM site_settings WHERE key = 'seo_business_name'").get();
+  if (check.count === 0) {
+    const ins = db.prepare('INSERT OR IGNORE INTO site_settings (key, value) VALUES (?, ?)');
+    ins.run('seo_business_name',    'Paint & Bubbles');
+    ins.run('seo_business_phone',   '');
+    ins.run('seo_business_address', '');
+    ins.run('seo_business_city',    '');
+    ins.run('seo_business_postcode','');
+    ins.run('seo_google_verification', '');
+    ins.run('seo_og_image',         '');
+    ins.run('seo_desc_home',        '');
+    ins.run('seo_desc_about',       '');
+    ins.run('seo_desc_events',      '');
+    ins.run('seo_desc_reviews',     '');
+    ins.run('seo_desc_gallery',     '');
+    ins.run('seo_desc_faq',         '');
+    ins.run('seo_desc_contact',     '');
+    ins.run('seo_desc_gift_vouchers',    '');
+    ins.run('seo_desc_private_events',   '');
+    console.log('Seeded SEO settings.');
+  }
+}
+
 // Seed sample events if empty
 const eventCount = db.prepare('SELECT COUNT(*) as count FROM events').get();
 if (eventCount.count === 0) {

@@ -3128,6 +3128,7 @@ async function loadContentTab() {
         <button class="design-tab-btn" onclick="switchContentTab('contact')" data-tab="contact">Contact</button>
         <button class="design-tab-btn" onclick="switchContentTab('private-events')" data-tab="private-events">Private Events</button>
         <button class="design-tab-btn" onclick="switchContentTab('gallery')" data-tab="gallery">Gallery</button>
+        <button class="design-tab-btn" onclick="switchContentTab('seo')" data-tab="seo">🔍 SEO</button>
       </div>
 
       <!-- HOME PAGE -->
@@ -3489,6 +3490,84 @@ async function loadContentTab() {
           </div>
         </div>
       </div>
+
+      <!-- SEO -->
+      <div class="design-tab-panel hidden" id="ctab-seo">
+        <div class="design-centred-wrap">
+
+          <div class="design-card">
+            <div class="design-card-header"><h3 class="design-card-title">Business Info <span style="font-size:12px;font-weight:400;color:var(--text-light)">Used in Google search results and maps</span></h3></div>
+            <div class="design-card-body">
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Business Name</label>
+                  <input type="text" id="ds-seo_business_name" value="${escHtml(s.seo_business_name || 'Paint & Bubbles')}">
+                </div>
+                <div class="form-group">
+                  <label>Phone Number</label>
+                  <input type="text" id="ds-seo_business_phone" value="${escHtml(s.seo_business_phone || '')}" placeholder="e.g. 01234 567890">
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Street Address</label>
+                  <input type="text" id="ds-seo_business_address" value="${escHtml(s.seo_business_address || '')}" placeholder="e.g. 12 Studio Lane">
+                </div>
+                <div class="form-group">
+                  <label>City</label>
+                  <input type="text" id="ds-seo_business_city" value="${escHtml(s.seo_business_city || '')}" placeholder="e.g. Brighton">
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Postcode</label>
+                  <input type="text" id="ds-seo_business_postcode" value="${escHtml(s.seo_business_postcode || '')}" placeholder="e.g. BN1 1AB">
+                </div>
+                <div class="form-group">
+                  <label>Default OG Image <span style="font-size:11px;color:var(--text-light)">(shown when sharing pages on social media)</span></label>
+                  <input type="text" id="ds-seo_og_image" value="${escHtml(s.seo_og_image || '')}" placeholder="/uploads/your-image.jpg">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="design-card">
+            <div class="design-card-header"><h3 class="design-card-title">Google Search Console <span style="font-size:12px;font-weight:400;color:var(--text-light)">Optional — for verifying ownership</span></h3></div>
+            <div class="design-card-body">
+              <div class="form-group">
+                <label>Google Verification Code</label>
+                <input type="text" id="ds-seo_google_verification" value="${escHtml(s.seo_google_verification || '')}" placeholder="Paste the content value from the meta tag Google gives you">
+                <p style="font-size:12px;color:var(--text-light);margin-top:4px">In Google Search Console, choose "HTML tag" verification method and paste the <code>content="..."</code> value here.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="design-card">
+            <div class="design-card-header"><h3 class="design-card-title">Page Meta Descriptions <span style="font-size:12px;font-weight:400;color:var(--text-light)">Shown in Google search results — aim for 120–160 characters</span></h3></div>
+            <div class="design-card-body">
+              ${[
+                ['seo_desc_home',           'Home Page'],
+                ['seo_desc_events',         'Events Page'],
+                ['seo_desc_about',          'About Page'],
+                ['seo_desc_reviews',        'Reviews Page'],
+                ['seo_desc_gallery',        'Gallery Page'],
+                ['seo_desc_faq',            'FAQ Page'],
+                ['seo_desc_contact',        'Contact Page'],
+                ['seo_desc_gift_vouchers',  'Gift Vouchers Page'],
+                ['seo_desc_private_events', 'Private Events Page'],
+              ].map(([key, label]) => `
+                <div class="form-group">
+                  <label style="display:flex;justify-content:space-between"><span>${label}</span><span id="${key}-count" style="font-size:11px;color:var(--text-light)"></span></label>
+                  <input type="text" id="ds-${key}" value="${escHtml(s[key] || '')}" placeholder="Leave blank to use the default" oninput="updateSeoCharCount('${key}',this.value)">
+                </div>`).join('')}
+            </div>
+          </div>
+
+          <div class="design-save-bar">
+            <button class="btn btn-primary" onclick="saveContentPage('seo')">Save SEO Settings</button>
+          </div>
+        </div>
+      </div>
     `;
 
     // Quill init is deferred until the Private Events tab is clicked
@@ -3535,7 +3614,16 @@ const CONTENT_PAGE_KEYS = {
   contact:          ['contact_hero_title','contact_hero_sub','contact_page_text','notification_email'],
   'private-events': ['private_events_hero_title','private_events_hero_sub','private_events_content'],
   gallery:          ['gallery_hero_title','gallery_hero_sub'],
+  seo:              ['seo_business_name','seo_business_phone','seo_business_address','seo_business_city','seo_business_postcode','seo_og_image','seo_google_verification','seo_desc_home','seo_desc_events','seo_desc_about','seo_desc_reviews','seo_desc_gallery','seo_desc_faq','seo_desc_contact','seo_desc_gift_vouchers','seo_desc_private_events'],
 };
+
+function updateSeoCharCount(key, val) {
+  const el = document.getElementById(`${key}-count`);
+  if (!el) return;
+  const n = val.length;
+  el.textContent = `${n} chars`;
+  el.style.color = n === 0 ? 'var(--text-light)' : n <= 160 ? '#059669' : '#dc2626';
+}
 
 // ---- CONTACT FORM FIELDS ----
 let _contactFormFields = [];
