@@ -273,6 +273,25 @@ body {
 
 .topbar-right { display: flex; gap: 8px; align-items: center; }
 
+.topbar-account-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 700;
+  font-size: 13px;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 12px;
+  background: var(--bg);
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+}
+.topbar-account-btn:hover {
+  background: #fff0f4;
+  border-color: var(--rose);
+  color: var(--rose-deep);
+}
+
 /* ---- TAB CONTENT ---- */
 .tab-content { padding: 24px; flex: 1; }
 

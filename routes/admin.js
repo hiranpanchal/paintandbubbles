@@ -65,6 +65,26 @@ router.get('/stats', requireAdmin, (req, res) => {
   });
 });
 
+// POST /api/admin/users/me/change-password — any logged-in admin can change their own password
+router.post('/users/me/change-password', requireAdmin, (req, res) => {
+  const { current_password, new_password } = req.body;
+  if (!current_password || !new_password) {
+    return res.status(400).json({ error: 'Current and new password are required' });
+  }
+  if (new_password.length < 12) {
+    return res.status(400).json({ error: 'New password must be at least 12 characters' });
+  }
+  const user = db.prepare('SELECT * FROM admin_users WHERE id = ?').get(req.admin.id);
+  if (!user || !bcrypt.compareSync(current_password, user.password_hash)) {
+    return res.status(401).json({ error: 'Current password is incorrect' });
+  }
+  if (bcrypt.compareSync(new_password, user.password_hash)) {
+    return res.status(400).json({ error: 'New password must be different from the current one' });
+  }
+  db.prepare('UPDATE admin_users SET password_hash = ? WHERE id = ?').run(bcrypt.hashSync(new_password, 12), req.admin.id);
+  res.json({ success: true });
+});
+
 // ---- USER MANAGEMENT (super_admin only) ----
 
 // GET /api/admin/users
@@ -79,7 +99,7 @@ router.get('/users', requireSuperAdmin, (req, res) => {
 router.post('/users', requireSuperAdmin, (req, res) => {
   const { username, password, role } = req.body;
   if (!username || !password) return res.status(400).json({ error: 'Username and password are required' });
-  if (password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters' });
+  if (password.length < 12) return res.status(400).json({ error: 'Password must be at least 12 characters' });
 
   const validRoles = ['admin', 'super_admin'];
   const userRole = validRoles.includes(role) ? role : 'admin';
@@ -117,7 +137,7 @@ router.put('/users/:id', requireSuperAdmin, (req, res) => {
 // POST /api/admin/users/:id/reset-password
 router.post('/users/:id/reset-password', requireSuperAdmin, (req, res) => {
   const { password } = req.body;
-  if (!password || password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters' });
+  if (!password || password.length < 12) return res.status(400).json({ error: 'Password must be at least 12 characters' });
 
   const user = db.prepare('SELECT id FROM admin_users WHERE id = ?').get(req.params.id);
   if (!user) return res.status(404).json({ error: 'User not found' });

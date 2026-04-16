@@ -69,6 +69,12 @@ function showDashboard() {
   const role = localStorage.getItem('pb_admin_role') || 'admin';
   const usersTab = document.getElementById('tab-users');
   if (usersTab) usersTab.style.display = role === 'super_admin' ? '' : 'none';
+  // Populate topbar username
+  try {
+    const payload = JSON.parse(atob(authToken.split('.')[1]));
+    const nameEl = document.getElementById('topbar-username');
+    if (nameEl) nameEl.textContent = payload.username || '';
+  } catch {}
   switchTab('overview');
 }
 
@@ -2657,6 +2663,93 @@ async function reorderReview(id, direction) {
   } catch { toast('Failed to reorder', 'error'); }
 }
 
+// ---- MY ACCOUNT ----
+function openMyAccount() {
+  ensureUserModal();
+  let payload = {};
+  try { payload = JSON.parse(atob(authToken.split('.')[1])); } catch {}
+  const modal = document.getElementById('user-modal');
+  modal.innerHTML = `
+    <div class="modal" style="max-width:460px">
+      <div class="modal-header">
+        <h2>My Account</h2>
+        <button class="modal-close" onclick="closeUserForm()"><svg viewBox="0 0 20 20" fill="none"><path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+      </div>
+      <div class="modal-body">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px">
+          <div style="background:var(--bg);border-radius:10px;padding:14px">
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-light);margin-bottom:4px">Username</div>
+            <div style="font-weight:600;font-size:14px">${escHtml(payload.username || '')}</div>
+          </div>
+          <div style="background:var(--bg);border-radius:10px;padding:14px">
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-light);margin-bottom:4px">Role</div>
+            <div style="font-weight:600;font-size:14px">${payload.role === 'super_admin' ? '⭐ Super Admin' : 'Admin'}</div>
+          </div>
+        </div>
+        <div style="border-top:1px solid var(--border);padding-top:20px">
+          <div style="font-size:13px;font-weight:700;margin-bottom:14px;color:var(--text-dark)">Change Password</div>
+          <div class="form-group">
+            <label>Current Password <span style="color:#e53e3e">*</span></label>
+            <input type="password" id="ma-current-pw" placeholder="Enter your current password" autocomplete="current-password">
+          </div>
+          <div class="form-group">
+            <label>New Password <span style="color:#e53e3e">*</span></label>
+            <input type="password" id="ma-new-pw" placeholder="Min. 12 characters" autocomplete="new-password" oninput="updatePwStrength(this.value)">
+            <div id="ma-pw-strength" style="margin-top:6px;font-size:12px;font-weight:600;height:16px"></div>
+          </div>
+          <div class="form-group">
+            <label>Confirm New Password <span style="color:#e53e3e">*</span></label>
+            <input type="password" id="ma-confirm-pw" placeholder="Repeat new password" autocomplete="new-password">
+          </div>
+          <button class="btn btn-primary" onclick="saveMyPassword()">Update Password</button>
+        </div>
+      </div>
+    </div>
+  `;
+  modal.classList.remove('hidden');
+}
+
+function updatePwStrength(pw) {
+  const el = document.getElementById('ma-pw-strength');
+  if (!el) return;
+  if (!pw) { el.textContent = ''; return; }
+  let score = 0;
+  if (pw.length >= 12) score++;
+  if (pw.length >= 16) score++;
+  if (/[A-Z]/.test(pw)) score++;
+  if (/[0-9]/.test(pw)) score++;
+  if (/[^A-Za-z0-9]/.test(pw)) score++;
+  const levels = [
+    { label: 'Too short', color: '#dc2626' },
+    { label: 'Weak', color: '#dc2626' },
+    { label: 'Fair', color: '#f59e0b' },
+    { label: 'Good', color: '#10b981' },
+    { label: 'Strong', color: '#10b981' },
+    { label: 'Very strong', color: '#059669' },
+  ];
+  const l = levels[Math.min(score, levels.length - 1)];
+  el.textContent = l.label;
+  el.style.color = l.color;
+}
+
+async function saveMyPassword() {
+  const current = document.getElementById('ma-current-pw').value;
+  const newPw   = document.getElementById('ma-new-pw').value;
+  const confirm = document.getElementById('ma-confirm-pw').value;
+  if (!current) { toast('Enter your current password', 'error'); return; }
+  if (!newPw || newPw.length < 12) { toast('New password must be at least 12 characters', 'error'); return; }
+  if (newPw !== confirm) { toast('Passwords do not match', 'error'); return; }
+  try {
+    await apiFetch('/api/admin/users/me/change-password', {
+      method: 'POST',
+      body: JSON.stringify({ current_password: current, new_password: newPw })
+    });
+    toast('Password updated — please sign in again');
+    closeUserForm();
+    setTimeout(signOut, 1800);
+  } catch (err) { toast(err.message || 'Failed to update password', 'error'); }
+}
+
 // ---- USERS TAB ----
 async function loadAdminUsers() {
   const el = document.getElementById('content-users');
@@ -2780,7 +2873,25 @@ function openUserDetail(id) {
               <button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:none;flex-shrink:0" onclick="deleteUser(${u.id})">Delete User</button>
             </div>
           </div>
-          ` : `<p style="font-size:14px;color:var(--text-light);text-align:center;padding:8px 0">This is your account. To change your password, sign out and use another super admin account.</p>`}
+          ` : `
+          <!-- Change own password -->
+          <div style="border-top:1px solid var(--border);padding-top:20px">
+            <div style="font-size:13px;font-weight:700;margin-bottom:14px;color:var(--text-dark)">Change Your Password</div>
+            <div class="form-group">
+              <label>Current Password <span style="color:#e53e3e">*</span></label>
+              <input type="password" id="ud-pw-current" placeholder="Enter current password" autocomplete="current-password">
+            </div>
+            <div class="form-group">
+              <label>New Password <span style="color:#e53e3e">*</span></label>
+              <input type="password" id="ud-pw-new" placeholder="Min. 12 characters" autocomplete="new-password">
+            </div>
+            <div class="form-group">
+              <label>Confirm New Password <span style="color:#e53e3e">*</span></label>
+              <input type="password" id="ud-pw-confirm" placeholder="Repeat new password" autocomplete="new-password">
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="saveSelfPassword()">Update Password</button>
+          </div>
+          `}
         </div>
       </div>
     `;
@@ -2802,13 +2913,31 @@ async function saveUserDetail(id) {
 async function saveUserPassword(id) {
   const pw = document.getElementById('ud-pw-new').value;
   const confirm = document.getElementById('ud-pw-confirm').value;
-  if (!pw || pw.length < 8) { toast('Password must be at least 8 characters', 'error'); return; }
+  if (!pw || pw.length < 12) { toast('Password must be at least 12 characters', 'error'); return; }
   if (pw !== confirm) { toast('Passwords do not match', 'error'); return; }
   try {
     await apiFetch(`/api/admin/users/${id}/reset-password`, { method: 'POST', body: JSON.stringify({ password: pw }) });
     toast('Password updated successfully');
     document.getElementById('ud-pw-new').value = '';
     document.getElementById('ud-pw-confirm').value = '';
+  } catch (err) { toast(err.message || 'Failed to update password', 'error'); }
+}
+
+async function saveSelfPassword() {
+  const current = document.getElementById('ud-pw-current').value;
+  const newPw   = document.getElementById('ud-pw-new').value;
+  const confirm = document.getElementById('ud-pw-confirm').value;
+  if (!current) { toast('Enter your current password', 'error'); return; }
+  if (!newPw || newPw.length < 12) { toast('New password must be at least 12 characters', 'error'); return; }
+  if (newPw !== confirm) { toast('Passwords do not match', 'error'); return; }
+  try {
+    await apiFetch('/api/admin/users/me/change-password', {
+      method: 'POST',
+      body: JSON.stringify({ current_password: current, new_password: newPw })
+    });
+    toast('Password updated — signing you out…');
+    closeUserForm();
+    setTimeout(signOut, 1800);
   } catch (err) { toast(err.message || 'Failed to update password', 'error'); }
 }
 
@@ -2856,7 +2985,7 @@ function openUserForm(id = null) {
           </div>
           <div class="form-group">
             <label>Password <span style="color:#e53e3e">*</span></label>
-            <input type="password" id="user-form-password" placeholder="Min. 8 characters">
+            <input type="password" id="user-form-password" placeholder="Min. 12 characters">
           </div>
         ` : ''}
         <div class="form-group">
@@ -2913,6 +3042,7 @@ async function saveUser() {
       const username = document.getElementById('user-form-username').value.trim();
       const password = document.getElementById('user-form-password').value;
       if (!username || !password) { toast('Username and password required', 'error'); return; }
+      if (password.length < 12) { toast('Password must be at least 12 characters', 'error'); return; }
       await apiFetch('/api/admin/users', { method: 'POST', body: JSON.stringify({ username, password, role }) });
       toast('User created');
     }
