@@ -415,7 +415,11 @@ async function renderEventForm(event = null) {
     <div style="display:flex;gap:12px;margin-top:8px;">
       <button class="btn btn-ghost btn-full" onclick="closeAdminModal('event-form-modal')">Cancel</button>
       <button class="btn btn-primary btn-full" onclick="saveEvent(${event?.id || 'null'})">${isEdit ? 'Save Changes' : 'Create Event'}</button>
-    </div>`;
+    </div>
+    <button type="button" class="btn-fb-share" onclick="openFacebookEventHelper()" style="margin-top:10px">
+      <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+      Create on Facebook
+    </button>`;
 
   // Populate category dropdown from API
   try {
@@ -465,6 +469,85 @@ async function saveEvent(id) {
   } catch (err) {
     toast(err.message || 'Failed to save event', 'error');
   }
+}
+
+// ---- FACEBOOK EVENT HELPER ----
+function openFacebookEventHelper() {
+  const title       = document.getElementById('ef-title')?.value.trim() || '';
+  const description = document.getElementById('ef-description')?.value.trim() || '';
+  const date        = document.getElementById('ef-date')?.value || '';
+  const time        = document.getElementById('ef-time')?.value || '';
+  const duration    = parseInt(document.getElementById('ef-duration')?.value || '120');
+  const location    = document.getElementById('ef-location')?.value.trim() || '';
+  const priceRaw    = parseFloat(document.getElementById('ef-price')?.value || '0');
+
+  if (!title || !date || !time) {
+    toast('Please fill in the Title, Date and Time first', 'error');
+    return;
+  }
+
+  const startDt  = new Date(`${date}T${time}`);
+  const endDt    = new Date(startDt.getTime() + duration * 60000);
+  const dateStr  = startDt.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const timeStr  = startDt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  const endStr   = endDt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  const priceStr = priceRaw === 0 ? 'Free' : `£${priceRaw.toFixed(2)} per person`;
+
+  // Build best-effort Facebook pre-fill URL
+  const fbUrl = new URL('https://www.facebook.com/events/create');
+  fbUrl.searchParams.set('name', title);
+  fbUrl.searchParams.set('start_time', Math.floor(startDt.getTime() / 1000).toString());
+  fbUrl.searchParams.set('end_time', Math.floor(endDt.getTime() / 1000).toString());
+  if (location)    fbUrl.searchParams.set('location', location);
+  if (description) fbUrl.searchParams.set('description', description);
+  const fbHref = fbUrl.toString();
+
+  const modalBody = document.getElementById('generic-modal-body');
+  if (!modalBody) return;
+
+  const field = (label, id, value, multiline) => !value ? '' : `
+    <div class="fb-field-row">
+      <div class="fb-field-label">${label}</div>
+      <div class="fb-copy-row">
+        <span class="fb-copy-value${multiline ? ' fb-copy-multi' : ''}" id="${id}">${escHtml(value)}</span>
+        <button class="fb-copy-btn" onclick="copyFbField('${id}')">Copy</button>
+      </div>
+    </div>`;
+
+  modalBody.innerHTML = `
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:22px">
+      <div style="width:42px;height:42px;background:#1877F2;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <svg viewBox="0 0 24 24" fill="white" width="22" height="22"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+      </div>
+      <div>
+        <h3 style="margin:0;font-size:1.05rem;font-weight:700">Create on Facebook</h3>
+        <p style="margin:3px 0 0;font-size:0.82rem;color:var(--text-light)">Click each Copy button, then paste into the Facebook form</p>
+      </div>
+    </div>
+
+    ${field('Event Name', 'fbf-title', title)}
+    ${field('Date & Time', 'fbf-datetime', `${dateStr} · ${timeStr} – ${endStr}`)}
+    ${field('Location', 'fbf-location', location)}
+    ${field('Description', 'fbf-desc', description, true)}
+    ${field('Ticket Price', 'fbf-price', priceStr)}
+
+    <div style="margin-top:22px;display:flex;gap:10px">
+      <a href="${escHtml(fbHref)}" target="_blank" rel="noopener" class="btn btn-primary" style="flex:1;background:#1877F2;border-color:#1877F2;text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:8px">
+        <svg viewBox="0 0 24 24" fill="currentColor" width="15" height="15"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+        Open Facebook Events
+      </a>
+      <button class="btn btn-ghost" onclick="closeAdminModal('generic-modal')" style="flex:0 0 auto">Close</button>
+    </div>`;
+
+  openAdminModal('generic-modal');
+}
+
+function copyFbField(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  navigator.clipboard.writeText(el.textContent.trim())
+    .then(() => toast('Copied!', 'success'))
+    .catch(() => toast('Could not copy — please copy manually', 'error'));
 }
 
 // ---- EVENT IMAGE UPLOAD ----

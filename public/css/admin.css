@@ -1615,3 +1615,67 @@ body {
   padding: 18px;
   background: var(--bg-page, #fafafa);
 }
+
+/* ---- FACEBOOK EVENT HELPER ---- */
+.btn-fb-share {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 16px;
+  background: #1877F2;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.btn-fb-share:hover { background: #1465d8; }
+
+.fb-field-row { margin-bottom: 12px; }
+.fb-field-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-light);
+  margin-bottom: 5px;
+}
+.fb-copy-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: var(--bg-page, #f8f9fa);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 9px 12px;
+}
+.fb-copy-value {
+  flex: 1;
+  font-size: 0.88rem;
+  color: var(--text-dark);
+  line-height: 1.45;
+  word-break: break-word;
+}
+.fb-copy-multi {
+  max-height: 72px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+}
+.fb-copy-btn {
+  flex-shrink: 0;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 3px 11px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  color: var(--text-mid);
+  transition: all 0.15s;
+  align-self: flex-start;
+}
+.fb-copy-btn:hover { background: var(--rose); color: #fff; border-color: var(--rose); }
