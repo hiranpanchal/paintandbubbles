@@ -1,7 +1,7 @@
 const router = require('express').Router();
 const db = require('../database');
 const { requireAdmin } = require('../middleware/auth');
-const { sendBookingConfirmation } = require('../services/email');
+const { sendBookingConfirmation, sendAdminBookingNotification } = require('../services/email');
 
 // GET /api/bookings — admin only
 router.get('/', requireAdmin, (req, res) => {
@@ -119,8 +119,13 @@ router.post('/:id/confirm', async (req, res) => {
       .run(req.params.id, booking.total_pence || 0);
   }
 
-  // Send confirmation email (non-blocking)
-  sendBookingConfirmation(booking).catch(err => console.error('Email error:', err));
+  // Send confirmation email to customer (non-blocking)
+  sendBookingConfirmation(booking).catch(err => console.error('Booking confirmation email error:', err));
+
+  // Send admin notification (non-blocking)
+  const notifSetting = db.prepare("SELECT value FROM site_settings WHERE key = 'notification_email'").get();
+  const notificationEmail = notifSetting?.value || process.env.NOTIFICATION_EMAIL || '';
+  sendAdminBookingNotification(booking, notificationEmail).catch(err => console.error('Admin booking notification error:', err));
 
   res.json({ success: true, bookingId: booking.id });
 });

@@ -137,8 +137,11 @@ router.post('/confirm', async (req, res) => {
     .run(payment_reference || null, voucher_id);
 
   const updatedVoucher = db.prepare('SELECT * FROM gift_vouchers WHERE id = ?').get(voucher_id);
-  const { sendGiftVoucher } = require('../services/email');
+  const { sendGiftVoucher, sendAdminVoucherNotification } = require('../services/email');
   sendGiftVoucher(updatedVoucher).catch(console.error);
+  const notifSetting = db.prepare("SELECT value FROM site_settings WHERE key = 'notification_email'").get();
+  const notificationEmail = notifSetting?.value || process.env.NOTIFICATION_EMAIL || '';
+  sendAdminVoucherNotification(updatedVoucher, notificationEmail).catch(console.error);
 
   res.json({ success: true, code: voucher.code });
 });
@@ -166,8 +169,11 @@ router.post('/sumup-confirm', async (req, res) => {
       .run(checkout_id, voucher_id);
 
     const updatedVoucher = db.prepare('SELECT * FROM gift_vouchers WHERE id = ?').get(voucher_id);
-    const { sendGiftVoucher } = require('../services/email');
+    const { sendGiftVoucher, sendAdminVoucherNotification } = require('../services/email');
     sendGiftVoucher(updatedVoucher).catch(console.error);
+    const notifSetting2 = db.prepare("SELECT value FROM site_settings WHERE key = 'notification_email'").get();
+    const notificationEmail2 = notifSetting2?.value || process.env.NOTIFICATION_EMAIL || '';
+    sendAdminVoucherNotification(updatedVoucher, notificationEmail2).catch(console.error);
 
     res.json({ success: true, code: voucher.code });
   } catch (err) {

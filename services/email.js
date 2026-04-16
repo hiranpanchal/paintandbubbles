@@ -90,7 +90,7 @@ async function sendBookingConfirmation(booking) {
                       </tr>
                       <tr>
                         <td style="padding:10px 0 0;color:#9E8E96;font-size:13px;font-weight:600;border-top:1px solid #FFCCD8;vertical-align:top;">💳 Total Paid</td>
-                        <td style="padding:10px 0 0;color:#059669;font-size:15px;font-weight:900;border-top:1px solid #FFCCD8;">${formatPrice(booking.total_pence)}</td>
+                        <td style="padding:10px 0 0;color:#059669;font-size:15px;font-weight:900;border-top:1px solid #FFCCD8;">${formatPrice(Math.max(0, booking.total_pence - (booking.discount_pence || 0) - (booking.voucher_discount_pence || 0)))}</td>
                       </tr>
                     </table>
                   </td>
@@ -364,4 +364,122 @@ async function sendGiftVoucher(voucher) {
   }
 }
 
-module.exports = { sendBookingConfirmation, sendEnquiryNotification, sendGiftVoucher };
+async function sendAdminBookingNotification(booking, notificationEmail) {
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) return;
+  if (!notificationEmail) return;
+
+  const transporter = createTransporter();
+  const bookingRef  = `#PB${String(booking.id).padStart(5, '0')}`;
+  const charged     = Math.max(0, booking.total_pence - (booking.discount_pence || 0) - (booking.voucher_discount_pence || 0));
+  const siteUrl     = process.env.SITE_URL || 'http://localhost:3000';
+
+  const discountRows = [];
+  if (booking.discount_pence > 0) discountRows.push(`<tr><td style="padding:6px 0;color:#9E8E96;font-size:13px;font-weight:600;width:30%">Discount code</td><td style="padding:6px 0;color:#2C2028;font-size:13px;font-weight:700;">−${formatPrice(booking.discount_pence)} (${booking.discount_code || ''})</td></tr>`);
+  if (booking.voucher_discount_pence > 0) discountRows.push(`<tr><td style="padding:6px 0;color:#9E8E96;font-size:13px;font-weight:600;width:30%">Gift voucher</td><td style="padding:6px 0;color:#2C2028;font-size:13px;font-weight:700;">−${formatPrice(booking.voucher_discount_pence)} (${booking.voucher_code || ''})</td></tr>`);
+
+  const html = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#FDF8F9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#FDF8F9;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 8px 40px rgba(160,80,110,0.15);">
+        <tr>
+          <td style="background:linear-gradient(135deg,#2C0F18 0%,#6B2D42 50%,#C4748A 100%);padding:36px 48px;text-align:center;">
+            <h1 style="margin:0 0 6px;color:#ffffff;font-size:24px;font-weight:700;">🎉 New Booking!</h1>
+            <p style="margin:0;color:rgba(255,255,255,0.8);font-size:14px;">Paint &amp; Bubbles — ${bookingRef}</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:36px 48px;">
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#FFF6F8;border:1px solid #FFCCD8;border-radius:14px;margin-bottom:24px;">
+              <tr><td style="padding:24px 28px;">
+                <p style="margin:0 0 4px;color:#A85D72;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.8px;">Customer</p>
+                <h2 style="margin:0 0 18px;color:#2C2028;font-size:18px;font-weight:900;">${booking.customer_name}</h2>
+                <table width="100%" cellpadding="0" cellspacing="0">
+                  <tr><td style="padding:6px 0;color:#9E8E96;font-size:13px;font-weight:600;width:30%">Email</td><td style="padding:6px 0;font-size:13px;font-weight:700;"><a href="mailto:${booking.customer_email}" style="color:#C4748A;">${booking.customer_email}</a></td></tr>
+                  <tr><td style="padding:6px 0;color:#9E8E96;font-size:13px;font-weight:600;">Event</td><td style="padding:6px 0;color:#2C2028;font-size:13px;font-weight:700;">${booking.event_title}</td></tr>
+                  <tr><td style="padding:6px 0;color:#9E8E96;font-size:13px;font-weight:600;">Date</td><td style="padding:6px 0;color:#2C2028;font-size:13px;font-weight:700;">${formatDate(booking.event_date)} at ${booking.event_time}</td></tr>
+                  <tr><td style="padding:6px 0;color:#9E8E96;font-size:13px;font-weight:600;">Tickets</td><td style="padding:6px 0;color:#2C2028;font-size:13px;font-weight:700;">${booking.quantity}</td></tr>
+                  ${discountRows.join('')}
+                  <tr><td style="padding:10px 0 0;color:#9E8E96;font-size:13px;font-weight:600;border-top:1px solid #FFCCD8;">Amount paid</td><td style="padding:10px 0 0;color:#059669;font-size:15px;font-weight:900;border-top:1px solid #FFCCD8;">${formatPrice(charged)}</td></tr>
+                </table>
+              </td></tr>
+            </table>
+            <a href="${siteUrl}/admin" style="display:inline-block;background:linear-gradient(135deg,#6B2D42,#C4748A);color:#fff;text-decoration:none;padding:12px 28px;border-radius:50px;font-size:14px;font-weight:700;">View in Dashboard →</a>
+          </td>
+        </tr>
+        <tr><td style="background:#FFF6F8;padding:20px 48px;text-align:center;border-top:1px solid #FFE8EE;"><p style="margin:0;color:#9E8E96;font-size:12px;">Paint &amp; Bubbles — Admin Notification</p></td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`.trim();
+
+  await transporter.sendMail({
+    from: process.env.EMAIL_FROM || 'Paint & Bubbles <noreply@paintandbubbles.com>',
+    to: notificationEmail,
+    replyTo: booking.customer_email,
+    subject: `New Booking: ${booking.event_title} — ${booking.customer_name} (${bookingRef})`,
+    html
+  });
+  console.log(`Admin booking notification sent to ${notificationEmail}`);
+}
+
+async function sendAdminVoucherNotification(voucher, notificationEmail) {
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) return;
+  if (!notificationEmail) return;
+
+  const transporter = createTransporter();
+  const siteUrl     = process.env.SITE_URL || 'http://localhost:3000';
+  const amount      = formatPrice(voucher.amount_pence);
+  const purchasedAt = new Date(voucher.created_at || new Date()).toLocaleString('en-GB', {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
+  });
+
+  const html = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#FDF8F9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#FDF8F9;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 8px 40px rgba(160,80,110,0.15);">
+        <tr>
+          <td style="background:linear-gradient(135deg,#2C0F18 0%,#6B2D42 50%,#C4748A 100%);padding:36px 48px;text-align:center;">
+            <h1 style="margin:0 0 6px;color:#ffffff;font-size:24px;font-weight:700;">🎁 Gift Voucher Sold!</h1>
+            <p style="margin:0;color:rgba(255,255,255,0.8);font-size:14px;">Paint &amp; Bubbles — ${purchasedAt}</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:36px 48px;">
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#FFF6F8;border:1px solid #FFCCD8;border-radius:14px;margin-bottom:24px;">
+              <tr><td style="padding:24px 28px;">
+                <table width="100%" cellpadding="0" cellspacing="0">
+                  <tr><td style="padding:6px 0;color:#9E8E96;font-size:13px;font-weight:600;width:30%">Purchased by</td><td style="padding:6px 0;color:#2C2028;font-size:13px;font-weight:700;">${voucher.purchaser_name}</td></tr>
+                  <tr><td style="padding:6px 0;color:#9E8E96;font-size:13px;font-weight:600;">Email</td><td style="padding:6px 0;font-size:13px;font-weight:700;"><a href="mailto:${voucher.purchaser_email}" style="color:#C4748A;">${voucher.purchaser_email}</a></td></tr>
+                  ${voucher.recipient_name ? `<tr><td style="padding:6px 0;color:#9E8E96;font-size:13px;font-weight:600;">Recipient</td><td style="padding:6px 0;color:#2C2028;font-size:13px;font-weight:700;">${voucher.recipient_name}${voucher.recipient_email ? ` (${voucher.recipient_email})` : ''}</td></tr>` : ''}
+                  <tr><td style="padding:6px 0;color:#9E8E96;font-size:13px;font-weight:600;">Voucher code</td><td style="padding:6px 0;color:#2C2028;font-size:13px;font-weight:700;font-family:monospace;letter-spacing:2px;">${voucher.code}</td></tr>
+                  <tr><td style="padding:10px 0 0;color:#9E8E96;font-size:13px;font-weight:600;border-top:1px solid #FFCCD8;">Value</td><td style="padding:10px 0 0;color:#059669;font-size:15px;font-weight:900;border-top:1px solid #FFCCD8;">${amount}</td></tr>
+                </table>
+              </td></tr>
+            </table>
+            <a href="${siteUrl}/admin" style="display:inline-block;background:linear-gradient(135deg,#6B2D42,#C4748A);color:#fff;text-decoration:none;padding:12px 28px;border-radius:50px;font-size:14px;font-weight:700;">View in Dashboard →</a>
+          </td>
+        </tr>
+        <tr><td style="background:#FFF6F8;padding:20px 48px;text-align:center;border-top:1px solid #FFE8EE;"><p style="margin:0;color:#9E8E96;font-size:12px;">Paint &amp; Bubbles — Admin Notification</p></td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`.trim();
+
+  await transporter.sendMail({
+    from: process.env.EMAIL_FROM || 'Paint & Bubbles <noreply@paintandbubbles.com>',
+    to: notificationEmail,
+    subject: `Gift Voucher Sold: ${amount} — ${voucher.purchaser_name}`,
+    html
+  });
+  console.log(`Admin voucher notification sent to ${notificationEmail}`);
+}
+
+module.exports = { sendBookingConfirmation, sendEnquiryNotification, sendGiftVoucher, sendAdminBookingNotification, sendAdminVoucherNotification };
