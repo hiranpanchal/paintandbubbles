@@ -164,8 +164,12 @@ document.addEventListener('click',function(e){if(!e.target.closest('.site-header
         <span class="reviews-score">5.0</span>
       </div>
     </div>
-    <div class="reviews-track-wrap">
-      <div class="reviews-track" id="reviews-track"></div>
+    <div class="reviews-carousel-wrap">
+      <button class="reviews-arrow" id="reviews-prev" onclick="scrollReviews(-1)" aria-label="Previous reviews">&#8249;</button>
+      <div class="reviews-track-wrap" id="reviews-track-wrap">
+        <div class="reviews-track" id="reviews-track"></div>
+      </div>
+      <button class="reviews-arrow" id="reviews-next" onclick="scrollReviews(1)" aria-label="Next reviews">&#8250;</button>
     </div>
     <div class="reviews-cta">
       <a href="/reviews" class="btn btn-primary">See All Reviews</a>

@@ -251,6 +251,12 @@ async function renderReviewsSection() {
       starsEl.textContent = '★'.repeat(full) + '☆'.repeat(5 - full);
     }
 
+    // Wire up arrow scroll events
+    const wrap = document.getElementById('reviews-track-wrap');
+    if (wrap) {
+      wrap.addEventListener('scroll', updateReviewArrows, { passive: true });
+    }
+
     track.innerHTML = reviews.map(r => `
       <div class="review-card">
         ${r.image_url ? `<div class="review-card-image"><img src="${escHtml(r.image_url)}" alt="Review photo"></div>` : ''}
@@ -269,7 +275,27 @@ async function renderReviewsSection() {
         </div>
       </div>
     `).join('');
+    // Set initial arrow states
+    setTimeout(updateReviewArrows, 50);
   } catch { if (section) section.style.display = 'none'; }
+}
+
+function scrollReviews(dir) {
+  const wrap = document.getElementById('reviews-track-wrap');
+  if (!wrap) return;
+  const card = wrap.querySelector('.review-card');
+  const step = card ? card.offsetWidth + 20 : 340; // card width + gap
+  wrap.scrollBy({ left: dir * step, behavior: 'smooth' });
+  setTimeout(updateReviewArrows, 350);
+}
+
+function updateReviewArrows() {
+  const wrap = document.getElementById('reviews-track-wrap');
+  const prev = document.getElementById('reviews-prev');
+  const next = document.getElementById('reviews-next');
+  if (!wrap || !prev || !next) return;
+  prev.disabled = wrap.scrollLeft <= 2;
+  next.disabled = wrap.scrollLeft >= wrap.scrollWidth - wrap.clientWidth - 2;
 }
 
 async function fetchStripePK() {
