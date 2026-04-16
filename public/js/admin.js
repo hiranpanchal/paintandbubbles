@@ -2024,22 +2024,27 @@ function initAboutBannerDropZone() {
 }
 
 // ---- GALLERY IMAGES ----
+let _galleryImages = [];
+
 async function renderGalleryGrid() {
-  const settings = await fetch('/api/design/settings', {
-    headers: { Authorization: `Bearer ${authToken}` }
-  }).then(r=>r.json());
-  let images = [];
-  try { images = JSON.parse(settings.gallery_images || '[]'); } catch {}
+  const res = await fetch('/api/design/settings', { cache: 'no-store' });
+  const settings = await res.json();
+  _galleryImages = [];
+  try { _galleryImages = JSON.parse(settings.gallery_images || '[]'); } catch {}
+  _paintGalleryGrid();
+}
+
+function _paintGalleryGrid() {
   const grid = document.getElementById('gallery-admin-grid');
   if (!grid) return;
-  if (images.length === 0) {
+  if (!_galleryImages.length) {
     grid.innerHTML = '<p style="color:#aaa;font-size:0.9rem;margin:0">No gallery images yet.</p>';
     return;
   }
-  grid.innerHTML = images.map((url, i) => `
+  grid.innerHTML = _galleryImages.map((url, i) => `
     <div class="gallery-admin-item">
       <img src="${escHtml(url)}" alt="Gallery image ${i+1}">
-      <button class="gallery-admin-remove" onclick="removeGalleryImage(${i})" title="Remove">\u00d7</button>
+      <button class="gallery-admin-remove" onclick="removeGalleryImage(${i})" title="Remove">&times;</button>
     </div>
   `).join('');
 }
@@ -2054,30 +2059,26 @@ async function uploadGalleryImage(file) {
   });
   const data = await res.json();
   if (!data.url) throw new Error('Upload failed');
-  // Fetch current gallery_images, append, save
-  const settings = await apiFetch('/api/design/settings');
-  let images = [];
-  try { images = JSON.parse(settings.gallery_images || '[]'); } catch {}
-  images.push(data.url);
+  // Use the in-memory list — no need to re-fetch
+  const images = [..._galleryImages, data.url];
   await apiFetch('/api/design/settings', {
     method: 'POST',
     body: JSON.stringify({ gallery_images: JSON.stringify(images) })
   });
+  _galleryImages = images;
+  _paintGalleryGrid();
   return data.url;
 }
 
 async function removeGalleryImage(index) {
-  if (!confirm('Remove this image from the gallery?')) return;
+  const images = _galleryImages.filter((_, i) => i !== index);
   try {
-    const settings = await apiFetch('/api/design/settings');
-    let images = [];
-    try { images = JSON.parse(settings.gallery_images || '[]'); } catch {}
-    images.splice(index, 1);
     await apiFetch('/api/design/settings', {
       method: 'POST',
       body: JSON.stringify({ gallery_images: JSON.stringify(images) })
     });
-    await renderGalleryGrid();
+    _galleryImages = images;
+    _paintGalleryGrid();
     toast('Image removed', 'success');
   } catch (err) {
     toast(err.message || 'Failed to remove image', 'error');
