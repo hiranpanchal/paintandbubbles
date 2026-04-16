@@ -2055,34 +2055,33 @@ async function uploadGalleryImage(file) {
   const data = await res.json();
   if (!data.url) throw new Error('Upload failed');
   // Fetch current gallery_images, append, save
-  const settings = await fetch('/api/design/settings', {
-    headers: { Authorization: `Bearer ${authToken}` }
-  }).then(r=>r.json());
+  const settings = await apiFetch('/api/design/settings');
   let images = [];
   try { images = JSON.parse(settings.gallery_images || '[]'); } catch {}
   images.push(data.url);
-  await fetch('/api/design/settings', {
+  await apiFetch('/api/design/settings', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
     body: JSON.stringify({ gallery_images: JSON.stringify(images) })
   });
   return data.url;
 }
 
 async function removeGalleryImage(index) {
-  const settings = await fetch('/api/design/settings', {
-    headers: { Authorization: `Bearer ${authToken}` }
-  }).then(r=>r.json());
-  let images = [];
-  try { images = JSON.parse(settings.gallery_images || '[]'); } catch {}
-  images.splice(index, 1);
-  await fetch('/api/design/settings', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
-    body: JSON.stringify({ gallery_images: JSON.stringify(images) })
-  });
-  renderGalleryGrid();
-  toast('Image removed', 'success');
+  if (!confirm('Remove this image from the gallery?')) return;
+  try {
+    const settings = await apiFetch('/api/design/settings');
+    let images = [];
+    try { images = JSON.parse(settings.gallery_images || '[]'); } catch {}
+    images.splice(index, 1);
+    await apiFetch('/api/design/settings', {
+      method: 'POST',
+      body: JSON.stringify({ gallery_images: JSON.stringify(images) })
+    });
+    await renderGalleryGrid();
+    toast('Image removed', 'success');
+  } catch (err) {
+    toast(err.message || 'Failed to remove image', 'error');
+  }
 }
 
 function triggerGalleryUpload() {
