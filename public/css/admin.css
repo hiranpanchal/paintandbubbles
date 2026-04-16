@@ -1679,3 +1679,47 @@ body {
   align-self: flex-start;
 }
 .fb-copy-btn:hover { background: var(--rose); color: #fff; border-color: var(--rose); }
+
+/* ---- SOCIAL POST HELPER ---- */
+.btn-social-post {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: 100%;
+  padding: 10px 14px;
+  background: linear-gradient(135deg, #833ab4, #fd1d1d, #fcb045);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+.btn-social-post:hover { opacity: 0.88; }
+
+.social-post-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 14px;
+  border-bottom: 2px solid var(--border);
+  padding-bottom: 0;
+}
+.social-post-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-light);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.social-post-tab:hover { color: var(--text-dark); }
+.social-post-tab.active { color: var(--rose); border-bottom-color: var(--rose); }

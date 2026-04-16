@@ -416,10 +416,16 @@ async function renderEventForm(event = null) {
       <button class="btn btn-ghost btn-full" onclick="closeAdminModal('event-form-modal')">Cancel</button>
       <button class="btn btn-primary btn-full" onclick="saveEvent(${event?.id || 'null'})">${isEdit ? 'Save Changes' : 'Create Event'}</button>
     </div>
-    <button type="button" class="btn-fb-share" onclick="openFacebookEventHelper()" style="margin-top:10px">
-      <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
-      Create on Facebook
-    </button>`;
+    <div style="display:flex;gap:10px;margin-top:10px">
+      <button type="button" class="btn-fb-share" style="flex:1" onclick="openFacebookEventHelper()">
+        <svg viewBox="0 0 24 24" fill="currentColor" width="15" height="15"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+        Create FB Event
+      </button>
+      <button type="button" class="btn-social-post" style="flex:1" onclick="openSocialPostHelper(${event?.id || 'null'})">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+        Share as Post
+      </button>
+    </div>`;
 
   // Populate category dropdown from API
   try {
@@ -548,6 +554,118 @@ function copyFbField(id) {
   navigator.clipboard.writeText(el.textContent.trim())
     .then(() => toast('Copied!', 'success'))
     .catch(() => toast('Could not copy — please copy manually', 'error'));
+}
+
+// ---- SOCIAL POST HELPER ----
+function openSocialPostHelper(eventId) {
+  const title       = document.getElementById('ef-title')?.value.trim() || '';
+  const description = document.getElementById('ef-description')?.value.trim() || '';
+  const date        = document.getElementById('ef-date')?.value || '';
+  const time        = document.getElementById('ef-time')?.value || '';
+  const duration    = parseInt(document.getElementById('ef-duration')?.value || '120');
+  const location    = document.getElementById('ef-location')?.value.trim() || '';
+  const priceRaw    = parseFloat(document.getElementById('ef-price')?.value || '0');
+
+  if (!title || !date || !time) {
+    toast('Please fill in the Title, Date and Time first', 'error');
+    return;
+  }
+
+  const startDt  = new Date(`${date}T${time}`);
+  const endDt    = new Date(startDt.getTime() + duration * 60000);
+  const dateStr  = startDt.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const timeStr  = startDt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  const endStr   = endDt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  const priceStr = priceRaw === 0 ? 'Free' : `£${priceRaw.toFixed(2)} per person`;
+
+  const siteUrl  = window.location.origin;
+  const eventUrl = eventId ? `${siteUrl}/events/${eventId}` : `${siteUrl}/events`;
+
+  // --- Facebook post ---
+  const fbPost = `🎨 ${title}
+
+📅 ${dateStr}
+🕐 ${timeStr} – ${endStr}${location ? `\n📍 ${location}` : ''}
+🎟 ${priceStr}
+${description ? `\n${description}\n` : ''}
+All materials provided · All skill levels welcome 🥂
+
+Book your spot: ${eventUrl}`;
+
+  // --- Instagram caption ---
+  const igCaption = `🎨 ${title}
+
+${dateStr} · ${timeStr}${location ? `\n📍 ${location}` : ''}
+🎟 ${priceStr}
+${description ? `\n${description}\n` : ''}
+✨ All materials included
+🥂 Drinks provided
+🌟 All skill levels welcome
+
+👉 Link in bio to book your spot!
+
+#paintandbubbles #sipandpaint #artclass #painting #crafts #artnight #creativefun #girlsnight #datenight #henparty #teambuilding #artlovers #paintnight #brighton #creative`;
+
+  // Facebook Share URL
+  const fbShareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(eventUrl)}`;
+
+  const modalBody = document.getElementById('generic-modal-body');
+  if (!modalBody) return;
+
+  modalBody.innerHTML = `
+    <h3 style="margin:0 0 4px;font-size:1.05rem;font-weight:700">Share as Post</h3>
+    <p style="margin:0 0 20px;font-size:0.82rem;color:var(--text-light)">Ready-to-post captions for each platform</p>
+
+    <div class="social-post-tabs">
+      <button class="social-post-tab active" onclick="switchSocialTab('fb',this)">
+        <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+        Facebook
+      </button>
+      <button class="social-post-tab" onclick="switchSocialTab('ig',this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="14" height="14"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4.5"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>
+        Instagram
+      </button>
+    </div>
+
+    <div id="social-tab-fb" class="social-tab-panel">
+      <div class="fb-copy-row" style="align-items:flex-start">
+        <pre class="fb-copy-value fb-copy-multi" id="sp-fb-text" style="max-height:200px;font-family:inherit;margin:0">${escHtml(fbPost)}</pre>
+        <button class="fb-copy-btn" onclick="copyFbField('sp-fb-text')">Copy</button>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:14px">
+        <a href="${escHtml(fbShareUrl)}" target="_blank" rel="noopener"
+           class="btn btn-primary" style="flex:1;background:#1877F2;border-color:#1877F2;text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:7px">
+          <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+          Share on Facebook
+        </a>
+        <button class="btn btn-ghost" onclick="closeAdminModal('generic-modal')">Close</button>
+      </div>
+    </div>
+
+    <div id="social-tab-ig" class="social-tab-panel" style="display:none">
+      <div class="fb-copy-row" style="align-items:flex-start">
+        <pre class="fb-copy-value fb-copy-multi" id="sp-ig-text" style="max-height:200px;font-family:inherit;margin:0">${escHtml(igCaption)}</pre>
+        <button class="fb-copy-btn" onclick="copyFbField('sp-ig-text')">Copy</button>
+      </div>
+      <p style="font-size:0.78rem;color:var(--text-light);margin:10px 0 0">Copy the caption above, then paste it into a new Instagram post. Remember to add your event image!</p>
+      <div style="margin-top:14px;display:flex;gap:10px">
+        <a href="https://www.instagram.com" target="_blank" rel="noopener"
+           class="btn btn-primary" style="flex:1;background:linear-gradient(135deg,#833ab4,#fd1d1d,#fcb045);border:none;text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:7px">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4.5"/><circle cx="17.5" cy="6.5" r="1" fill="white" stroke="none"/></svg>
+          Open Instagram
+        </a>
+        <button class="btn btn-ghost" onclick="closeAdminModal('generic-modal')">Close</button>
+      </div>
+    </div>`;
+
+  openAdminModal('generic-modal');
+}
+
+function switchSocialTab(tab, btn) {
+  document.querySelectorAll('.social-post-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('social-tab-fb').style.display = tab === 'fb' ? '' : 'none';
+  document.getElementById('social-tab-ig').style.display = tab === 'ig' ? '' : 'none';
 }
 
 // ---- EVENT IMAGE UPLOAD ----
