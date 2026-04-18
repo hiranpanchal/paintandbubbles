@@ -543,6 +543,88 @@ async function sendEnquiryReply(submission, replyBody) {
   console.log(`[Email] Enquiry reply sent to ${submission.email}`);
 }
 
+async function sendEnquiryConfirmation(submission) {
+  const siteUrl = process.env.SITE_URL || 'https://paintandbubbles.co.uk';
+  const firstName = submission.name.split(' ')[0];
+  const receivedAt = new Date(submission.created_at || new Date()).toLocaleString('en-GB', {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
+  });
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body style="margin:0;padding:0;background:#FDF8F9;font-family:'Nunito','Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#FDF8F9;padding:40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 8px 40px rgba(160,80,110,0.15);">
+
+          <!-- Header -->
+          <tr>
+            <td style="background:linear-gradient(135deg,#2C0F18 0%,#6B2D42 50%,#C4748A 100%);padding:44px 48px;text-align:center;">
+              <div style="margin-bottom:16px;">
+                <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,0.3);margin:0 3px;"></span>
+                <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:rgba(255,212,222,0.4);margin:0 3px;"></span>
+                <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:rgba(143,168,181,0.4);margin:0 3px;"></span>
+              </div>
+              <h1 style="margin:0 0 6px;color:#ffffff;font-size:32px;font-weight:700;font-family:'Dancing Script',cursive;">Paint &amp; Bubbles</h1>
+              <p style="margin:0;color:rgba(255,255,255,0.85);font-size:14px;font-weight:600;">We've received your message 💌</p>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding:40px 48px;">
+              <p style="margin:0 0 8px;color:#9E8E96;font-size:14px;font-weight:600;">Hi ${firstName},</p>
+              <p style="margin:0 0 28px;color:#2C2028;font-size:18px;font-weight:800;">Thanks for getting in touch! 🎨</p>
+              <p style="margin:0 0 28px;color:#5C4F57;font-size:15px;font-weight:500;line-height:1.7;">We've received your enquiry and will get back to you as soon as possible — usually within 24 hours. In the meantime, here's a copy of what you sent us:</p>
+
+              <!-- Message copy -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:32px;">
+                <tr>
+                  <td style="background:#FFF6F8;border:1px solid #FFCCD8;border-radius:14px;padding:24px 28px;">
+                    <p style="margin:0 0 6px;color:#A85D72;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.8px;">Your message · ${receivedAt}</p>
+                    <p style="margin:0;color:#2C2028;font-size:14px;font-weight:500;line-height:1.75;white-space:pre-wrap;">${submission.message.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:0 0 28px;color:#5C4F57;font-size:14px;font-weight:500;line-height:1.7;">While you wait, why not browse our upcoming events? There's always something creative on!</p>
+
+              <div style="text-align:center;">
+                <a href="${siteUrl}/events" style="display:inline-block;background:linear-gradient(135deg,#6B2D42,#C4748A);color:#fff;text-decoration:none;padding:14px 36px;border-radius:50px;font-size:15px;font-weight:700;">Browse Events →</a>
+              </div>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background:#FFF6F8;padding:24px 48px;text-align:center;border-top:1px solid #FFE8EE;">
+              <p style="margin:0 0 6px;color:#2C2028;font-size:18px;font-weight:700;font-family:'Dancing Script',cursive;">Paint &amp; Bubbles</p>
+              <p style="margin:0;color:#9E8E96;font-size:12px;font-weight:500;">paintandbubbles.co.uk</p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`.trim();
+
+  await sendEmail({
+    to: `${submission.name} <${submission.email}>`,
+    subject: `We've received your enquiry — Paint & Bubbles`,
+    html,
+  });
+  console.log(`[Email] Enquiry confirmation sent to ${submission.email}`);
+}
+
 async function sendTestEmail(to) {
   await sendEmail({
     to,
@@ -563,6 +645,7 @@ async function sendTestEmail(to) {
 module.exports = {
   sendBookingConfirmation,
   sendEnquiryNotification,
+  sendEnquiryConfirmation,
   sendGiftVoucher,
   sendAdminBookingNotification,
   sendAdminVoucherNotification,

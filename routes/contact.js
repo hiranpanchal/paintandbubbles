@@ -1,7 +1,7 @@
 const router = require('express').Router();
 const db = require('../database');
 const { requireAdmin } = require('../middleware/auth');
-const { sendEnquiryNotification, sendEnquiryReply } = require('../services/email');
+const { sendEnquiryNotification, sendEnquiryConfirmation, sendEnquiryReply } = require('../services/email');
 
 // POST /api/contact — public, submit contact form
 router.post('/', (req, res) => {
@@ -17,6 +17,7 @@ router.post('/', (req, res) => {
   const notifSetting = db.prepare("SELECT value FROM site_settings WHERE key = 'notification_email'").get();
   const notificationEmail = notifSetting?.value || process.env.NOTIFICATION_EMAIL || '';
   sendEnquiryNotification(submission, notificationEmail).catch(err => console.error('Enquiry email error:', err));
+  sendEnquiryConfirmation(submission).catch(err => console.error('Enquiry confirmation error:', err));
 
   res.status(201).json({ success: true, id: result.lastInsertRowid });
 });
