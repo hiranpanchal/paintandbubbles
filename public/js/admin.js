@@ -3377,12 +3377,16 @@ async function loadContentTab() {
           <div class="design-card">
             <div class="design-card-header">
               <h3 class="design-card-title">Notification Email</h3>
-              <span class="design-hint">Where to send an alert when someone submits the contact form</span>
+              <span class="design-hint">Where to send alerts for bookings, vouchers and contact form submissions</span>
             </div>
             <div class="design-card-body">
               <div class="form-group">
                 <label>Send notifications to</label>
                 <input type="email" id="ds-notification_email" placeholder="you@example.com" value="${escHtml(s.notification_email || '')}">
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;margin-top:4px;flex-wrap:wrap">
+                <button class="btn btn-ghost btn-sm" onclick="sendTestEmail()">📧 Send Test Email</button>
+                <span id="test-email-result" style="font-size:13px;font-weight:600"></span>
               </div>
             </div>
           </div>
@@ -3710,6 +3714,23 @@ async function persistContactFormFields() {
     toast('Form fields saved', 'success');
   } catch (err) {
     toast(err.message || 'Failed to save', 'error');
+  }
+}
+
+async function sendTestEmail() {
+  const emailEl = document.getElementById('ds-notification_email');
+  const to = emailEl ? emailEl.value.trim() : '';
+  if (!to) { toast('Enter a notification email address first', 'error'); return; }
+  const resultEl = document.getElementById('test-email-result');
+  if (resultEl) { resultEl.textContent = 'Sending…'; resultEl.style.color = 'var(--text-light)'; }
+  try {
+    await apiFetch('/api/admin/test-email', { method: 'POST', body: JSON.stringify({ to }) });
+    if (resultEl) { resultEl.textContent = `✅ Sent to ${to}`; resultEl.style.color = '#059669'; }
+    toast(`Test email sent to ${to}`);
+  } catch (err) {
+    const msg = err.message || 'Failed to send';
+    if (resultEl) { resultEl.textContent = `❌ ${msg}`; resultEl.style.color = '#dc2626'; }
+    toast(msg, 'error');
   }
 }
 

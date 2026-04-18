@@ -29,6 +29,48 @@ router.post('/login', (req, res) => {
   res.json({ token, username: user.username, role: user.role });
 });
 
+// POST /api/admin/test-email — sends a test email to verify configuration
+router.post('/test-email', requireAdmin, async (req, res) => {
+  const { to } = req.body;
+  if (!to) return res.status(400).json({ error: 'Recipient email address required' });
+
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    return res.status(400).json({
+      error: 'Email not configured. Set EMAIL_USER and EMAIL_PASS environment variables on Railway.'
+    });
+  }
+
+  const nodemailer = require('nodemailer');
+  const transporter = nodemailer.createTransport({
+    host: process.env.EMAIL_HOST || 'smtp.gmail.com',
+    port: parseInt(process.env.EMAIL_PORT || '587'),
+    secure: false,
+    auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
+  });
+
+  try {
+    await transporter.verify();
+    await transporter.sendMail({
+      from: process.env.EMAIL_FROM || `Paint & Bubbles <${process.env.EMAIL_USER}>`,
+      to,
+      subject: '✅ Test Email — Paint & Bubbles',
+      html: `
+        <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px;background:#fdf8f9;border-radius:12px">
+          <h2 style="color:#C4748A;margin:0 0 16px">Email is working! 🎉</h2>
+          <p style="color:#2C2028;margin:0 0 12px">This is a test email from your <strong>Paint &amp; Bubbles</strong> admin dashboard.</p>
+          <p style="color:#2C2028;margin:0 0 12px">Your email settings are correctly configured. Booking confirmations, gift voucher emails and admin notifications will all send successfully.</p>
+          <hr style="border:none;border-top:1px solid #e0d0d4;margin:24px 0">
+          <p style="color:#999;font-size:12px;margin:0">Sent from: ${process.env.EMAIL_USER}</p>
+        </div>
+      `
+    });
+    res.json({ success: true, message: `Test email sent to ${to}` });
+  } catch (err) {
+    console.error('Test email failed:', err);
+    res.status(500).json({ error: err.message || 'Failed to send test email' });
+  }
+});
+
 // GET /api/admin/stats
 router.get('/stats', requireAdmin, (req, res) => {
   const totalEvents    = db.prepare('SELECT COUNT(*) as count FROM events WHERE is_active = 1').get();
