@@ -544,6 +544,15 @@ db.exec(`
   )
 `);
 
+// Migrate private_event_quotes: add custom_answers column if missing
+{
+  const cols = db.prepare('PRAGMA table_info(private_event_quotes)').all();
+  if (!cols.find(c => c.name === 'custom_answers')) {
+    db.prepare('ALTER TABLE private_event_quotes ADD COLUMN custom_answers TEXT DEFAULT NULL').run();
+    console.log('Migrated private_event_quotes: added custom_answers column.');
+  }
+}
+
 // Seed default quote form config if not already set
 db.prepare("INSERT OR IGNORE INTO site_settings (key, value) VALUES ('pe_quote_config', ?)").run(
   JSON.stringify({

@@ -64,7 +64,7 @@ router.post('/', (req, res) => {
     name, email, phone,
     group_size, preferred_date, date_flexible,
     activity_type, venue_preference,
-    notes, how_heard,
+    notes, how_heard, custom_answers,
   } = req.body;
 
   if (!name || !email || !group_size || !activity_type) {
@@ -73,12 +73,16 @@ router.post('/', (req, res) => {
 
   const estimate = calculateEstimate(activity_type, group_size);
 
+  // Serialise custom answers
+  const customAnswersJson = (custom_answers && typeof custom_answers === 'object')
+    ? JSON.stringify(custom_answers) : null;
+
   const result = db.prepare(`
     INSERT INTO private_event_quotes
       (name, email, phone, group_size, preferred_date, date_flexible,
        activity_type, venue_preference, budget_range, notes, how_heard,
-       estimate_low, estimate_high)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       estimate_low, estimate_high, custom_answers)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     name.trim(),
     email.trim(),
@@ -88,23 +92,31 @@ router.post('/', (req, res) => {
     date_flexible ? 1 : 0,
     activity_type,
     venue_preference || '',
-    '', // budget_range no longer collected
+    '',
     notes ? notes.trim() : '',
     how_heard ? how_heard.trim() : '',
     estimate.low,
     estimate.high,
+    customAnswersJson,
   );
 
   const quote = db.prepare('SELECT * FROM private_event_quotes WHERE id = ?').get(result.lastInsertRowid);
   const quoteRef = `#PQ${String(quote.id).padStart(5, '0')}`;
 
+  // Build labelled custom answers for emails using current config
+  const config = getConfig();
+  const rawAnswers = custom_answers || {};
+  const labelledAnswers = (config.questions || [])
+    .filter(q => rawAnswers[q.id])
+    .map(q => ({ label: q.label, answer: String(rawAnswers[q.id]) }));
+
   const notifSetting = db.prepare("SELECT value FROM site_settings WHERE key = 'notification_email'").get();
   const notificationEmail = notifSetting?.value || process.env.NOTIFICATION_EMAIL || '';
 
-  sendPrivateQuoteToAdmin(quote, notificationEmail).catch(err =>
+  sendPrivateQuoteToAdmin(quote, notificationEmail, labelledAnswers).catch(err =>
     console.error('[Email] Private quote admin notif failed:', err.message)
   );
-  sendPrivateQuoteConfirmation(quote).catch(err =>
+  sendPrivateQuoteConfirmation(quote, labelledAnswers).catch(err =>
     console.error('[Email] Private quote confirmation failed:', err.message)
   );
 
@@ -129,15 +141,17 @@ router.get('/unread-count', requireAdmin, (req, res) => {
 
 // PUT /api/private-quotes/config — admin, save form config
 router.put('/config', requireAdmin, (req, res) => {
-  const { activities, group_sizes, venues } = req.body;
+  const { activities, group_sizes, venues, questions } = req.body;
 
-  // Validate shape
+  // Validate required arrays
   if (!Array.isArray(activities) || !Array.isArray(group_sizes) || !Array.isArray(venues)) {
     return res.status(400).json({ error: 'Invalid config format' });
   }
   if (activities.length === 0) return res.status(400).json({ error: 'At least one activity is required' });
   if (group_sizes.length  === 0) return res.status(400).json({ error: 'At least one group size is required' });
   if (venues.length       === 0) return res.status(400).json({ error: 'At least one venue option is required' });
+
+  const VALID_TYPES = ['text', 'textarea', 'choice'];
 
   const sanitised = {
     activities: activities.map(a => ({
@@ -150,6 +164,18 @@ router.put('/config', requireAdmin, (req, res) => {
       max:   Math.max(1, parseInt(s.max) || 1),
     })).filter(s => s.label),
     venues: venues.map(v => String(v || '').trim()).filter(Boolean),
+    questions: Array.isArray(questions)
+      ? questions.map(q => ({
+          id:          String(q.id || '').trim() || `q_${Date.now()}_${Math.random().toString(36).slice(2,6)}`,
+          label:       String(q.label || '').trim(),
+          type:        VALID_TYPES.includes(q.type) ? q.type : 'text',
+          required:    !!q.required,
+          placeholder: String(q.placeholder || '').trim(),
+          options:     Array.isArray(q.options)
+            ? q.options.map(o => String(o || '').trim()).filter(Boolean)
+            : [],
+        })).filter(q => q.label)
+      : [],
   };
 
   db.prepare("INSERT OR REPLACE INTO site_settings (key, value) VALUES ('pe_quote_config', ?)").run(

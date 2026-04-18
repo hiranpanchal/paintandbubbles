@@ -17,6 +17,7 @@ let quoteData = {
   email:            '',
   phone:            '',
   how_heard:        '',
+  custom_answers:   {},
 };
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
@@ -28,16 +29,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 async function loadFormConfig() {
   try {
     const config = await fetch('/api/private-quotes/config').then(r => r.json());
+    window._peConfig = config;
     buildStep1(config);
     buildStep2(config);
   } catch {
     // Fallback defaults if fetch fails
-    buildStep1({
+    const fallback = {
       activities:  [{ name: 'Sip & Paint' }, { name: 'Canvas Workshop' }, { name: 'Watercolour Workshop' }, { name: 'Life Drawing' }, { name: 'Craft Night' }, { name: "Kids' Art Party" }, { name: 'Custom / Other' }],
       group_sizes: [{ label: '6–10' }, { label: '11–15' }, { label: '16–20' }, { label: '21–30' }, { label: '30+' }],
       venues:      ['Your venue', 'Our venue', 'Flexible'],
-    });
-    buildStep2({ venues: ['Your venue', 'Our venue', 'Flexible'] });
+      questions:   [],
+    };
+    window._peConfig = fallback;
+    buildStep1(fallback);
+    buildStep2(fallback);
   }
 }
 
@@ -70,6 +75,43 @@ function buildStep2(config) {
         ${escHtml(v)}
       </div>`).join('');
   }
+
+  // Custom questions
+  const cqContainer = document.getElementById('pe-custom-questions');
+  if (!cqContainer) return;
+  const questions = config.questions || [];
+  if (!questions.length) { cqContainer.innerHTML = ''; return; }
+
+  cqContainer.innerHTML = questions.map(q => {
+    const reqMark = q.required ? ' *' : ' <span class="optional">(optional)</span>';
+    if (q.type === 'choice') {
+      const optionsHtml = (q.options || []).map(opt => `
+        <div class="pe-pill" data-qid="${escHtml(q.id)}" data-opt="${escHtml(opt)}"
+             onclick="selectCustomChoice('${escHtml(q.id)}', '${escHtml(opt)}', this)">
+          ${escHtml(opt)}
+        </div>`).join('');
+      return `
+        <div class="pe-form-group" data-custom-q="${escHtml(q.id)}">
+          <span class="pe-field-label">${escHtml(q.label)}${reqMark}</span>
+          <div class="pe-pills" id="pe-cq-pills-${escHtml(q.id)}">${optionsHtml}</div>
+        </div>`;
+    }
+    if (q.type === 'textarea') {
+      return `
+        <div class="pe-form-group" data-custom-q="${escHtml(q.id)}">
+          <label for="pe-cq-${escHtml(q.id)}">${escHtml(q.label)}${reqMark}</label>
+          <textarea class="pe-input" id="pe-cq-${escHtml(q.id)}"
+            placeholder="${escHtml(q.placeholder || '')}" data-qid="${escHtml(q.id)}"></textarea>
+        </div>`;
+    }
+    // default: text
+    return `
+      <div class="pe-form-group" data-custom-q="${escHtml(q.id)}">
+        <label for="pe-cq-${escHtml(q.id)}">${escHtml(q.label)}${reqMark}</label>
+        <input type="text" class="pe-input" id="pe-cq-${escHtml(q.id)}"
+          placeholder="${escHtml(q.placeholder || '')}" data-qid="${escHtml(q.id)}">
+      </div>`;
+  }).join('');
 }
 
 // ─── Selection handlers ───────────────────────────────────────────────────────
@@ -94,6 +136,13 @@ function selectVenue(venue, el) {
   quoteData.venue_preference = venue;
 }
 
+function selectCustomChoice(qid, opt, el) {
+  const container = document.getElementById(`pe-cq-pills-${qid}`);
+  if (container) container.querySelectorAll('.pe-pill').forEach(p => p.classList.remove('selected'));
+  el.classList.add('selected');
+  quoteData.custom_answers[qid] = opt;
+}
+
 // ─── Step navigation ──────────────────────────────────────────────────────────
 
 function peStep(dir) {
@@ -106,10 +155,29 @@ function peStep(dir) {
       if (!quoteData.group_size)    return showError('Please select a group size');
     }
     if (currentStep === 2) {
-      // Step 2 is all optional — just collect values
       quoteData.preferred_date  = document.getElementById('pe-date').value;
       quoteData.date_flexible   = document.getElementById('pe-date-flexible').checked;
       quoteData.notes           = document.getElementById('pe-notes').value.trim();
+
+      // Collect & validate custom question answers
+      const questions = (window._peConfig && window._peConfig.questions) || [];
+      for (const q of questions) {
+        if (q.type === 'choice') {
+          // already stored in quoteData.custom_answers by selectCustomChoice()
+          if (q.required && !quoteData.custom_answers[q.id]) {
+            return showError(`Please select an option for: ${q.label}`);
+          }
+        } else {
+          const input = document.getElementById(`pe-cq-${q.id}`);
+          if (input) {
+            const val = input.value.trim();
+            quoteData.custom_answers[q.id] = val;
+            if (q.required && !val) {
+              return showError(`Please fill in: ${q.label}`);
+            }
+          }
+        }
+      }
     }
     if (currentStep === 3) {
       quoteData.name     = document.getElementById('pe-name').value.trim();

@@ -4189,9 +4189,33 @@ async function openPrivateQuote(id) {
     refreshPQBadge();
   } catch {}
 
-  const quotes = await apiFetch('/api/private-quotes', { headers: authHeaders() });
+  const [quotes, pqConfig] = await Promise.all([
+    apiFetch('/api/private-quotes', { headers: authHeaders() }),
+    window._pqConfig
+      ? Promise.resolve(window._pqConfig)
+      : fetch('/api/private-quotes/config').then(r => r.json()).catch(() => ({ questions: [] })),
+  ]);
   const q = quotes.find(x => x.id === id);
   if (!q) return;
+
+  // Parse custom answers and match labels from config
+  let customAnswerRows = '';
+  try {
+    const rawAnswers = q.custom_answers ? JSON.parse(q.custom_answers) : {};
+    const questions  = pqConfig.questions || [];
+    const matched    = questions.filter(qs => rawAnswers[qs.id]);
+    if (matched.length) {
+      customAnswerRows = `
+        <div style="margin-bottom:20px;">
+          <div style="font-size:11px;font-weight:700;color:#C4748A;text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;">Additional Answers</div>
+          ${matched.map(qs => `
+          <div style="display:flex;gap:12px;padding:8px 0;border-bottom:1px solid #F5DDE3;">
+            <div style="font-size:13px;font-weight:700;color:#9E8E96;width:38%;flex-shrink:0;">${escHtml(qs.label)}</div>
+            <div style="font-size:13px;font-weight:600;color:#2C2028;">${escHtml(String(rawAnswers[qs.id]))}</div>
+          </div>`).join('')}
+        </div>`;
+    }
+  } catch {}
 
   const ref = `#PQ${String(q.id).padStart(5, '0')}`;
   const fmt = p => p ? `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: 0 })}` : '—';
@@ -4260,6 +4284,8 @@ async function openPrivateQuote(id) {
             <div style="font-size:13px;font-weight:600;color:#2C2028;">${escHtml(val)}</div>
           </div>`).join('')}
         </div>
+
+        ${customAnswerRows}
 
         ${q.notes ? `
         <div style="background:#FFF6F8;border-left:3px solid #C4748A;padding:14px 18px;border-radius:0 10px 10px 0;margin-bottom:20px;">
@@ -4353,6 +4379,64 @@ function renderPQConfigForm(config) {
         onclick="removePQVenue(${i})">✕</button>
     </div>`).join('');
 
+  const questions = config.questions || [];
+  const questionCards = questions.map((q, i) => {
+    const optionsHtml = (q.options || []).map((opt, j) => `
+      <div style="display:flex;gap:8px;margin-bottom:6px;">
+        <input class="form-input" style="flex:1;min-width:0" placeholder="Option"
+          value="${escHtml(opt)}" oninput="updatePQOption(${i},${j},this.value)">
+        <button class="btn btn-xs" style="background:#fee2e2;color:#dc2626;border:none;flex-shrink:0"
+          onclick="removePQOption(${i},${j})">✕</button>
+      </div>`).join('');
+
+    const choiceBody = q.type === 'choice' ? `
+      <div>
+        <label style="font-size:12px;font-weight:700;color:var(--text-dark);display:block;margin-bottom:8px;">Choices</label>
+        <div id="pq-q-opts-${i}">${optionsHtml}</div>
+        <button class="btn btn-ghost btn-xs" onclick="addPQOption(${i})">+ Add Choice</button>
+      </div>` : `
+      <div>
+        <label style="font-size:12px;font-weight:700;color:var(--text-dark);display:block;margin-bottom:5px;">Placeholder <span style="font-weight:400;color:var(--text-light)">(optional)</span></label>
+        <input class="form-input" placeholder="e.g. Tell us more…"
+          value="${escHtml(q.placeholder || '')}" oninput="updatePQQuestion(${i},'placeholder',this.value)">
+      </div>`;
+
+    return `
+    <div class="pq-q-card" id="pq-q-${i}" style="border:1.5px solid #F0E0E6;border-radius:12px;padding:16px;margin-bottom:12px;background:#FFFBFC;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <span style="font-size:11px;font-weight:700;color:#C4748A;text-transform:uppercase;letter-spacing:.5px">Question ${i + 1}</span>
+        <button class="btn btn-xs" style="background:#fee2e2;color:#dc2626;border:none"
+          onclick="removePQQuestion(${i})">✕ Remove</button>
+      </div>
+
+      <div style="margin-bottom:10px;">
+        <label style="font-size:12px;font-weight:700;color:var(--text-dark);display:block;margin-bottom:5px;">Question Label *</label>
+        <input class="form-input" placeholder="e.g. What's the occasion?"
+          value="${escHtml(q.label)}" oninput="updatePQQuestion(${i},'label',this.value)">
+      </div>
+
+      <div style="display:flex;gap:16px;margin-bottom:12px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:140px;">
+          <label style="font-size:12px;font-weight:700;color:var(--text-dark);display:block;margin-bottom:5px;">Answer Type</label>
+          <select class="form-input" onchange="updatePQQuestionType(${i},this.value)">
+            <option value="text"     ${q.type === 'text'     ? 'selected' : ''}>Short text</option>
+            <option value="textarea" ${q.type === 'textarea' ? 'selected' : ''}>Long text</option>
+            <option value="choice"   ${q.type === 'choice'   ? 'selected' : ''}>Multiple choice</option>
+          </select>
+        </div>
+        <div style="display:flex;align-items:flex-end;padding-bottom:8px;">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text-dark);font-weight:600;">
+            <input type="checkbox" ${q.required ? 'checked' : ''} onchange="updatePQQuestion(${i},'required',this.checked)"
+              style="accent-color:#A85D72;width:15px;height:15px;flex-shrink:0;">
+            Required
+          </label>
+        </div>
+      </div>
+
+      ${choiceBody}
+    </div>`;
+  }).join('');
+
   panel.innerHTML = `
     <div style="max-width:780px;padding:28px 24px;">
 
@@ -4387,7 +4471,7 @@ function renderPQConfigForm(config) {
       </div>
 
       <!-- Venue Options -->
-      <div class="design-card" style="margin-bottom:28px;">
+      <div class="design-card" style="margin-bottom:20px;">
         <div class="design-card-header">
           <h3 class="design-card-title">Venue Options</h3>
           <span class="design-hint">Shown as selectable choices on the quote form</span>
@@ -4395,6 +4479,18 @@ function renderPQConfigForm(config) {
         <div class="design-card-body">
           <div id="pq-venues-list">${venueRows}</div>
           <button class="btn btn-ghost btn-sm" onclick="addPQVenue()">+ Add Option</button>
+        </div>
+      </div>
+
+      <!-- Custom Questions -->
+      <div class="design-card" style="margin-bottom:28px;">
+        <div class="design-card-header">
+          <h3 class="design-card-title">Custom Questions</h3>
+          <span class="design-hint">Additional questions shown on the quote form — short text, long text, or multiple choice</span>
+        </div>
+        <div class="design-card-body">
+          <div id="pq-questions-list">${questionCards || '<p style="font-size:13px;color:var(--text-light);margin:0 0 12px;">No custom questions yet. Add one below.</p>'}</div>
+          <button class="btn btn-ghost btn-sm" onclick="addPQQuestion()">+ Add Question</button>
         </div>
       </div>
 
@@ -4462,6 +4558,67 @@ function addPQVenue() {
   const rows = document.querySelectorAll('#pq-venues-list .pq-config-row');
   const last = rows[rows.length - 1];
   if (last) last.querySelector('input')?.focus();
+}
+
+// ── Custom question helpers ────────────────────────────────────────────────────
+function updatePQQuestion(i, field, val) {
+  if (!window._pqConfig) return;
+  if (!window._pqConfig.questions) window._pqConfig.questions = [];
+  window._pqConfig.questions[i][field] = val;
+}
+
+function updatePQQuestionType(i, newType) {
+  if (!window._pqConfig) return;
+  const q = window._pqConfig.questions[i];
+  q.type = newType;
+  if (newType === 'choice' && !Array.isArray(q.options)) q.options = [];
+  renderPQConfigForm(window._pqConfig);
+}
+
+function removePQQuestion(i) {
+  if (!window._pqConfig) return;
+  window._pqConfig.questions.splice(i, 1);
+  renderPQConfigForm(window._pqConfig);
+}
+
+function addPQQuestion() {
+  if (!window._pqConfig) return;
+  if (!window._pqConfig.questions) window._pqConfig.questions = [];
+  window._pqConfig.questions.push({
+    id:          `q_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+    label:       '',
+    type:        'text',
+    required:    false,
+    placeholder: '',
+    options:     [],
+  });
+  renderPQConfigForm(window._pqConfig);
+  const cards = document.querySelectorAll('#pq-questions-list .pq-q-card');
+  const last = cards[cards.length - 1];
+  if (last) last.querySelector('input')?.focus();
+}
+
+function updatePQOption(qi, oi, val) {
+  if (!window._pqConfig) return;
+  window._pqConfig.questions[qi].options[oi] = val;
+}
+
+function removePQOption(qi, oi) {
+  if (!window._pqConfig) return;
+  window._pqConfig.questions[qi].options.splice(oi, 1);
+  renderPQConfigForm(window._pqConfig);
+}
+
+function addPQOption(qi) {
+  if (!window._pqConfig) return;
+  if (!Array.isArray(window._pqConfig.questions[qi].options)) window._pqConfig.questions[qi].options = [];
+  window._pqConfig.questions[qi].options.push('');
+  renderPQConfigForm(window._pqConfig);
+  const optList = document.getElementById(`pq-q-opts-${qi}`);
+  if (optList) {
+    const inputs = optList.querySelectorAll('input');
+    inputs[inputs.length - 1]?.focus();
+  }
 }
 
 async function savePQConfig() {

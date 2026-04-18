@@ -838,7 +838,7 @@ function formatPricePence(pence) {
   return `£${(pence / 100).toLocaleString('en-GB', { minimumFractionDigits: 0 })}`;
 }
 
-async function sendPrivateQuoteToAdmin(quote, notificationEmail) {
+async function sendPrivateQuoteToAdmin(quote, notificationEmail, labelledAnswers = []) {
   if (!notificationEmail) {
     console.log('[Email] No notification_email set — skipping private quote admin notification');
     return;
@@ -897,6 +897,17 @@ async function sendPrivateQuoteToAdmin(quote, notificationEmail) {
             </tr>`).join('')}
           </table>
 
+          ${labelledAnswers.length ? `
+          <!-- Custom answers -->
+          <p style="margin:0 0 14px;font-size:13px;font-weight:700;color:#C4748A;text-transform:uppercase;letter-spacing:.8px">Additional Questions</p>
+          <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-bottom:28px;">
+            ${labelledAnswers.map(({ label, answer }, i) => `
+            <tr style="background:${i % 2 === 0 ? '#FFF6F8' : '#fff'}">
+              <td style="padding:10px 14px;font-size:13px;font-weight:700;color:#9E8E96;width:38%;">${escapeHtml(label)}</td>
+              <td style="padding:10px 14px;font-size:13px;font-weight:600;color:#2C2028;">${escapeHtml(answer)}</td>
+            </tr>`).join('')}
+          </table>` : ''}
+
           ${quote.notes ? `
           <!-- Notes -->
           <p style="margin:0 0 10px;font-size:13px;font-weight:700;color:#C4748A;text-transform:uppercase;letter-spacing:.8px">Special Requests / Notes</p>
@@ -945,7 +956,7 @@ async function sendPrivateQuoteToAdmin(quote, notificationEmail) {
   console.log(`[Email] Private quote admin notification sent for quote ${quoteRef}`);
 }
 
-async function sendPrivateQuoteConfirmation(quote) {
+async function sendPrivateQuoteConfirmation(quote, labelledAnswers = []) {
   const quoteRef   = `#PQ${String(quote.id).padStart(5, '0')}`;
   const siteUrl    = process.env.SITE_URL || 'https://paintandbubbles.co.uk';
   const firstName  = quote.name.split(' ')[0];
@@ -996,6 +1007,21 @@ async function sendPrivateQuoteConfirmation(quote) {
               </table>
             </td></tr>
           </table>
+
+          ${labelledAnswers.length ? `
+          <!-- Custom answers -->
+          <table width="100%" cellpadding="0" cellspacing="0" style="background:#FFF6F8;border:1px solid #FFCCD8;border-radius:14px;margin-bottom:28px;">
+            <tr><td style="padding:20px 24px;">
+              <p style="margin:0 0 14px;font-size:12px;font-weight:700;color:#C4748A;text-transform:uppercase;letter-spacing:.8px">Your Additional Answers</p>
+              <table width="100%" cellpadding="0" cellspacing="0">
+                ${labelledAnswers.map(({ label, answer }) => `
+                <tr>
+                  <td style="padding:5px 0;font-size:13px;font-weight:700;color:#9E8E96;width:40%;vertical-align:top;">${escapeHtml(label)}</td>
+                  <td style="padding:5px 0;font-size:13px;font-weight:600;color:#2C2028;">${escapeHtml(answer)}</td>
+                </tr>`).join('')}
+              </table>
+            </td></tr>
+          </table>` : ''}
 
           <!-- Estimate banner -->
           <table width="100%" cellpadding="0" cellspacing="0" style="background:linear-gradient(135deg,#2C0F18,#6B2D42);border-radius:14px;margin-bottom:28px;">
