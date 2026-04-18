@@ -385,7 +385,7 @@ function renderEventDetail(event) {
             </div>
 
             ${isSoldOut
-              ? `<button class="btn btn-full" disabled style="background:var(--border);color:var(--text-light);cursor:not-allowed;padding:16px;border-radius:var(--radius);font-weight:700;font-size:16px;border:none;">Sold Out</button>`
+              ? `<button class="btn btn-full" style="background:transparent;color:var(--rose);border:2px solid var(--rose);padding:15px;border-radius:var(--radius);font-weight:700;font-size:16px;cursor:pointer;" onclick="openWaitlist(${event.id}, '${event.title.replace(/'/g,"\\'")}')">Join Waitlist</button>`
               : `<button class="btn btn-primary btn-full ed-book-btn" onclick="openBooking()">Book Now →</button>`
             }
 
@@ -976,6 +976,39 @@ function showConfirmation(booking, customer, event) {
     </div>`;
 
   openModal('confirm-modal');
+}
+
+// ---- WAITLIST ----
+function openWaitlist(eventId, eventTitle) {
+  const modal = document.getElementById('waitlist-modal');
+  if (!modal) return;
+  modal.querySelector('.waitlist-event-name').textContent = eventTitle;
+  modal.dataset.eventId = eventId;
+  modal.querySelector('#wl-name').value = '';
+  modal.querySelector('#wl-email').value = '';
+  modal.querySelector('#wl-phone').value = '';
+  modal.querySelector('#wl-status').textContent = '';
+  openModal('waitlist-modal');
+}
+
+async function submitWaitlist() {
+  const modal = document.getElementById('waitlist-modal');
+  const eventId = modal.dataset.eventId;
+  const name  = modal.querySelector('#wl-name').value.trim();
+  const email = modal.querySelector('#wl-email').value.trim();
+  const phone = modal.querySelector('#wl-phone').value.trim();
+  const status = modal.querySelector('#wl-status');
+  const btn = modal.querySelector('#wl-submit-btn');
+  if (!name || !email) { status.textContent = 'Please enter your name and email.'; status.style.color = 'var(--coral)'; return; }
+  btn.disabled = true; btn.textContent = 'Joining…'; status.textContent = '';
+  try {
+    await apiFetch('/api/waitlist', { method: 'POST', body: JSON.stringify({ event_id: parseInt(eventId), name, email, phone }) });
+    modal.querySelector('.waitlist-form').innerHTML = `<div style="text-align:center;padding:24px 0"><div style="font-size:48px;margin-bottom:12px;">🎉</div><p style="font-size:17px;font-weight:800;color:var(--text-dark);margin-bottom:8px;">You're on the waitlist!</p><p style="font-size:14px;color:var(--text-light);line-height:1.6;">We'll email you immediately if a spot opens up.</p><button class="btn btn-primary" style="margin-top:20px;padding:12px 28px;font-size:14px;" onclick="closeModal('waitlist-modal')">Close</button></div>`;
+  } catch (err) {
+    status.textContent = err.message || 'Something went wrong. Please try again.';
+    status.style.color = 'var(--coral)';
+    btn.disabled = false; btn.textContent = 'Join Waitlist';
+  }
 }
 
 // ---- MODALS ----

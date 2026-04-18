@@ -280,12 +280,15 @@ async function loadAdminEvents() {
   const el = document.getElementById('events-table');
   el.innerHTML = '<div class="loading-state"><div class="spinner"></div></div>';
   try {
-    const events = await apiFetch('/api/events?include_inactive=true', { headers: authHeaders() });
-    renderEventsTable(events);
+    const [events, waitlistCounts] = await Promise.all([
+      apiFetch('/api/events?include_inactive=true', { headers: authHeaders() }),
+      apiFetch('/api/waitlist/counts', { headers: authHeaders() }).catch(() => ({})),
+    ]);
+    renderEventsTable(events, waitlistCounts);
   } catch { el.innerHTML = '<div class="empty-state"><p>Failed to load events</p></div>'; }
 }
 
-function renderEventsTable(events) {
+function renderEventsTable(events, waitlistCounts = {}) {
   const el = document.getElementById('events-table');
   if (!events.length) {
     el.innerHTML = '<div class="empty-state"><p>No events yet. Add your first event!</p></div>';
@@ -315,12 +318,14 @@ function renderEventsTable(events) {
             <span style="color:${e.spots_remaining <= 0 ? 'var(--coral)' : e.spots_remaining <= 3 ? 'var(--amber)' : 'var(--green)'}">
               ${e.spots_remaining}/${e.capacity}
             </span>
+            ${(waitlistCounts[e.id] || 0) > 0 ? `<br><span style="font-size:11px;color:var(--rose);font-weight:700;cursor:pointer" onclick="viewWaitlist(${e.id},'${escHtml(e.title)}')">⏳ ${waitlistCounts[e.id]} waiting</span>` : ''}
           </td>
           <td>${e.is_active ? '<span class="badge badge-green">Active</span>' : '<span class="badge badge-gray">Hidden</span>'}</td>
           <td>
             <div class="actions">
               <button class="btn btn-ghost btn-xs" onclick="window.open('/events/${e.id}','_blank')">View</button>
               <button class="btn btn-ghost btn-xs" onclick="viewEventBookings(${e.id}, '${escHtml(e.title)}')">Bookings</button>
+              <button class="btn btn-ghost btn-xs" onclick="viewWaitlist(${e.id},'${escHtml(e.title)}')">Waitlist</button>
               <button class="btn btn-ghost btn-xs" onclick="openEventForm(${e.id})">Edit</button>
               <button class="btn btn-ghost btn-xs" onclick="cloneEvent(${e.id})">Clone</button>
               <button class="btn btn-xs" style="background:#fee2e2;color:#dc2626;border:none" onclick="confirmDelete(${e.id})">Delete</button>
@@ -329,6 +334,81 @@ function renderEventsTable(events) {
         </tr>`).join('')}
       </tbody>
     </table>`;
+}
+
+async function viewWaitlist(eventId, eventTitle) {
+  const modal = document.getElementById('generic-modal');
+  const body  = document.getElementById('generic-modal-body');
+  body.innerHTML = `
+    <div class="modal-header">
+      <div>
+        <h2>Waitlist</h2>
+        <div style="font-size:13px;color:var(--text-mid);margin-top:2px">${escHtml(eventTitle)}</div>
+      </div>
+      <button class="modal-close" onclick="closeAdminModal('generic-modal')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:24px">
+      <div class="loading-state"><div class="spinner"></div></div>
+    </div>`;
+  modal.classList.remove('hidden');
+
+  try {
+    const entries = await apiFetch(`/api/waitlist/event/${eventId}`, { headers: authHeaders() });
+    const bodyEl = body.querySelector('.modal-body');
+
+    if (!entries.length) {
+      bodyEl.innerHTML = '<p style="color:var(--text-mid);text-align:center;padding:32px 0">No one on the waitlist for this event.</p>';
+      return;
+    }
+
+    const notified = entries.filter(e => e.notified_at);
+    const waiting  = entries.filter(e => !e.notified_at);
+
+    bodyEl.innerHTML = `
+      <div style="font-size:13px;color:var(--text-mid);margin-bottom:16px">
+        <strong style="color:var(--text)">${waiting.length}</strong> waiting &nbsp;·&nbsp;
+        <strong style="color:var(--text)">${notified.length}</strong> already notified
+      </div>
+      <table class="data-table">
+        <thead><tr>
+          <th>Name</th>
+          <th>Email</th>
+          <th class="hide-mobile">Phone</th>
+          <th>Added</th>
+          <th>Status</th>
+          <th></th>
+        </tr></thead>
+        <tbody>${entries.map(e => `
+          <tr id="wl-row-${e.id}">
+            <td style="font-weight:600">${escHtml(e.name)}</td>
+            <td>${escHtml(e.email)}</td>
+            <td class="hide-mobile">${escHtml(e.phone || '—')}</td>
+            <td style="font-size:12px;color:var(--text-mid)">${formatDate(e.created_at.split('T')[0])}</td>
+            <td>${e.notified_at
+              ? `<span class="badge badge-green">Notified</span>`
+              : `<span class="badge badge-gray">Waiting</span>`}
+            </td>
+            <td>
+              <button class="btn btn-xs" style="background:#fee2e2;color:#dc2626;border:none"
+                onclick="removeWaitlistEntry(${e.id})">Remove</button>
+            </td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`;
+  } catch (err) {
+    body.querySelector('.modal-body').innerHTML = `<p style="color:var(--coral);text-align:center;padding:32px 0">Failed to load waitlist.</p>`;
+  }
+}
+
+async function removeWaitlistEntry(id) {
+  try {
+    await apiFetch(`/api/waitlist/${id}`, { method: 'DELETE', headers: authHeaders() });
+    const row = document.getElementById(`wl-row-${id}`);
+    if (row) row.remove();
+    toast('Entry removed', 'success');
+  } catch (err) {
+    toast('Failed to remove entry', 'error');
+  }
 }
 
 function openEventForm(eventId = null) {

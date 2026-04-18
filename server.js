@@ -145,6 +145,7 @@ app.use('/api/contact',    require('./routes/contact'));
 app.use('/api/vouchers',   require('./routes/vouchers'));
 app.use('/api/discounts',  require('./routes/discounts'));
 app.use('/api/categories', require('./routes/categories'));
+app.use('/api/waitlist',   require('./routes/waitlist'));
 
 // ---- PAGE ROUTES WITH SEO META INJECTION ----
 
@@ -446,6 +447,11 @@ app.get('/private-events', (req, res) => {
   } catch (err) { res.sendFile(path.join(__dirname, 'public', 'private-events.html')); }
 });
 
+// LEAVE A REVIEW page — linked from post-event email
+app.get('/leave-review', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'leave-review.html'));
+});
+
 // CATCH-ALL
 app.get('*', (req, res) =>
   res.sendFile(path.join(__dirname, 'public', 'index.html'))
@@ -460,4 +466,5 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
   console.log(`Paint & Bubbles running at http://localhost:${PORT}`);
   console.log(`Admin dashboard: http://localhost:${PORT}/admin`);
+  require('./services/scheduler').startScheduler();
 });

@@ -149,6 +149,26 @@ document.addEventListener('click',function(e){if(!e.target.closest('.site-header
   </div>
 </div>
 
+<!-- WAITLIST MODAL -->
+<div class="modal-overlay hidden" id="waitlist-modal" onclick="if(event.target.id==='waitlist-modal')closeModal('waitlist-modal')">
+  <div class="modal" style="max-width:440px">
+    <button class="modal-close" onclick="closeModal('waitlist-modal')">✕</button>
+    <div class="waitlist-form" style="padding:8px">
+      <div style="text-align:center;margin-bottom:20px">
+        <div style="font-size:36px;margin-bottom:8px">🎨</div>
+        <h2 style="font-size:20px;font-weight:800;color:var(--text-dark);margin-bottom:4px">Join the Waitlist</h2>
+        <p class="waitlist-event-name" style="font-size:13px;color:var(--text-light);font-weight:600"></p>
+      </div>
+      <p style="font-size:14px;color:var(--text-light);margin-bottom:20px;line-height:1.6">This event is full, but spaces do become available. Add your name and we'll email you immediately if one opens up.</p>
+      <div class="form-group"><label class="form-label">Your name</label><input class="form-input" type="text" id="wl-name" placeholder="Jane Smith"></div>
+      <div class="form-group"><label class="form-label">Email address</label><input class="form-input" type="email" id="wl-email" placeholder="jane@example.com"></div>
+      <div class="form-group"><label class="form-label">Phone <span style="color:var(--text-light);font-weight:400">(optional)</span></label><input class="form-input" type="tel" id="wl-phone" placeholder="+44 7700 000000"></div>
+      <p id="wl-status" style="font-size:13px;margin-bottom:8px;min-height:18px"></p>
+      <button id="wl-submit-btn" class="btn btn-primary" style="width:100%;padding:14px;font-size:15px" onclick="submitWaitlist()">Join Waitlist</button>
+    </div>
+  </div>
+</div>
+
 <!-- CONFIRMATION MODAL -->
 <div class="modal-overlay hidden" id="confirm-modal">
   <div class="modal" id="confirm-modal-content">

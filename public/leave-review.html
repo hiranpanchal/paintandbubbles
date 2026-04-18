@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Leave a Review — Paint & Bubbles</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Nunito', sans-serif; background: #FDF8F9; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; }
+    .card { background: #fff; border-radius: 20px; box-shadow: 0 8px 40px rgba(160,80,110,0.12); max-width: 520px; width: 100%; overflow: hidden; }
+    .card-header { background: linear-gradient(135deg, #2C0F18 0%, #6B2D42 50%, #C4748A 100%); padding: 36px 40px; text-align: center; }
+    .card-header .logo { font-family: 'Dancing Script', cursive; font-size: 28px; color: #fff; margin-bottom: 8px; }
+    .card-header h1 { color: #fff; font-size: 20px; font-weight: 800; margin-bottom: 4px; }
+    .card-header p { color: rgba(255,255,255,0.8); font-size: 14px; }
+    .card-body { padding: 36px 40px; }
+    .event-name { background: #FFF6F8; border: 1px solid #FFCCD8; border-radius: 10px; padding: 14px 18px; margin-bottom: 24px; font-size: 14px; color: #A85D72; font-weight: 700; text-align: center; }
+    .form-group { margin-bottom: 20px; }
+    label { display: block; font-size: 13px; font-weight: 700; color: #2C2028; margin-bottom: 6px; }
+    input, textarea { width: 100%; border: 1.5px solid #e8dde0; border-radius: 10px; padding: 12px 14px; font-size: 14px; font-family: 'Nunito', sans-serif; color: #2C2028; background: #fff; transition: border-color 0.2s; }
+    input:focus, textarea:focus { outline: none; border-color: #C4748A; }
+    textarea { resize: vertical; min-height: 110px; }
+    .star-rating { display: flex; gap: 8px; flex-direction: row-reverse; justify-content: flex-end; }
+    .star-rating input { display: none; }
+    .star-rating label { font-size: 36px; cursor: pointer; color: #e0d0d4; transition: color 0.15s; padding: 0; margin: 0; width: auto; }
+    .star-rating input:checked ~ label,
+    .star-rating label:hover,
+    .star-rating label:hover ~ label { color: #f59e0b; }
+    .btn { display: block; width: 100%; background: linear-gradient(135deg, #6B2D42, #C4748A); color: #fff; border: none; border-radius: 50px; padding: 16px; font-size: 16px; font-weight: 800; font-family: 'Nunito', sans-serif; cursor: pointer; margin-top: 8px; transition: opacity 0.2s; }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .success { text-align: center; padding: 40px; }
+    .success .icon { font-size: 56px; margin-bottom: 16px; }
+    .success h2 { color: #2C2028; font-size: 22px; font-weight: 800; margin-bottom: 8px; }
+    .success p { color: #9E8E96; font-size: 14px; line-height: 1.6; }
+    .success a { display: inline-block; margin-top: 20px; background: linear-gradient(135deg, #6B2D42, #C4748A); color: #fff; text-decoration: none; padding: 12px 28px; border-radius: 50px; font-size: 14px; font-weight: 700; }
+    .error-state { text-align: center; padding: 40px; }
+    .error-state .icon { font-size: 48px; margin-bottom: 16px; }
+    .error-state p { color: #9E8E96; font-size: 15px; }
+    .loading { text-align: center; padding: 60px; color: #9E8E96; font-size: 15px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="card-header">
+      <div class="logo">Paint &amp; Bubbles</div>
+      <h1>Leave a Review</h1>
+      <p>Your feedback helps us and other customers</p>
+    </div>
+    <div id="card-content">
+      <div class="loading">Loading…</div>
+    </div>
+  </div>
+
+  <script>
+    const params = new URLSearchParams(location.search);
+    const id = params.get('id');
+    const token = params.get('token');
+    let eventTitle = '';
+
+    async function init() {
+      const el = document.getElementById('card-content');
+      if (!id || !token) {
+        el.innerHTML = `<div class="error-state"><div class="icon">🔗</div><p>This link doesn't look right. Please use the link from your review request email.</p></div>`;
+        return;
+      }
+      try {
+        const res = await fetch(`/api/reviews/verify?id=${encodeURIComponent(id)}&token=${encodeURIComponent(token)}`);
+        const data = await res.json();
+        if (!res.ok || !data.valid) {
+          el.innerHTML = `<div class="error-state"><div class="icon">⛔</div><p>This review link has expired or is invalid. Please use the link directly from your email.</p></div>`;
+          return;
+        }
+        eventTitle = data.event_title || '';
+        showForm(data.customer_name, data.event_title);
+      } catch {
+        el.innerHTML = `<div class="error-state"><div class="icon">⚠️</div><p>Something went wrong. Please try again in a moment.</p></div>`;
+      }
+    }
+
+    function showForm(customerName, title) {
+      document.getElementById('card-content').innerHTML = `
+        <div class="card-body">
+          <div class="event-name">🎨 ${escHtml(title)}</div>
+          <form id="review-form">
+            <div class="form-group">
+              <label>Your rating</label>
+              <div class="star-rating">
+                <input type="radio" name="rating" id="s5" value="5"><label for="s5" title="5 stars">★</label>
+                <input type="radio" name="rating" id="s4" value="4"><label for="s4" title="4 stars">★</label>
+                <input type="radio" name="rating" id="s3" value="3"><label for="s3" title="3 stars">★</label>
+                <input type="radio" name="rating" id="s2" value="2"><label for="s2" title="2 stars">★</label>
+                <input type="radio" name="rating" id="s1" value="1"><label for="s1" title="1 star">★</label>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="name">Your name</label>
+              <input type="text" id="name" value="${escHtml(customerName)}" placeholder="Your name" required>
+            </div>
+            <div class="form-group">
+              <label for="review">Your review</label>
+              <textarea id="review" placeholder="Tell us about your experience — what did you enjoy? Would you recommend us?" required></textarea>
+            </div>
+            <button type="submit" class="btn" id="submit-btn">Submit Review ⭐</button>
+          </form>
+        </div>`;
+      // Default to 5 stars
+      document.getElementById('s5').checked = true;
+      document.getElementById('review-form').addEventListener('submit', submitReview);
+    }
+
+    async function submitReview(e) {
+      e.preventDefault();
+      const btn = document.getElementById('submit-btn');
+      const name = document.getElementById('name').value.trim();
+      const body = document.getElementById('review').value.trim();
+      const ratingEl = document.querySelector('input[name="rating"]:checked');
+      const rating = ratingEl ? parseInt(ratingEl.value) : 5;
+      if (!name || !body) return;
+      btn.disabled = true;
+      btn.textContent = 'Submitting…';
+      try {
+        const res = await fetch('/api/reviews/submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ author_name: name, class_attended: eventTitle, body, rating })
+        });
+        if (!res.ok) throw new Error('Failed');
+        document.getElementById('card-content').innerHTML = `
+          <div class="success">
+            <div class="icon">🎉</div>
+            <h2>Thank you so much!</h2>
+            <p>Your review has been submitted and will appear on our website once approved. We really appreciate you taking the time — it means the world to us!</p>
+            <a href="/">Back to Paint &amp; Bubbles</a>
+          </div>`;
+      } catch {
+        btn.disabled = false;
+        btn.textContent = 'Submit Review ⭐';
+        alert('Something went wrong. Please try again.');
+      }
+    }
+
+    function escHtml(s) {
+      return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    init();
+  </script>
+</body>
+</html>

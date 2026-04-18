@@ -2,6 +2,7 @@ const router = require('express').Router();
 const db = require('../database');
 const { requireAdmin } = require('../middleware/auth');
 const { sendBookingConfirmation, sendAdminBookingNotification } = require('../services/email');
+const { notifyNextOnWaitlist } = require('./waitlist');
 
 // GET /api/bookings — admin only
 router.get('/', requireAdmin, (req, res) => {
@@ -89,7 +90,12 @@ router.patch('/:id/status', requireAdmin, (req, res) => {
   if (!allowed.includes(status)) {
     return res.status(400).json({ error: 'Invalid status' });
   }
+  const booking = db.prepare('SELECT event_id FROM bookings WHERE id = ?').get(req.params.id);
   db.prepare('UPDATE bookings SET status = ? WHERE id = ?').run(status, req.params.id);
+  // If cancelling, notify next person on the waitlist
+  if ((status === 'cancelled' || status === 'refunded') && booking) {
+    notifyNextOnWaitlist(booking.event_id);
+  }
   res.json({ success: true });
 });
 
@@ -132,9 +138,11 @@ router.post('/:id/confirm', async (req, res) => {
 
 // DELETE /api/bookings/:id — admin only
 router.delete('/:id', requireAdmin, (req, res) => {
-  const booking = db.prepare('SELECT id FROM bookings WHERE id = ?').get(req.params.id);
+  const booking = db.prepare('SELECT id, event_id, status FROM bookings WHERE id = ?').get(req.params.id);
   if (!booking) return res.status(404).json({ error: 'Booking not found' });
   db.prepare('DELETE FROM bookings WHERE id = ?').run(req.params.id);
+  // Notify next waitlist person if this was a confirmed booking
+  if (booking.status === 'confirmed') notifyNextOnWaitlist(booking.event_id);
   res.json({ success: true });
 });
 

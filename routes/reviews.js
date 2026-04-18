@@ -16,15 +16,35 @@ router.get('/all', requireAdmin, (req, res) => {
   res.json(reviews);
 });
 
+// GET /api/reviews/verify — public, validate a review token from the email link
+router.get('/verify', (req, res) => {
+  const { id, token } = req.query;
+  if (!id || !token) return res.status(400).json({ error: 'Missing id or token' });
+  const crypto = require('crypto');
+  const secret = process.env.JWT_SECRET || 'review-secret';
+  const expected = crypto.createHmac('sha256', secret).update(String(id)).digest('hex').slice(0, 16);
+  if (token !== expected) return res.status(403).json({ error: 'Invalid token' });
+  const booking = require('../database').prepare(`
+    SELECT b.id, c.name as customer_name, e.title as event_title
+    FROM bookings b
+    JOIN customers c ON b.customer_id = c.id
+    JOIN events e ON b.event_id = e.id
+    WHERE b.id = ?
+  `).get(id);
+  if (!booking) return res.status(404).json({ error: 'Booking not found' });
+  res.json({ valid: true, customer_name: booking.customer_name, event_title: booking.event_title });
+});
+
 // POST /api/reviews/submit — public, customer submission (always unpublished/pending)
 router.post('/submit', (req, res) => {
-  const { author_name, class_attended, body } = req.body;
+  const { author_name, class_attended, body, rating } = req.body;
   if (!author_name || !body) return res.status(400).json({ error: 'Name and review are required' });
+  const safeRating = Math.min(5, Math.max(1, parseInt(rating) || 5));
   const maxOrder = db.prepare('SELECT MAX(sort_order) as m FROM reviews').get();
   const sort_order = (maxOrder.m ?? -1) + 1;
   const result = db.prepare(
-    'INSERT INTO reviews (author_name, class_attended, rating, body, is_published, sort_order) VALUES (?, ?, 5, ?, 0, ?)'
-  ).run(author_name.trim(), (class_attended || '').trim(), body.trim(), sort_order);
+    'INSERT INTO reviews (author_name, class_attended, rating, body, is_published, sort_order) VALUES (?, ?, ?, ?, 0, ?)'
+  ).run(author_name.trim(), (class_attended || '').trim(), safeRating, body.trim(), sort_order);
   res.status(201).json({ success: true, id: result.lastInsertRowid });
 });
 

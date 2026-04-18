@@ -543,6 +543,195 @@ async function sendEnquiryReply(submission, replyBody) {
   console.log(`[Email] Enquiry reply sent to ${submission.email}`);
 }
 
+async function sendReminderEmail(booking) {
+  const siteUrl = process.env.SITE_URL || 'https://paintandbubbles.co.uk';
+  const bookingRef = `#PB${String(booking.id).padStart(5, '0')}`;
+  const firstName = booking.customer_name.split(' ')[0];
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet"></head>
+<body style="margin:0;padding:0;background:#FDF8F9;font-family:'Nunito','Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#FDF8F9;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 8px 40px rgba(160,80,110,0.15);">
+        <tr><td style="background:linear-gradient(135deg,#2C0F18 0%,#6B2D42 50%,#C4748A 100%);padding:44px 48px;text-align:center;">
+          <div style="font-size:48px;margin-bottom:12px;">🎨</div>
+          <h1 style="margin:0 0 6px;color:#fff;font-size:28px;font-weight:700;font-family:'Dancing Script',cursive;">See you tomorrow!</h1>
+          <p style="margin:0;color:rgba(255,255,255,0.85);font-size:14px;font-weight:600;">Your event is just around the corner</p>
+        </td></tr>
+        <tr><td style="padding:40px 48px;">
+          <p style="margin:0 0 8px;color:#9E8E96;font-size:14px;font-weight:600;">Hi ${firstName},</p>
+          <p style="margin:0 0 28px;color:#2C2028;font-size:17px;font-weight:800;">We're so excited to see you at <em>${booking.event_title}</em> tomorrow! 🥂</p>
+          <table width="100%" cellpadding="0" cellspacing="0" style="background:#FFF6F8;border:1px solid #FFCCD8;border-radius:14px;margin-bottom:28px;">
+            <tr><td style="padding:24px 28px;">
+              <p style="margin:0 0 4px;color:#A85D72;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.8px;">Your Event Details</p>
+              <h2 style="margin:0 0 16px;color:#2C2028;font-size:18px;font-weight:900;">${booking.event_title}</h2>
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr><td style="padding:6px 0;color:#9E8E96;font-size:13px;font-weight:600;width:30%">📅 Date</td><td style="padding:6px 0;color:#2C2028;font-size:13px;font-weight:700;">${formatDate(booking.event_date)}</td></tr>
+                <tr><td style="padding:6px 0;color:#9E8E96;font-size:13px;font-weight:600;">🕐 Time</td><td style="padding:6px 0;color:#2C2028;font-size:13px;font-weight:700;">${booking.event_time}</td></tr>
+                <tr><td style="padding:6px 0;color:#9E8E96;font-size:13px;font-weight:600;">📍 Location</td><td style="padding:6px 0;color:#2C2028;font-size:13px;font-weight:700;">${booking.event_location}</td></tr>
+                <tr><td style="padding:6px 0;color:#9E8E96;font-size:13px;font-weight:600;">🎟 Tickets</td><td style="padding:6px 0;color:#2C2028;font-size:13px;font-weight:700;">${booking.quantity} ticket${booking.quantity > 1 ? 's' : ''}</td></tr>
+                <tr><td style="padding:6px 0;color:#9E8E96;font-size:13px;font-weight:600;">🔖 Ref</td><td style="padding:6px 0;color:#2C2028;font-size:13px;font-weight:700;font-family:monospace;">${bookingRef}</td></tr>
+              </table>
+            </td></tr>
+          </table>
+          <table width="100%" cellpadding="0" cellspacing="0" style="background:#F0F5F7;border-radius:12px;margin-bottom:28px;">
+            <tr><td style="padding:20px 24px;">
+              <p style="margin:0 0 8px;color:#2C2028;font-size:14px;font-weight:800;">What to bring 🖌</p>
+              <p style="margin:0;color:#5C4F57;font-size:13px;font-weight:500;line-height:1.7;">All materials are provided — just bring yourself and your enthusiasm! Drinks will be available. Please arrive a few minutes early so we can get started on time.</p>
+            </td></tr>
+          </table>
+          <p style="margin:0;color:#9E8E96;font-size:13px;line-height:1.7;">Got a question? Reply to this email and we'll get back to you.</p>
+          <p style="margin:16px 0 0;color:#C4748A;font-size:16px;font-weight:700;">Can't wait to see you! 🥂✨</p>
+        </td></tr>
+        <tr><td style="background:#FFF6F8;padding:24px 48px;text-align:center;border-top:1px solid #FFE8EE;">
+          <p style="margin:0 0 4px;color:#2C2028;font-size:18px;font-weight:700;font-family:'Dancing Script',cursive;">Paint &amp; Bubbles</p>
+          <p style="margin:0;color:#9E8E96;font-size:12px;"><a href="${siteUrl}" style="color:#C4748A;text-decoration:none;">${siteUrl}</a></p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`.trim();
+
+  await sendEmail({ to: `${booking.customer_name} <${booking.customer_email}>`, subject: `See you tomorrow — ${booking.event_title} 🎨`, html });
+  console.log(`[Email] Reminder sent to ${booking.customer_email}`);
+}
+
+async function sendReviewRequest(booking, reviewUrl) {
+  const firstName = booking.customer_name.split(' ')[0];
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet"></head>
+<body style="margin:0;padding:0;background:#FDF8F9;font-family:'Nunito','Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#FDF8F9;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 8px 40px rgba(160,80,110,0.15);">
+        <tr><td style="background:linear-gradient(135deg,#2C0F18 0%,#6B2D42 50%,#C4748A 100%);padding:44px 48px;text-align:center;">
+          <div style="font-size:48px;margin-bottom:12px;">⭐</div>
+          <h1 style="margin:0 0 6px;color:#fff;font-size:28px;font-weight:700;font-family:'Dancing Script',cursive;">How was it?</h1>
+          <p style="margin:0;color:rgba(255,255,255,0.85);font-size:14px;font-weight:600;">We'd love to hear what you thought</p>
+        </td></tr>
+        <tr><td style="padding:40px 48px;">
+          <p style="margin:0 0 8px;color:#9E8E96;font-size:14px;font-weight:600;">Hi ${firstName},</p>
+          <p style="margin:0 0 20px;color:#2C2028;font-size:17px;font-weight:800;">We hope you had an amazing time at <em>${booking.event_title}</em>! 🎨</p>
+          <p style="margin:0 0 28px;color:#5C4F57;font-size:15px;font-weight:500;line-height:1.7;">Your feedback means the world to us — it only takes a minute and helps other people discover us. Would you mind leaving a quick review?</p>
+          <div style="text-align:center;margin-bottom:28px;">
+            <a href="${reviewUrl}" style="display:inline-block;background:linear-gradient(135deg,#6B2D42,#C4748A);color:#fff;text-decoration:none;padding:16px 40px;border-radius:50px;font-size:16px;font-weight:700;">Leave a Review ⭐</a>
+          </div>
+          <p style="margin:0;color:#9E8E96;font-size:13px;line-height:1.7;text-align:center;">It only takes 30 seconds — and it really does make a difference. Thank you! 🙏</p>
+        </td></tr>
+        <tr><td style="background:#FFF6F8;padding:24px 48px;text-align:center;border-top:1px solid #FFE8EE;">
+          <p style="margin:0 0 4px;color:#2C2028;font-size:18px;font-weight:700;font-family:'Dancing Script',cursive;">Paint &amp; Bubbles</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`.trim();
+
+  await sendEmail({ to: `${booking.customer_name} <${booking.customer_email}>`, subject: `How was ${booking.event_title}? Leave us a review 🌟`, html });
+  console.log(`[Email] Review request sent to ${booking.customer_email}`);
+}
+
+async function sendWaitlistConfirmation(entry, event) {
+  const siteUrl = process.env.SITE_URL || 'https://paintandbubbles.co.uk';
+  const firstName = entry.name.split(' ')[0];
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#FDF8F9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#FDF8F9;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 8px 40px rgba(160,80,110,0.15);">
+        <tr><td style="background:linear-gradient(135deg,#2C0F18 0%,#6B2D42 50%,#C4748A 100%);padding:36px 48px;text-align:center;">
+          <h1 style="margin:0 0 6px;color:#fff;font-size:24px;font-weight:700;">You're on the waitlist! 🎉</h1>
+          <p style="margin:0;color:rgba(255,255,255,0.8);font-size:14px;">Paint &amp; Bubbles</p>
+        </td></tr>
+        <tr><td style="padding:36px 48px;">
+          <p style="margin:0 0 8px;color:#9E8E96;font-size:14px;font-weight:600;">Hi ${firstName},</p>
+          <p style="margin:0 0 20px;color:#2C2028;font-size:16px;font-weight:700;">We've added you to the waitlist for <strong>${event.title}</strong>.</p>
+          <p style="margin:0 0 24px;color:#5C4F57;font-size:14px;line-height:1.7;">If a spot becomes available, we'll email you straight away with a link to book — so keep an eye on your inbox. We can't guarantee a space but we'll do our best!</p>
+          <table width="100%" cellpadding="0" cellspacing="0" style="background:#FFF6F8;border:1px solid #FFCCD8;border-radius:12px;margin-bottom:24px;">
+            <tr><td style="padding:20px 24px;">
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr><td style="padding:5px 0;color:#9E8E96;font-size:13px;font-weight:600;width:30%">📅 Date</td><td style="padding:5px 0;color:#2C2028;font-size:13px;font-weight:700;">${formatDate(event.date)}</td></tr>
+                <tr><td style="padding:5px 0;color:#9E8E96;font-size:13px;font-weight:600;">🕐 Time</td><td style="padding:5px 0;color:#2C2028;font-size:13px;font-weight:700;">${event.time}</td></tr>
+                <tr><td style="padding:5px 0;color:#9E8E96;font-size:13px;font-weight:600;">📍 Location</td><td style="padding:5px 0;color:#2C2028;font-size:13px;font-weight:700;">${event.location}</td></tr>
+              </table>
+            </td></tr>
+          </table>
+          <p style="margin:0;color:#9E8E96;font-size:12px;text-align:center;">In the meantime, why not browse our other upcoming events?</p>
+          <div style="text-align:center;margin-top:16px;">
+            <a href="${siteUrl}/events" style="display:inline-block;background:linear-gradient(135deg,#6B2D42,#C4748A);color:#fff;text-decoration:none;padding:12px 28px;border-radius:50px;font-size:14px;font-weight:700;">Browse Other Events →</a>
+          </div>
+        </td></tr>
+        <tr><td style="background:#FFF6F8;padding:20px 48px;text-align:center;border-top:1px solid #FFE8EE;">
+          <p style="margin:0;color:#9E8E96;font-size:12px;">Paint &amp; Bubbles — paintandbubbles.co.uk</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`.trim();
+
+  await sendEmail({ to: `${entry.name} <${entry.email}>`, subject: `You're on the waitlist — ${event.title}`, html });
+  console.log(`[Email] Waitlist confirmation sent to ${entry.email}`);
+}
+
+async function sendWaitlistSpotAvailable(entry, event) {
+  const siteUrl = process.env.SITE_URL || 'https://paintandbubbles.co.uk';
+  const firstName = entry.name.split(' ')[0];
+  const bookingUrl = `${siteUrl}/events/${event.id}`;
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#FDF8F9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#FDF8F9;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 8px 40px rgba(160,80,110,0.15);">
+        <tr><td style="background:linear-gradient(135deg,#059669 0%,#10b981 100%);padding:36px 48px;text-align:center;">
+          <div style="font-size:40px;margin-bottom:10px;">🎉</div>
+          <h1 style="margin:0 0 6px;color:#fff;font-size:24px;font-weight:700;">A spot has opened up!</h1>
+          <p style="margin:0;color:rgba(255,255,255,0.9);font-size:14px;">${event.title}</p>
+        </td></tr>
+        <tr><td style="padding:36px 48px;">
+          <p style="margin:0 0 8px;color:#9E8E96;font-size:14px;font-weight:600;">Hi ${firstName},</p>
+          <p style="margin:0 0 16px;color:#2C2028;font-size:17px;font-weight:800;">Great news — a spot has just opened up on your waitlisted event!</p>
+          <p style="margin:0 0 24px;color:#5C4F57;font-size:14px;line-height:1.7;">Spaces go fast, so we recommend booking as soon as possible to secure your place.</p>
+          <table width="100%" cellpadding="0" cellspacing="0" style="background:#FFF6F8;border:1px solid #FFCCD8;border-radius:12px;margin-bottom:28px;">
+            <tr><td style="padding:20px 24px;">
+              <h3 style="margin:0 0 12px;color:#2C2028;font-size:16px;font-weight:800;">${event.title}</h3>
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr><td style="padding:5px 0;color:#9E8E96;font-size:13px;font-weight:600;width:30%">📅 Date</td><td style="padding:5px 0;color:#2C2028;font-size:13px;font-weight:700;">${formatDate(event.date)}</td></tr>
+                <tr><td style="padding:5px 0;color:#9E8E96;font-size:13px;font-weight:600;">🕐 Time</td><td style="padding:5px 0;color:#2C2028;font-size:13px;font-weight:700;">${event.time}</td></tr>
+                <tr><td style="padding:5px 0;color:#9E8E96;font-size:13px;font-weight:600;">📍 Location</td><td style="padding:5px 0;color:#2C2028;font-size:13px;font-weight:700;">${event.location}</td></tr>
+              </table>
+            </td></tr>
+          </table>
+          <div style="text-align:center;">
+            <a href="${bookingUrl}" style="display:inline-block;background:linear-gradient(135deg,#059669,#10b981);color:#fff;text-decoration:none;padding:16px 40px;border-radius:50px;font-size:16px;font-weight:700;">Book My Spot Now →</a>
+          </div>
+        </td></tr>
+        <tr><td style="background:#FFF6F8;padding:20px 48px;text-align:center;border-top:1px solid #FFE8EE;">
+          <p style="margin:0;color:#9E8E96;font-size:12px;">Paint &amp; Bubbles — paintandbubbles.co.uk</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`.trim();
+
+  await sendEmail({ to: `${entry.name} <${entry.email}>`, subject: `A spot just opened up — ${event.title} 🎉`, html });
+  console.log(`[Email] Waitlist spot-available sent to ${entry.email}`);
+}
+
 async function sendEnquiryConfirmation(submission) {
   const siteUrl = process.env.SITE_URL || 'https://paintandbubbles.co.uk';
   const firstName = submission.name.split(' ')[0];
@@ -644,6 +833,10 @@ async function sendTestEmail(to) {
 
 module.exports = {
   sendBookingConfirmation,
+  sendReminderEmail,
+  sendReviewRequest,
+  sendWaitlistConfirmation,
+  sendWaitlistSpotAvailable,
   sendEnquiryNotification,
   sendEnquiryConfirmation,
   sendGiftVoucher,

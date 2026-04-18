@@ -495,6 +495,33 @@ db.exec(`
   }
 }
 
+// Migrate bookings: add reminder and review tracking columns if missing
+{
+  const cols = db.prepare('PRAGMA table_info(bookings)').all();
+  if (!cols.find(c => c.name === 'reminder_sent_at')) {
+    db.prepare('ALTER TABLE bookings ADD COLUMN reminder_sent_at TEXT DEFAULT NULL').run();
+    console.log('Migrated bookings: added reminder_sent_at column.');
+  }
+  if (!cols.find(c => c.name === 'review_request_sent_at')) {
+    db.prepare('ALTER TABLE bookings ADD COLUMN review_request_sent_at TEXT DEFAULT NULL').run();
+    console.log('Migrated bookings: added review_request_sent_at column.');
+  }
+}
+
+// Create waitlist table
+db.exec(`
+  CREATE TABLE IF NOT EXISTS event_waitlist (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    email TEXT NOT NULL,
+    phone TEXT DEFAULT '',
+    created_at TEXT DEFAULT (datetime('now')),
+    notified_at TEXT DEFAULT NULL,
+    FOREIGN KEY (event_id) REFERENCES events(id)
+  )
+`);
+
 // Ensure SEO settings exist
 {
   const check = db.prepare("SELECT COUNT(*) as count FROM site_settings WHERE key = 'seo_business_name'").get();
