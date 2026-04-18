@@ -2,6 +2,14 @@ const router = require('express').Router();
 const https  = require('https');
 const db     = require('../database');
 const { requireAdmin } = require('../middleware/auth');
+const { sendBookingConfirmation, sendAdminBookingNotification, sendGiftVoucher, sendAdminVoucherNotification } = require('../services/email');
+
+function getNotificationEmail() {
+  try {
+    const row = db.prepare("SELECT value FROM site_settings WHERE key = 'notification_email'").get();
+    return row?.value || process.env.NOTIFICATION_EMAIL || '';
+  } catch { return ''; }
+}
 
 // Read a setting from the DB, falling back to an env var
 function getSetting(dbKey, envKey) {
@@ -211,13 +219,28 @@ router.post('/sumup-confirm', async (req, res) => {
 
     const existing = db.prepare('SELECT id FROM payments WHERE payment_reference = ?').get(checkout_id);
     if (!existing) {
-      const booking = db.prepare('SELECT total_pence, discount_pence, voucher_discount_pence FROM bookings WHERE id = ?').get(booking_id);
-      if (booking) {
-        const charged = Math.max(0, booking.total_pence - (booking.discount_pence || 0) - (booking.voucher_discount_pence || 0));
+      const bookingRow = db.prepare('SELECT total_pence, discount_pence, voucher_discount_pence FROM bookings WHERE id = ?').get(booking_id);
+      if (bookingRow) {
+        const charged = Math.max(0, bookingRow.total_pence - (bookingRow.discount_pence || 0) - (bookingRow.voucher_discount_pence || 0));
         db.prepare(`INSERT INTO payments (booking_id, payment_reference, amount_pence, status, provider) VALUES (?, ?, ?, 'succeeded', 'sumup')`)
           .run(booking_id, checkout_id, charged);
       }
     }
+
+    // Send confirmation emails (non-blocking)
+    const fullBooking = db.prepare(`
+      SELECT b.*, c.name as customer_name, c.email as customer_email,
+             e.title as event_title, e.date as event_date, e.time as event_time, e.location as event_location
+      FROM bookings b
+      JOIN customers c ON b.customer_id = c.id
+      JOIN events e ON b.event_id = e.id
+      WHERE b.id = ?
+    `).get(booking_id);
+    if (fullBooking) {
+      sendBookingConfirmation(fullBooking).catch(err => console.error('[Email] SumUp booking confirmation failed:', err));
+      sendAdminBookingNotification(fullBooking, getNotificationEmail()).catch(err => console.error('[Email] SumUp admin booking notification failed:', err));
+    }
+
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -247,12 +270,25 @@ router.post('/webhook', async (req, res) => {
         .run('confirmed', intent.id, bookingId);
       const existing = db.prepare('SELECT id FROM payments WHERE payment_reference = ?').get(intent.id);
       if (!existing) {
-        const booking = db.prepare('SELECT total_pence, discount_pence, voucher_discount_pence FROM bookings WHERE id = ?').get(bookingId);
-        if (booking) {
-          const charged = Math.max(0, booking.total_pence - (booking.discount_pence || 0) - (booking.voucher_discount_pence || 0));
+        const bookingRow = db.prepare('SELECT total_pence, discount_pence, voucher_discount_pence FROM bookings WHERE id = ?').get(bookingId);
+        if (bookingRow) {
+          const charged = Math.max(0, bookingRow.total_pence - (bookingRow.discount_pence || 0) - (bookingRow.voucher_discount_pence || 0));
           db.prepare(`INSERT INTO payments (booking_id, payment_reference, amount_pence, status, provider) VALUES (?, ?, ?, 'succeeded', 'stripe')`)
             .run(bookingId, intent.id, charged);
         }
+      }
+      // Send confirmation emails (non-blocking)
+      const fullBooking = db.prepare(`
+        SELECT b.*, c.name as customer_name, c.email as customer_email,
+               e.title as event_title, e.date as event_date, e.time as event_time, e.location as event_location
+        FROM bookings b
+        JOIN customers c ON b.customer_id = c.id
+        JOIN events e ON b.event_id = e.id
+        WHERE b.id = ?
+      `).get(bookingId);
+      if (fullBooking) {
+        sendBookingConfirmation(fullBooking).catch(err => console.error('[Email] Stripe booking confirmation failed:', err));
+        sendAdminBookingNotification(fullBooking, getNotificationEmail()).catch(err => console.error('[Email] Stripe admin booking notification failed:', err));
       }
     }
     // Handle gift voucher payment
@@ -261,8 +297,9 @@ router.post('/webhook', async (req, res) => {
       const voucher = db.prepare('SELECT * FROM gift_vouchers WHERE id = ?').get(voucherId);
       if (voucher && voucher.status === 'pending') {
         db.prepare("UPDATE gift_vouchers SET status='active', payment_reference=? WHERE id=?").run(intent.id, voucherId);
-        const { sendGiftVoucher } = require('../services/email');
-        sendGiftVoucher(voucher).catch(console.error);
+        const updatedVoucher = db.prepare('SELECT * FROM gift_vouchers WHERE id = ?').get(voucherId);
+        sendGiftVoucher(updatedVoucher).catch(console.error);
+        sendAdminVoucherNotification(updatedVoucher, getNotificationEmail()).catch(console.error);
       }
     }
   }
