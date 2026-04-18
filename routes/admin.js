@@ -31,7 +31,7 @@ router.post('/login', (req, res) => {
 });
 
 // POST /api/admin/test-email — sends a test email to verify configuration
-router.post('/test-email', requireAdmin, (req, res) => {
+router.post('/test-email', requireAdmin, async (req, res) => {
   const { to } = req.body;
   if (!to) return res.status(400).json({ error: 'Recipient email address required' });
 
@@ -41,10 +41,13 @@ router.post('/test-email', requireAdmin, (req, res) => {
     });
   }
 
-  // Respond immediately — send in background so the UI doesn't hang
-  res.json({ success: true, message: `Test email sending to ${to} — check your inbox in a moment` });
-
-  sendTestEmail(to).catch(err => console.error('Test email failed:', err));
+  try {
+    await sendTestEmail(to);
+    res.json({ success: true, message: `Test email sent to ${to}` });
+  } catch (err) {
+    console.error('Test email failed:', err);
+    res.status(500).json({ error: err.message || 'SMTP error — check EMAIL_USER, EMAIL_PASS and EMAIL_PORT in Railway' });
+  }
 });
 
 // GET /api/admin/stats

@@ -49,8 +49,10 @@ router.post('/:id/reply', requireAdmin, (req, res) => {
   const updated = db.prepare('SELECT * FROM contact_submissions WHERE id = ?').get(req.params.id);
   res.json({ success: true, submission: updated });
 
-  // Send email in background (non-blocking)
-  sendEnquiryReply(submission, reply_body.trim()).catch(err => console.error('Reply email error:', err));
+  // Send email in background — log any delivery failure clearly
+  sendEnquiryReply(submission, reply_body.trim()).catch(err => {
+    console.error(`[REPLY EMAIL FAILED] To: ${submission.email} | Error: ${err.message}`);
+  });
 });
 
 // GET /api/contact/unread-count — admin, get unread count
