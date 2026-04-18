@@ -3805,129 +3805,133 @@ async function loadEnquiries() {
     }
     const unread = submissions.filter(s => !s.is_read).length;
     el.innerHTML = `
-      <div class="messages-inbox">
-        <div class="messages-header">
-          <div>
-            <span style="font-size:13px;color:var(--text-light);font-weight:600">${submissions.length} message${submissions.length !== 1 ? 's' : ''}${unread > 0 ? ` · <span style="color:var(--rose);font-weight:700">${unread} unread</span>` : ''}</span>
-          </div>
+      <div class="inbox-wrap">
+        <div class="inbox-toolbar">
+          <span class="inbox-count">${submissions.length} message${submissions.length !== 1 ? 's' : ''}${unread > 0 ? ` &nbsp;·&nbsp; <span style="color:var(--rose)">${unread} unread</span>` : ''}</span>
         </div>
-        <div class="messages-list">
-          ${submissions.map(s => renderMessageCard(s)).join('')}
+        <div class="inbox-list">
+          ${submissions.map(s => renderInboxRow(s)).join('')}
         </div>
       </div>`;
   } catch {
     el.innerHTML = '<p style="padding:24px;color:red">Failed to load messages.</p>';
   }
-  ensureMessageModal();
 }
 
-function renderMessageCard(s) {
-  const date = new Date(s.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-  const preview = (s.message || '').replace(/\n/g, ' ').slice(0, 90) + ((s.message || '').length > 90 ? '…' : '');
-  const isReplied = !!s.replied_at;
+function renderInboxRow(s) {
   const isUnread  = !s.is_read;
+  const isReplied = !!s.replied_at;
+  const now   = new Date();
+  const sent  = new Date(s.created_at);
+  const sameDay = sent.toDateString() === now.toDateString();
+  const sameYear = sent.getFullYear() === now.getFullYear();
+  const dateStr = sameDay
+    ? sent.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+    : sameYear
+      ? sent.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+      : sent.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' });
+  const preview = (s.message || '').replace(/\n/g, ' ').slice(0, 60);
 
-  return `
-    <div class="message-card ${isUnread ? 'message-unread' : ''}" id="msg-card-${s.id}" onclick="openMessage(${s.id})">
-      <div class="message-card-left">
-        <div class="message-avatar">${escHtml(s.name.charAt(0).toUpperCase())}</div>
-      </div>
-      <div class="message-card-body">
-        <div class="message-card-top">
-          <span class="message-name">${escHtml(s.name)}${isUnread ? '<span class="message-unread-dot"></span>' : ''}</span>
-          <span class="message-date">${date}</span>
-        </div>
-        <div class="message-email">${escHtml(s.email)}${s.phone ? ` · ${escHtml(s.phone)}` : ''}</div>
-        <div class="message-preview">${escHtml(preview)}</div>
-        <div class="message-card-footer">
-          ${isReplied
-            ? `<span class="msg-badge msg-badge-replied">✓ Replied ${new Date(s.replied_at).toLocaleDateString('en-GB',{day:'numeric',month:'short'})}</span>`
-            : `<span class="msg-badge msg-badge-pending">Awaiting reply</span>`}
-        </div>
-      </div>
-    </div>`;
-}
-
-function ensureMessageModal() {
-  if (document.getElementById('message-modal')) return;
-  const m = document.createElement('div');
-  m.id = 'message-modal';
-  m.className = 'modal-overlay hidden';
-  m.onclick = e => { if (e.target === m) closeMessage(); };
-  document.body.appendChild(m);
+  return `<div class="inbox-row ${isUnread ? 'inbox-row-unread' : ''}" id="msg-row-${s.id}" onclick="openMessage(${s.id})">
+    <div class="inbox-row-avatar">${escHtml(s.name.charAt(0).toUpperCase())}</div>
+    <div class="inbox-row-sender">${escHtml(s.name)}</div>
+    <div class="inbox-row-preview">
+      <span class="inbox-row-subject">${isReplied ? '✓ ' : ''}${escHtml(s.email)}</span>
+      <span class="inbox-row-snippet"> — ${escHtml(preview)}</span>
+    </div>
+    <div class="inbox-row-date">${dateStr}</div>
+  </div>`;
 }
 
 async function openMessage(id) {
-  ensureMessageModal();
-  // Mark read
+  // Mark read first
   try { await apiFetch(`/api/contact/${id}/read`, { method: 'PATCH' }); } catch {}
-  const card = document.getElementById(`msg-card-${id}`);
-  if (card) { card.classList.remove('message-unread'); card.querySelector('.message-unread-dot')?.remove(); }
+  const row = document.getElementById(`msg-row-${id}`);
+  if (row) row.classList.remove('inbox-row-unread');
   refreshMessagesBadge();
 
-  // Re-fetch to get latest state
+  // Fetch fresh data
   const submissions = await apiFetch('/api/contact');
   const s = submissions.find(x => x.id === id);
   if (!s) return;
 
-  const date = new Date(s.created_at).toLocaleString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const date = new Date(s.created_at).toLocaleString('en-GB', {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+    hour: '2-digit', minute: '2-digit'
+  });
   const customFields = formatEnquiryCustomFields(s.custom_fields);
   const isReplied = !!s.replied_at;
 
+  // Build modal
+  if (!document.getElementById('message-modal')) {
+    const m = document.createElement('div');
+    m.id = 'message-modal';
+    m.className = 'modal-overlay hidden';
+    m.onclick = e => { if (e.target === m) closeMessage(); };
+    document.body.appendChild(m);
+  }
+
   const modal = document.getElementById('message-modal');
   modal.innerHTML = `
-    <div class="modal" style="max-width:560px">
-      <div class="modal-header">
-        <div style="display:flex;align-items:center;gap:12px">
-          <div class="message-avatar" style="flex-shrink:0">${escHtml(s.name.charAt(0).toUpperCase())}</div>
-          <div>
-            <h2 style="margin:0;font-size:18px">${escHtml(s.name)}</h2>
-            <p style="margin:0;font-size:13px;color:var(--text-light)">${escHtml(s.email)}${s.phone ? ` · ${escHtml(s.phone)}` : ''}</p>
-          </div>
-        </div>
+    <div class="modal msg-modal">
+      <!-- Email header -->
+      <div class="msg-modal-header">
+        <button class="msg-back-btn" onclick="closeMessage()">
+          <svg viewBox="0 0 20 20" fill="none" style="width:16px;height:16px"><path d="M13 4l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Back
+        </button>
         <button class="modal-close" onclick="closeMessage()"><svg viewBox="0 0 20 20" fill="none"><path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
       </div>
-      <div class="modal-body">
 
-        <!-- Meta -->
-        <div style="font-size:12px;color:var(--text-light);margin-bottom:16px;font-weight:600">Received ${date}</div>
-
-        <!-- Message -->
-        <div class="message-full-body">${escHtml(s.message)}</div>
-
-        ${customFields ? `
-        <div style="margin-top:16px;padding:12px 16px;background:var(--bg);border-radius:8px;font-size:13px;color:var(--text-light)">
-          <strong style="color:var(--text-dark)">Form responses:</strong><br>${customFields}
-        </div>` : ''}
-
-        <!-- Reply section -->
-        <div style="border-top:1px solid var(--border);margin-top:24px;padding-top:20px">
-          ${isReplied ? `
-          <div style="margin-bottom:16px;padding:14px 16px;background:#f0fdf4;border-radius:10px;border:1px solid #bbf7d0">
-            <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#059669;margin-bottom:6px">
-              ✓ Replied on ${new Date(s.replied_at).toLocaleString('en-GB',{day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'})}
+      <div class="msg-modal-body">
+        <!-- From / meta -->
+        <div class="msg-from-block">
+          <div class="message-avatar">${escHtml(s.name.charAt(0).toUpperCase())}</div>
+          <div class="msg-from-info">
+            <div class="msg-from-name">${escHtml(s.name)}</div>
+            <div class="msg-from-meta">
+              <span>${escHtml(s.email)}</span>
+              ${s.phone ? `<span class="msg-meta-sep">·</span><span>${escHtml(s.phone)}</span>` : ''}
             </div>
-            <div style="font-size:13px;color:#2C2028;white-space:pre-wrap">${escHtml(s.reply_body)}</div>
           </div>
-          <div style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--text-dark)">Send another reply</div>
-          ` : `
-          <div style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--text-dark)">Reply to ${escHtml(s.name.split(' ')[0])}</div>
-          `}
-          <textarea id="reply-body-${s.id}" placeholder="Type your reply here…" style="width:100%;min-height:120px;padding:12px;border:1.5px solid #e0d0d4;border-radius:10px;font-size:14px;font-family:inherit;resize:vertical;box-sizing:border-box;line-height:1.6"></textarea>
-          <div style="display:flex;align-items:center;gap:12px;margin-top:10px;flex-wrap:wrap">
-            <button class="btn btn-primary" onclick="sendReply(${s.id})">
-              <svg viewBox="0 0 20 20" fill="none" style="width:15px;height:15px;margin-right:5px;vertical-align:middle"><path d="M17 3L2 9l5.5 3L13 7l-4 5.5L12 18z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
-              Send Reply
-            </button>
-            <span id="reply-status-${s.id}" style="font-size:13px;font-weight:600"></span>
-          </div>
-          <p style="font-size:12px;color:var(--text-light);margin:8px 0 0">Reply will be sent from ${escHtml(process.env.EMAIL_USER || 'your email')} to ${escHtml(s.email)}</p>
+          <div class="msg-from-date">${date}</div>
         </div>
 
-      </div>
-      <div class="modal-footer" style="justify-content:space-between">
-        <button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:none" onclick="deleteEnquiry(${s.id})">Delete</button>
-        <button class="btn btn-ghost" onclick="closeMessage()">Close</button>
+        <!-- Message body -->
+        <div class="msg-body-text">${escHtml(s.message)}</div>
+
+        ${customFields ? `
+        <div class="msg-custom-fields">
+          <strong>Form responses:</strong> ${customFields}
+        </div>` : ''}
+
+        <!-- Previous reply (if any) -->
+        ${isReplied ? `
+        <div class="msg-prev-reply">
+          <div class="msg-prev-reply-header">
+            <svg viewBox="0 0 20 20" fill="none" style="width:14px;height:14px"><path d="M18 4L3 10l5.5 3L14 8l-4.5 5.5L12.5 17z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+            You replied on ${new Date(s.replied_at).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}
+          </div>
+          <div class="msg-prev-reply-body">${escHtml(s.reply_body)}</div>
+        </div>` : ''}
+
+        <!-- Reply composer -->
+        <div class="msg-compose">
+          <div class="msg-compose-header">
+            <svg viewBox="0 0 20 20" fill="none" style="width:14px;height:14px;color:var(--rose)"><path d="M18 4L3 10l5.5 3L14 8l-4.5 5.5L12.5 17z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+            ${isReplied ? 'Send another reply' : `Reply to ${escHtml(s.name.split(' ')[0])}`}
+            <span class="msg-compose-to">to ${escHtml(s.email)}</span>
+          </div>
+          <textarea id="reply-body-${s.id}" class="msg-compose-textarea" placeholder="Write your reply…"></textarea>
+          <div class="msg-compose-footer">
+            <button class="btn btn-primary btn-sm" onclick="sendReply(${s.id})">
+              <svg viewBox="0 0 20 20" fill="none" style="width:13px;height:13px;margin-right:5px;vertical-align:middle"><path d="M18 4L3 10l5.5 3L14 8l-4.5 5.5L12.5 17z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+              Send
+            </button>
+            <span id="reply-status-${s.id}" style="font-size:13px;font-weight:600;margin-left:10px"></span>
+            <button class="btn btn-sm" style="margin-left:auto;background:#fee2e2;color:#dc2626;border:none" onclick="deleteEnquiry(${s.id})">Delete</button>
+          </div>
+        </div>
       </div>
     </div>`;
   modal.classList.remove('hidden');
@@ -3945,27 +3949,22 @@ async function sendReply(id) {
   if (!body) { toast('Please type a reply first', 'error'); return; }
 
   if (statusEl) { statusEl.textContent = 'Sending…'; statusEl.style.color = 'var(--text-light)'; }
-  const btn = textarea.closest('.modal-body').querySelector('.btn-primary');
+  const btn = document.querySelector(`#reply-status-${id}`)?.closest('.msg-compose-footer')?.querySelector('.btn-primary');
   if (btn) btn.disabled = true;
 
   try {
-    const result = await apiFetch(`/api/contact/${id}/reply`, {
+    await apiFetch(`/api/contact/${id}/reply`, {
       method: 'POST',
       body: JSON.stringify({ reply_body: body })
     });
-    toast('Reply sent successfully');
-    // Update card badge in background
-    const card = document.getElementById(`msg-card-${id}`);
-    if (card) {
-      const badge = card.querySelector('.msg-badge');
-      if (badge) {
-        badge.className = 'msg-badge msg-badge-replied';
-        badge.textContent = '✓ Replied just now';
-      }
-    }
-    // Re-open to show the sent reply
+    toast('Reply sent ✓');
     closeMessage();
     openMessage(id);
+    const row = document.getElementById(`msg-row-${id}`);
+    if (row) {
+      const subject = row.querySelector('.inbox-row-subject');
+      if (subject && !subject.textContent.startsWith('✓')) subject.textContent = '✓ ' + subject.textContent;
+    }
   } catch (err) {
     const msg = err.message || 'Failed to send reply';
     if (statusEl) { statusEl.textContent = `❌ ${msg}`; statusEl.style.color = '#dc2626'; }
@@ -3975,10 +3974,7 @@ async function sendReply(id) {
 }
 
 async function markEnquiryRead(id) {
-  try {
-    await apiFetch(`/api/contact/${id}/read`, { method: 'PATCH' });
-    refreshMessagesBadge();
-  } catch {}
+  try { await apiFetch(`/api/contact/${id}/read`, { method: 'PATCH' }); refreshMessagesBadge(); } catch {}
 }
 
 async function deleteEnquiry(id) {
@@ -3986,7 +3982,7 @@ async function deleteEnquiry(id) {
   try {
     await apiFetch(`/api/contact/${id}`, { method: 'DELETE' });
     closeMessage();
-    document.getElementById(`msg-card-${id}`)?.remove();
+    document.getElementById(`msg-row-${id}`)?.remove();
     refreshMessagesBadge();
     toast('Message deleted');
   } catch { toast('Failed to delete', 'error'); }
