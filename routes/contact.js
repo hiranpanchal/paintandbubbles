@@ -34,7 +34,7 @@ router.patch('/:id/read', requireAdmin, (req, res) => {
 });
 
 // POST /api/contact/:id/reply — admin, send email reply to customer
-router.post('/:id/reply', requireAdmin, async (req, res) => {
+router.post('/:id/reply', requireAdmin, (req, res) => {
   const { reply_body } = req.body;
   if (!reply_body || !reply_body.trim()) {
     return res.status(400).json({ error: 'Reply message cannot be empty' });
@@ -42,17 +42,15 @@ router.post('/:id/reply', requireAdmin, async (req, res) => {
   const submission = db.prepare('SELECT * FROM contact_submissions WHERE id = ?').get(req.params.id);
   if (!submission) return res.status(404).json({ error: 'Enquiry not found' });
 
-  try {
-    await sendEnquiryReply(submission, reply_body.trim());
-    db.prepare(
-      "UPDATE contact_submissions SET reply_body = ?, replied_at = datetime('now'), is_read = 1 WHERE id = ?"
-    ).run(reply_body.trim(), req.params.id);
-    const updated = db.prepare('SELECT * FROM contact_submissions WHERE id = ?').get(req.params.id);
-    res.json({ success: true, submission: updated });
-  } catch (err) {
-    console.error('Reply send error:', err);
-    res.status(500).json({ error: err.message || 'Failed to send reply' });
-  }
+  // Save to DB immediately and respond — don't block on email
+  db.prepare(
+    "UPDATE contact_submissions SET reply_body = ?, replied_at = datetime('now'), is_read = 1 WHERE id = ?"
+  ).run(reply_body.trim(), req.params.id);
+  const updated = db.prepare('SELECT * FROM contact_submissions WHERE id = ?').get(req.params.id);
+  res.json({ success: true, submission: updated });
+
+  // Send email in background (non-blocking)
+  sendEnquiryReply(submission, reply_body.trim()).catch(err => console.error('Reply email error:', err));
 });
 
 // GET /api/contact/unread-count — admin, get unread count

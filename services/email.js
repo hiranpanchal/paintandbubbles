@@ -1,10 +1,14 @@
 const nodemailer = require('nodemailer');
 
 function createTransporter() {
+  const port = parseInt(process.env.EMAIL_PORT || '465');
   return nodemailer.createTransport({
     host: process.env.EMAIL_HOST || 'smtp.gmail.com',
-    port: parseInt(process.env.EMAIL_PORT || '587'),
-    secure: false,
+    port,
+    secure: port === 465,   // true for 465 (SSL), false for 587 (STARTTLS)
+    connectionTimeout: 15000,
+    greetingTimeout:   10000,
+    socketTimeout:     15000,
     auth: {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS
@@ -545,4 +549,23 @@ async function sendEnquiryReply(submission, replyBody) {
   console.log(`Enquiry reply sent to ${submission.email}`);
 }
 
-module.exports = { sendBookingConfirmation, sendEnquiryNotification, sendGiftVoucher, sendAdminBookingNotification, sendAdminVoucherNotification, sendEnquiryReply };
+async function sendTestEmail(to) {
+  const transporter = createTransporter();
+  await transporter.sendMail({
+    from: process.env.EMAIL_FROM || `Paint & Bubbles <${process.env.EMAIL_USER}>`,
+    to,
+    subject: '✅ Test Email — Paint & Bubbles',
+    html: `
+      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px;background:#fdf8f9;border-radius:12px">
+        <h2 style="color:#C4748A;margin:0 0 16px">Email is working! 🎉</h2>
+        <p style="color:#2C2028;margin:0 0 12px">This is a test email from your <strong>Paint &amp; Bubbles</strong> admin dashboard.</p>
+        <p style="color:#2C2028;margin:0 0 12px">Your email settings are correctly configured. Booking confirmations, gift voucher emails and admin notifications will all send successfully.</p>
+        <hr style="border:none;border-top:1px solid #e0d0d4;margin:24px 0">
+        <p style="color:#999;font-size:12px;margin:0">Sent from: ${process.env.EMAIL_USER}</p>
+      </div>
+    `
+  });
+  console.log(`Test email sent to ${to}`);
+}
+
+module.exports = { sendBookingConfirmation, sendEnquiryNotification, sendGiftVoucher, sendAdminBookingNotification, sendAdminVoucherNotification, sendEnquiryReply, sendTestEmail };
