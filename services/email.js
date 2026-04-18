@@ -1,20 +1,54 @@
-const nodemailer = require('nodemailer');
+/**
+ * Email service — uses Resend HTTP API (HTTPS, never blocked by Railway).
+ * Set RESEND_API_KEY in Railway env vars. Get a free key at https://resend.com
+ * Set EMAIL_FROM to your verified sending address, e.g. noreply@paintandbubbles.co.uk
+ */
 
-function createTransporter() {
-  const port = parseInt(process.env.EMAIL_PORT || '465');
-  return nodemailer.createTransport({
-    host: process.env.EMAIL_HOST || 'smtp.gmail.com',
-    port,
-    secure: port === 465,   // true for 465 (SSL), false for 587 (STARTTLS)
-    connectionTimeout: 15000,
-    greetingTimeout:   10000,
-    socketTimeout:     15000,
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS
-    }
-  });
+const RESEND_API = 'https://api.resend.com/emails';
+
+function getFrom() {
+  return process.env.EMAIL_FROM || 'Paint & Bubbles <noreply@paintandbubbles.co.uk>';
 }
+
+function isConfigured() {
+  return !!process.env.RESEND_API_KEY;
+}
+
+/**
+ * Core send function — all other functions call this.
+ * @param {{ to: string|string[], subject: string, html: string, replyTo?: string }} opts
+ */
+async function sendEmail({ to, subject, html, replyTo }) {
+  if (!isConfigured()) {
+    console.log('[Email] RESEND_API_KEY not set — skipping email to', to);
+    return;
+  }
+
+  const payload = {
+    from: getFrom(),
+    to: Array.isArray(to) ? to : [to],
+    subject,
+    html,
+  };
+  if (replyTo) payload.reply_to = replyTo;
+
+  const response = await fetch(RESEND_API, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || data.name || `Resend error ${response.status}`);
+  }
+  return data;
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function formatDate(dateStr) {
   const d = new Date(dateStr + 'T00:00:00');
@@ -25,13 +59,9 @@ function formatPrice(pence) {
   return `£${(pence / 100).toFixed(2)}`;
 }
 
-async function sendBookingConfirmation(booking) {
-  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-    console.log('Email not configured — skipping confirmation email for booking', booking.id);
-    return;
-  }
+// ─── Public functions ─────────────────────────────────────────────────────────
 
-  const transporter = createTransporter();
+async function sendBookingConfirmation(booking) {
   const siteUrl = process.env.SITE_URL || 'http://localhost:3000';
   const bookingRef = `#PB${String(booking.id).padStart(5, '0')}`;
 
@@ -52,7 +82,6 @@ async function sendBookingConfirmation(booking) {
           <!-- Header / Hero -->
           <tr>
             <td style="background:linear-gradient(135deg,#2C0F18 0%,#6B2D42 50%,#C4748A 100%);padding:44px 48px;text-align:center;">
-              <!-- Watercolour dot decoration -->
               <div style="margin-bottom:16px;">
                 <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,0.3);margin:0 3px;"></span>
                 <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:rgba(255,212,222,0.4);margin:0 3px;"></span>
@@ -139,30 +168,22 @@ async function sendBookingConfirmation(booking) {
     </tr>
   </table>
 </body>
-</html>
-  `.trim();
+</html>`.trim();
 
-  await transporter.sendMail({
-    from: process.env.EMAIL_FROM || 'Paint & Bubbles <noreply@paintandbubbles.com>',
+  await sendEmail({
     to: booking.customer_email,
     subject: `Booking Confirmed: ${booking.event_title} — ${bookingRef}`,
-    html
+    html,
   });
-
-  console.log(`Confirmation email sent to ${booking.customer_email}`);
+  console.log(`[Email] Booking confirmation sent to ${booking.customer_email}`);
 }
 
 async function sendEnquiryNotification(submission, notificationEmail) {
-  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-    console.log('Email not configured — skipping enquiry notification for submission', submission.id);
-    return;
-  }
   if (!notificationEmail) {
-    console.log('No notification email set — skipping enquiry notification');
+    console.log('[Email] No notification_email set — skipping enquiry notification');
     return;
   }
 
-  const transporter = createTransporter();
   const received = new Date(submission.created_at || new Date()).toLocaleString('en-GB', {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
   });
@@ -217,7 +238,7 @@ async function sendEnquiryNotification(submission, notificationEmail) {
                 <p style="margin:0;color:#2C2028;font-size:14px;font-weight:500;line-height:1.75;white-space:pre-wrap;">${submission.message}</p>
               </div>
 
-              <p style="margin:0;color:#9E8E96;font-size:13px;">Reply directly to this email or hit the button below to contact them.</p>
+              <p style="margin:0;color:#9E8E96;font-size:13px;">Reply directly to this email to contact them.</p>
               <br>
               <a href="mailto:${submission.email}" style="display:inline-block;background:linear-gradient(135deg,#6B2D42,#C4748A);color:#fff;text-decoration:none;padding:12px 28px;border-radius:50px;font-size:14px;font-weight:700;">Reply to ${submission.name}</a>
             </td>
@@ -237,24 +258,16 @@ async function sendEnquiryNotification(submission, notificationEmail) {
 </body>
 </html>`.trim();
 
-  await transporter.sendMail({
-    from: process.env.EMAIL_FROM || 'Paint & Bubbles <noreply@paintandbubbles.com>',
+  await sendEmail({
     to: notificationEmail,
-    replyTo: submission.email,
     subject: `New Enquiry from ${submission.name}`,
-    html
+    html,
+    replyTo: submission.email,
   });
-
-  console.log(`Enquiry notification sent to ${notificationEmail}`);
+  console.log(`[Email] Enquiry notification sent to ${notificationEmail}`);
 }
 
 async function sendGiftVoucher(voucher) {
-  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-    console.log('Email not configured — skipping gift voucher email for voucher', voucher.id);
-    return;
-  }
-
-  const transporter = createTransporter();
   const siteUrl = process.env.SITE_URL || 'http://localhost:3000';
   const amount = formatPrice(voucher.amount_pence);
   const recipientLine = voucher.recipient_name ? `<p style="margin:0 0 16px;color:#5C4F57;font-size:14px;font-weight:500;">This voucher is for <strong>${voucher.recipient_name}</strong>.</p>` : '';
@@ -345,37 +358,28 @@ async function sendGiftVoucher(voucher) {
     </tr>
   </table>
 </body>
-</html>
-  `.trim();
+</html>`.trim();
 
   const subject = `🎁 Your Paint & Bubbles Gift Voucher — ${voucher.code}`;
-  const from = process.env.EMAIL_FROM || 'Paint & Bubbles <noreply@paintandbubbles.com>';
-
-  await transporter.sendMail({ from, to: voucher.purchaser_email, subject, html });
-  console.log(`Gift voucher email sent to ${voucher.purchaser_email}`);
+  await sendEmail({ to: voucher.purchaser_email, subject, html });
+  console.log(`[Email] Gift voucher sent to ${voucher.purchaser_email}`);
 
   // Also send to recipient if different from purchaser
   if (voucher.recipient_email && voucher.recipient_email !== voucher.purchaser_email) {
-    const recipientHtml = html.replace(
-      `Hi ${voucher.purchaser_name},`,
-      `Hi ${voucher.recipient_name || 'there'},`
-    ).replace(
-      'Your gift voucher is ready to share! 🎨',
-      `${voucher.purchaser_name} has sent you a gift voucher! 🎨`
-    );
-    await transporter.sendMail({ from, to: voucher.recipient_email, subject, html: recipientHtml });
-    console.log(`Gift voucher email also sent to recipient ${voucher.recipient_email}`);
+    const recipientHtml = html
+      .replace(`Hi ${voucher.purchaser_name},`, `Hi ${voucher.recipient_name || 'there'},`)
+      .replace('Your gift voucher is ready to share! 🎨', `${voucher.purchaser_name} has sent you a gift voucher! 🎨`);
+    await sendEmail({ to: voucher.recipient_email, subject, html: recipientHtml });
+    console.log(`[Email] Gift voucher also sent to recipient ${voucher.recipient_email}`);
   }
 }
 
 async function sendAdminBookingNotification(booking, notificationEmail) {
-  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) return;
   if (!notificationEmail) return;
 
-  const transporter = createTransporter();
-  const bookingRef  = `#PB${String(booking.id).padStart(5, '0')}`;
-  const charged     = Math.max(0, booking.total_pence - (booking.discount_pence || 0) - (booking.voucher_discount_pence || 0));
-  const siteUrl     = process.env.SITE_URL || 'http://localhost:3000';
+  const bookingRef = `#PB${String(booking.id).padStart(5, '0')}`;
+  const charged    = Math.max(0, booking.total_pence - (booking.discount_pence || 0) - (booking.voucher_discount_pence || 0));
+  const siteUrl    = process.env.SITE_URL || 'http://localhost:3000';
 
   const discountRows = [];
   if (booking.discount_pence > 0) discountRows.push(`<tr><td style="padding:6px 0;color:#9E8E96;font-size:13px;font-weight:600;width:30%">Discount code</td><td style="padding:6px 0;color:#2C2028;font-size:13px;font-weight:700;">−${formatPrice(booking.discount_pence)} (${booking.discount_code || ''})</td></tr>`);
@@ -420,21 +424,18 @@ async function sendAdminBookingNotification(booking, notificationEmail) {
 </body>
 </html>`.trim();
 
-  await transporter.sendMail({
-    from: process.env.EMAIL_FROM || 'Paint & Bubbles <noreply@paintandbubbles.com>',
+  await sendEmail({
     to: notificationEmail,
-    replyTo: booking.customer_email,
     subject: `New Booking: ${booking.event_title} — ${booking.customer_name} (${bookingRef})`,
-    html
+    html,
+    replyTo: booking.customer_email,
   });
-  console.log(`Admin booking notification sent to ${notificationEmail}`);
+  console.log(`[Email] Admin booking notification sent to ${notificationEmail}`);
 }
 
 async function sendAdminVoucherNotification(voucher, notificationEmail) {
-  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) return;
   if (!notificationEmail) return;
 
-  const transporter = createTransporter();
   const siteUrl     = process.env.SITE_URL || 'http://localhost:3000';
   const amount      = formatPrice(voucher.amount_pence);
   const purchasedAt = new Date(voucher.created_at || new Date()).toLocaleString('en-GB', {
@@ -477,21 +478,15 @@ async function sendAdminVoucherNotification(voucher, notificationEmail) {
 </body>
 </html>`.trim();
 
-  await transporter.sendMail({
-    from: process.env.EMAIL_FROM || 'Paint & Bubbles <noreply@paintandbubbles.com>',
+  await sendEmail({
     to: notificationEmail,
     subject: `Gift Voucher Sold: ${amount} — ${voucher.purchaser_name}`,
-    html
+    html,
   });
-  console.log(`Admin voucher notification sent to ${notificationEmail}`);
+  console.log(`[Email] Admin voucher notification sent to ${notificationEmail}`);
 }
 
 async function sendEnquiryReply(submission, replyBody) {
-  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-    console.log('Email not configured — skipping enquiry reply');
-    return;
-  }
-  const transporter = createTransporter();
   const sentDate = new Date(submission.created_at).toLocaleString('en-GB', {
     day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
   });
@@ -516,7 +511,7 @@ async function sendEnquiryReply(submission, replyBody) {
         <!-- Body -->
         <tr><td style="padding:32px">
           <p style="margin:0 0 16px;font-size:16px;color:#2C2028">Hi ${submission.name.split(' ')[0]},</p>
-          <div style="font-size:15px;color:#2C2028;line-height:1.7;white-space:pre-wrap;margin-bottom:24px">${replyBody.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+          <div style="font-size:15px;color:#2C2028;line-height:1.7;white-space:pre-wrap;margin-bottom:24px">${replyBody.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
           <p style="margin:24px 0 0;font-size:15px;color:#2C2028">Best wishes,<br><strong>The Paint &amp; Bubbles Team</strong></p>
         </td></tr>
 
@@ -524,7 +519,7 @@ async function sendEnquiryReply(submission, replyBody) {
         <tr><td style="padding:0 32px 28px">
           <div style="border-top:2px solid #f0e4e8;padding-top:20px">
             <p style="margin:0 0 8px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#999">Your original message (${sentDate})</p>
-            <p style="margin:0;font-size:13px;color:#888;font-style:italic;white-space:pre-wrap">${(submission.message || '').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</p>
+            <p style="margin:0;font-size:13px;color:#888;font-style:italic;white-space:pre-wrap">${(submission.message || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>
           </div>
         </td></tr>
 
@@ -539,20 +534,17 @@ async function sendEnquiryReply(submission, replyBody) {
 </body>
 </html>`.trim();
 
-  await transporter.sendMail({
-    from: process.env.EMAIL_FROM || `Paint & Bubbles <${process.env.EMAIL_USER}>`,
+  await sendEmail({
     to: `${submission.name} <${submission.email}>`,
-    replyTo: process.env.EMAIL_USER,
     subject: `Re: Your enquiry to Paint & Bubbles`,
-    html
+    html,
+    replyTo: process.env.EMAIL_FROM || getFrom(),
   });
-  console.log(`Enquiry reply sent to ${submission.email}`);
+  console.log(`[Email] Enquiry reply sent to ${submission.email}`);
 }
 
 async function sendTestEmail(to) {
-  const transporter = createTransporter();
-  await transporter.sendMail({
-    from: process.env.EMAIL_FROM || `Paint & Bubbles <${process.env.EMAIL_USER}>`,
+  await sendEmail({
     to,
     subject: '✅ Test Email — Paint & Bubbles',
     html: `
@@ -561,11 +553,19 @@ async function sendTestEmail(to) {
         <p style="color:#2C2028;margin:0 0 12px">This is a test email from your <strong>Paint &amp; Bubbles</strong> admin dashboard.</p>
         <p style="color:#2C2028;margin:0 0 12px">Your email settings are correctly configured. Booking confirmations, gift voucher emails and admin notifications will all send successfully.</p>
         <hr style="border:none;border-top:1px solid #e0d0d4;margin:24px 0">
-        <p style="color:#999;font-size:12px;margin:0">Sent from: ${process.env.EMAIL_USER}</p>
+        <p style="color:#999;font-size:12px;margin:0">Sent via Resend from paintandbubbles.co.uk</p>
       </div>
-    `
+    `,
   });
-  console.log(`Test email sent to ${to}`);
+  console.log(`[Email] Test email sent to ${to}`);
 }
 
-module.exports = { sendBookingConfirmation, sendEnquiryNotification, sendGiftVoucher, sendAdminBookingNotification, sendAdminVoucherNotification, sendEnquiryReply, sendTestEmail };
+module.exports = {
+  sendBookingConfirmation,
+  sendEnquiryNotification,
+  sendGiftVoucher,
+  sendAdminBookingNotification,
+  sendAdminVoucherNotification,
+  sendEnquiryReply,
+  sendTestEmail,
+};
