@@ -35,9 +35,9 @@ router.post('/test-email', requireAdmin, async (req, res) => {
   const { to } = req.body;
   if (!to) return res.status(400).json({ error: 'Recipient email address required' });
 
-  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+  if (!process.env.RESEND_API_KEY) {
     return res.status(400).json({
-      error: 'Email not configured. Set EMAIL_USER and EMAIL_PASS environment variables on Railway.'
+      error: 'Email not configured. Add RESEND_API_KEY to your Railway environment variables.'
     });
   }
 
