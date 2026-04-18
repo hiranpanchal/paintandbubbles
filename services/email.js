@@ -482,4 +482,67 @@ async function sendAdminVoucherNotification(voucher, notificationEmail) {
   console.log(`Admin voucher notification sent to ${notificationEmail}`);
 }
 
-module.exports = { sendBookingConfirmation, sendEnquiryNotification, sendGiftVoucher, sendAdminBookingNotification, sendAdminVoucherNotification };
+async function sendEnquiryReply(submission, replyBody) {
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    console.log('Email not configured — skipping enquiry reply');
+    return;
+  }
+  const transporter = createTransporter();
+  const sentDate = new Date(submission.created_at).toLocaleString('en-GB', {
+    day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
+  });
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0;padding:0;background:#f5f0eb;font-family:'Nunito',Arial,sans-serif">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f0eb;padding:32px 16px">
+    <tr><td align="center">
+      <table width="100%" style="max-width:560px;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.07)">
+
+        <!-- Header -->
+        <tr><td style="background:linear-gradient(135deg,#C4748A,#A85D72);padding:28px 32px;text-align:center">
+          <h1 style="margin:0;color:#fff;font-size:22px;font-weight:800;letter-spacing:-0.5px">Paint &amp; Bubbles</h1>
+        </td></tr>
+
+        <!-- Body -->
+        <tr><td style="padding:32px">
+          <p style="margin:0 0 16px;font-size:16px;color:#2C2028">Hi ${submission.name.split(' ')[0]},</p>
+          <div style="font-size:15px;color:#2C2028;line-height:1.7;white-space:pre-wrap;margin-bottom:24px">${replyBody.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+          <p style="margin:24px 0 0;font-size:15px;color:#2C2028">Best wishes,<br><strong>The Paint &amp; Bubbles Team</strong></p>
+        </td></tr>
+
+        <!-- Quoted original -->
+        <tr><td style="padding:0 32px 28px">
+          <div style="border-top:2px solid #f0e4e8;padding-top:20px">
+            <p style="margin:0 0 8px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#999">Your original message (${sentDate})</p>
+            <p style="margin:0;font-size:13px;color:#888;font-style:italic;white-space:pre-wrap">${(submission.message || '').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</p>
+          </div>
+        </td></tr>
+
+        <!-- Footer -->
+        <tr><td style="background:#fdf8f9;padding:16px 32px;text-align:center;border-top:1px solid #f0e4e8">
+          <p style="margin:0;font-size:12px;color:#bbb">This message was sent in response to your enquiry at paintandbubbles.co.uk</p>
+        </td></tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`.trim();
+
+  await transporter.sendMail({
+    from: process.env.EMAIL_FROM || `Paint & Bubbles <${process.env.EMAIL_USER}>`,
+    to: `${submission.name} <${submission.email}>`,
+    replyTo: process.env.EMAIL_USER,
+    subject: `Re: Your enquiry to Paint & Bubbles`,
+    html
+  });
+  console.log(`Enquiry reply sent to ${submission.email}`);
+}
+
+module.exports = { sendBookingConfirmation, sendEnquiryNotification, sendGiftVoucher, sendAdminBookingNotification, sendAdminVoucherNotification, sendEnquiryReply };

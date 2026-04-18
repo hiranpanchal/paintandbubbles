@@ -94,9 +94,10 @@
         <svg viewBox="0 0 20 20" fill="none"><path d="M4 5h12M4 10h8M4 15h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
         Content
       </button>
-      <button class="sidebar-item" id="tab-enquiries" onclick="switchTab('enquiries')">
+      <button class="sidebar-item" id="tab-enquiries" onclick="switchTab('enquiries')" style="position:relative">
         <svg viewBox="0 0 20 20" fill="none"><path d="M3 4h14a1 1 0 011 1v8a1 1 0 01-1 1H5l-3 3V5a1 1 0 011-1z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
-        Enquiries
+        Messages
+        <span id="messages-badge" class="messages-badge hidden"></span>
       </button>
       <button class="sidebar-item" id="tab-vouchers" onclick="switchTab('vouchers')">
         <svg viewBox="0 0 20 20" fill="none"><path d="M3 7h14a1 1 0 011 1v4a1 1 0 01-1 1H3a1 1 0 01-1-1V8a1 1 0 011-1z" stroke="currentColor" stroke-width="1.5"/><circle cx="10" cy="10" r="1.5" stroke="currentColor" stroke-width="1.5"/><path d="M7 7V5m6 2V5M7 13v2m6-2v2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>

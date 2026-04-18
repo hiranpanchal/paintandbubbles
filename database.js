@@ -458,6 +458,14 @@ db.exec(`
     db.prepare('ALTER TABLE contact_submissions ADD COLUMN custom_fields TEXT DEFAULT NULL').run();
     console.log('Migrated contact_submissions: added custom_fields column.');
   }
+  if (!cols.find(c => c.name === 'reply_body')) {
+    db.prepare('ALTER TABLE contact_submissions ADD COLUMN reply_body TEXT DEFAULT NULL').run();
+    console.log('Migrated contact_submissions: added reply_body column.');
+  }
+  if (!cols.find(c => c.name === 'replied_at')) {
+    db.prepare('ALTER TABLE contact_submissions ADD COLUMN replied_at TEXT DEFAULT NULL').run();
+    console.log('Migrated contact_submissions: added replied_at column.');
+  }
 }
 
 // Seed contact_form_fields with default WhatsApp consent checkbox

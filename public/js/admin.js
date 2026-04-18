@@ -75,6 +75,7 @@ function showDashboard() {
     const nameEl = document.getElementById('topbar-username');
     if (nameEl) nameEl.textContent = payload.username || '';
   } catch {}
+  refreshMessagesBadge();
   switchTab('overview');
 }
 
@@ -86,7 +87,7 @@ function switchTab(tab) {
   document.getElementById(`content-${tab}`).classList.remove('hidden');
   document.getElementById(`tab-${tab}`).classList.add('active');
 
-  const titles = { overview: 'Overview', events: 'Events', bookings: 'Bookings', customers: 'Customers', payments: 'Payments', design: 'Design', faq: 'FAQ', reviews: 'Reviews', users: 'Users', content: 'Content', enquiries: 'Enquiries', vouchers: 'Gift Vouchers', discounts: 'Discount Codes' };
+  const titles = { overview: 'Overview', events: 'Events', bookings: 'Bookings', customers: 'Customers', payments: 'Payments', design: 'Design', faq: 'FAQ', reviews: 'Reviews', users: 'Users', content: 'Content', enquiries: 'Messages', vouchers: 'Gift Vouchers', discounts: 'Discount Codes' };
   document.getElementById('page-title').textContent = titles[tab] || tab;
 
   // Close sidebar on mobile
@@ -3771,57 +3772,224 @@ function formatEnquiryCustomFields(json) {
 }
 
 // ---- ENQUIRIES TAB ----
+// ---- MESSAGES (ENQUIRIES) ----
+
+async function refreshMessagesBadge() {
+  try {
+    const { count } = await apiFetch('/api/contact/unread-count');
+    const badge = document.getElementById('messages-badge');
+    if (!badge) return;
+    if (count > 0) {
+      badge.textContent = count > 99 ? '99+' : count;
+      badge.classList.remove('hidden');
+    } else {
+      badge.classList.add('hidden');
+    }
+  } catch {}
+}
+
 async function loadEnquiries() {
   const el = document.getElementById('content-enquiries');
   el.innerHTML = '<div class="loading-state"><div class="spinner"></div></div>';
   try {
     const submissions = await apiFetch('/api/contact');
+    refreshMessagesBadge();
     if (!submissions.length) {
-      el.innerHTML = '<div class="card"><div style="padding:40px;text-align:center;color:var(--text-light);font-weight:600">No enquiries yet</div></div>';
+      el.innerHTML = `
+        <div style="text-align:center;padding:64px 24px;color:var(--text-light)">
+          <svg viewBox="0 0 48 48" fill="none" style="width:48px;height:48px;margin:0 auto 16px;display:block;opacity:.3"><path d="M6 8h36a2 2 0 012 2v20a2 2 0 01-2 2H10l-6 6V10a2 2 0 012-2z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+          <p style="font-weight:700;font-size:15px;margin:0 0 4px">No messages yet</p>
+          <p style="font-size:13px;margin:0">Contact form submissions will appear here</p>
+        </div>`;
       return;
     }
-    el.innerHTML = `<div class="card"><div class="table-wrap"><table class="data-table">
-      <thead><tr>
-        <th>Name</th><th>Email</th><th>Phone</th><th>Message</th><th>Responses</th><th>Date</th><th></th>
-      </tr></thead>
-      <tbody>${submissions.map(s => `
-        <tr class="${s.is_read ? '' : 'unread-row'}" id="enq-row-${s.id}">
-          <td><strong>${escHtml(s.name)}</strong></td>
-          <td><a href="mailto:${escHtml(s.email)}">${escHtml(s.email)}</a></td>
-          <td>${escHtml(s.phone || '\u2014')}</td>
-          <td style="max-width:280px;white-space:pre-wrap">${escHtml(s.message)}</td>
-          <td style="max-width:200px;font-size:0.82rem;color:var(--text-mid)">${formatEnquiryCustomFields(s.custom_fields)}</td>
-          <td style="white-space:nowrap">${new Date(s.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</td>
-          <td style="display:flex;gap:8px">
-            ${!s.is_read ? `<button class="btn btn-ghost btn-sm" onclick="markEnquiryRead(${s.id})">Mark Read</button>` : '<span style="color:var(--text-light);font-size:13px">Read</span>'}
-            <button class="btn btn-danger btn-sm" onclick="deleteEnquiry(${s.id})">Delete</button>
-          </td>
-        </tr>`).join('')}
-      </tbody>
-    </table></div></div>`;
+    const unread = submissions.filter(s => !s.is_read).length;
+    el.innerHTML = `
+      <div class="messages-inbox">
+        <div class="messages-header">
+          <div>
+            <span style="font-size:13px;color:var(--text-light);font-weight:600">${submissions.length} message${submissions.length !== 1 ? 's' : ''}${unread > 0 ? ` · <span style="color:var(--rose);font-weight:700">${unread} unread</span>` : ''}</span>
+          </div>
+        </div>
+        <div class="messages-list">
+          ${submissions.map(s => renderMessageCard(s)).join('')}
+        </div>
+      </div>`;
   } catch {
-    el.innerHTML = '<p style="padding:24px;color:red">Failed to load enquiries.</p>';
+    el.innerHTML = '<p style="padding:24px;color:red">Failed to load messages.</p>';
+  }
+  ensureMessageModal();
+}
+
+function renderMessageCard(s) {
+  const date = new Date(s.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  const preview = (s.message || '').replace(/\n/g, ' ').slice(0, 90) + ((s.message || '').length > 90 ? '…' : '');
+  const isReplied = !!s.replied_at;
+  const isUnread  = !s.is_read;
+
+  return `
+    <div class="message-card ${isUnread ? 'message-unread' : ''}" id="msg-card-${s.id}" onclick="openMessage(${s.id})">
+      <div class="message-card-left">
+        <div class="message-avatar">${escHtml(s.name.charAt(0).toUpperCase())}</div>
+      </div>
+      <div class="message-card-body">
+        <div class="message-card-top">
+          <span class="message-name">${escHtml(s.name)}${isUnread ? '<span class="message-unread-dot"></span>' : ''}</span>
+          <span class="message-date">${date}</span>
+        </div>
+        <div class="message-email">${escHtml(s.email)}${s.phone ? ` · ${escHtml(s.phone)}` : ''}</div>
+        <div class="message-preview">${escHtml(preview)}</div>
+        <div class="message-card-footer">
+          ${isReplied
+            ? `<span class="msg-badge msg-badge-replied">✓ Replied ${new Date(s.replied_at).toLocaleDateString('en-GB',{day:'numeric',month:'short'})}</span>`
+            : `<span class="msg-badge msg-badge-pending">Awaiting reply</span>`}
+        </div>
+      </div>
+    </div>`;
+}
+
+function ensureMessageModal() {
+  if (document.getElementById('message-modal')) return;
+  const m = document.createElement('div');
+  m.id = 'message-modal';
+  m.className = 'modal-overlay hidden';
+  m.onclick = e => { if (e.target === m) closeMessage(); };
+  document.body.appendChild(m);
+}
+
+async function openMessage(id) {
+  ensureMessageModal();
+  // Mark read
+  try { await apiFetch(`/api/contact/${id}/read`, { method: 'PATCH' }); } catch {}
+  const card = document.getElementById(`msg-card-${id}`);
+  if (card) { card.classList.remove('message-unread'); card.querySelector('.message-unread-dot')?.remove(); }
+  refreshMessagesBadge();
+
+  // Re-fetch to get latest state
+  const submissions = await apiFetch('/api/contact');
+  const s = submissions.find(x => x.id === id);
+  if (!s) return;
+
+  const date = new Date(s.created_at).toLocaleString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const customFields = formatEnquiryCustomFields(s.custom_fields);
+  const isReplied = !!s.replied_at;
+
+  const modal = document.getElementById('message-modal');
+  modal.innerHTML = `
+    <div class="modal" style="max-width:560px">
+      <div class="modal-header">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div class="message-avatar" style="flex-shrink:0">${escHtml(s.name.charAt(0).toUpperCase())}</div>
+          <div>
+            <h2 style="margin:0;font-size:18px">${escHtml(s.name)}</h2>
+            <p style="margin:0;font-size:13px;color:var(--text-light)">${escHtml(s.email)}${s.phone ? ` · ${escHtml(s.phone)}` : ''}</p>
+          </div>
+        </div>
+        <button class="modal-close" onclick="closeMessage()"><svg viewBox="0 0 20 20" fill="none"><path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+      </div>
+      <div class="modal-body">
+
+        <!-- Meta -->
+        <div style="font-size:12px;color:var(--text-light);margin-bottom:16px;font-weight:600">Received ${date}</div>
+
+        <!-- Message -->
+        <div class="message-full-body">${escHtml(s.message)}</div>
+
+        ${customFields ? `
+        <div style="margin-top:16px;padding:12px 16px;background:var(--bg);border-radius:8px;font-size:13px;color:var(--text-light)">
+          <strong style="color:var(--text-dark)">Form responses:</strong><br>${customFields}
+        </div>` : ''}
+
+        <!-- Reply section -->
+        <div style="border-top:1px solid var(--border);margin-top:24px;padding-top:20px">
+          ${isReplied ? `
+          <div style="margin-bottom:16px;padding:14px 16px;background:#f0fdf4;border-radius:10px;border:1px solid #bbf7d0">
+            <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#059669;margin-bottom:6px">
+              ✓ Replied on ${new Date(s.replied_at).toLocaleString('en-GB',{day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'})}
+            </div>
+            <div style="font-size:13px;color:#2C2028;white-space:pre-wrap">${escHtml(s.reply_body)}</div>
+          </div>
+          <div style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--text-dark)">Send another reply</div>
+          ` : `
+          <div style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--text-dark)">Reply to ${escHtml(s.name.split(' ')[0])}</div>
+          `}
+          <textarea id="reply-body-${s.id}" placeholder="Type your reply here…" style="width:100%;min-height:120px;padding:12px;border:1.5px solid #e0d0d4;border-radius:10px;font-size:14px;font-family:inherit;resize:vertical;box-sizing:border-box;line-height:1.6"></textarea>
+          <div style="display:flex;align-items:center;gap:12px;margin-top:10px;flex-wrap:wrap">
+            <button class="btn btn-primary" onclick="sendReply(${s.id})">
+              <svg viewBox="0 0 20 20" fill="none" style="width:15px;height:15px;margin-right:5px;vertical-align:middle"><path d="M17 3L2 9l5.5 3L13 7l-4 5.5L12 18z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+              Send Reply
+            </button>
+            <span id="reply-status-${s.id}" style="font-size:13px;font-weight:600"></span>
+          </div>
+          <p style="font-size:12px;color:var(--text-light);margin:8px 0 0">Reply will be sent from ${escHtml(process.env.EMAIL_USER || 'your email')} to ${escHtml(s.email)}</p>
+        </div>
+
+      </div>
+      <div class="modal-footer" style="justify-content:space-between">
+        <button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:none" onclick="deleteEnquiry(${s.id})">Delete</button>
+        <button class="btn btn-ghost" onclick="closeMessage()">Close</button>
+      </div>
+    </div>`;
+  modal.classList.remove('hidden');
+}
+
+function closeMessage() {
+  const m = document.getElementById('message-modal');
+  if (m) m.classList.add('hidden');
+}
+
+async function sendReply(id) {
+  const textarea = document.getElementById(`reply-body-${id}`);
+  const statusEl = document.getElementById(`reply-status-${id}`);
+  const body = textarea ? textarea.value.trim() : '';
+  if (!body) { toast('Please type a reply first', 'error'); return; }
+
+  if (statusEl) { statusEl.textContent = 'Sending…'; statusEl.style.color = 'var(--text-light)'; }
+  const btn = textarea.closest('.modal-body').querySelector('.btn-primary');
+  if (btn) btn.disabled = true;
+
+  try {
+    const result = await apiFetch(`/api/contact/${id}/reply`, {
+      method: 'POST',
+      body: JSON.stringify({ reply_body: body })
+    });
+    toast('Reply sent successfully');
+    // Update card badge in background
+    const card = document.getElementById(`msg-card-${id}`);
+    if (card) {
+      const badge = card.querySelector('.msg-badge');
+      if (badge) {
+        badge.className = 'msg-badge msg-badge-replied';
+        badge.textContent = '✓ Replied just now';
+      }
+    }
+    // Re-open to show the sent reply
+    closeMessage();
+    openMessage(id);
+  } catch (err) {
+    const msg = err.message || 'Failed to send reply';
+    if (statusEl) { statusEl.textContent = `❌ ${msg}`; statusEl.style.color = '#dc2626'; }
+    if (btn) btn.disabled = false;
+    toast(msg, 'error');
   }
 }
 
 async function markEnquiryRead(id) {
   try {
     await apiFetch(`/api/contact/${id}/read`, { method: 'PATCH' });
-    const row = document.getElementById(`enq-row-${id}`);
-    if (row) {
-      row.classList.remove('unread-row');
-      const btn = row.querySelector('button.btn-ghost');
-      if (btn) btn.outerHTML = '<span style="color:var(--text-light);font-size:13px">Read</span>';
-    }
-  } catch { alert('Failed to mark as read.'); }
+    refreshMessagesBadge();
+  } catch {}
 }
 
 async function deleteEnquiry(id) {
-  if (!confirm('Delete this enquiry?')) return;
+  if (!confirm('Delete this message? This cannot be undone.')) return;
   try {
     await apiFetch(`/api/contact/${id}`, { method: 'DELETE' });
-    document.getElementById(`enq-row-${id}`)?.remove();
-  } catch { alert('Failed to delete.'); }
+    closeMessage();
+    document.getElementById(`msg-card-${id}`)?.remove();
+    refreshMessagesBadge();
+    toast('Message deleted');
+  } catch { toast('Failed to delete', 'error'); }
 }
 
 // ---- GIFT VOUCHERS ----
