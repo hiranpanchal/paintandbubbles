@@ -5,29 +5,6 @@
 
 // ─── Quote form state ─────────────────────────────────────────────────────────
 
-const ACTIVITIES = [
-  { icon: '🖌️', name: 'Sip & Paint' },
-  { icon: '🎨', name: 'Canvas Workshop' },
-  { icon: '🌊', name: 'Watercolour Workshop' },
-  { icon: '✏️', name: 'Life Drawing' },
-  { icon: '🎭', name: 'Craft Night' },
-  { icon: '🎈', name: "Kids' Art Party" },
-  { icon: '✨', name: 'Custom / Other' },
-];
-
-const GROUP_SIZES = ['6–10', '11–15', '16–20', '21–30', '30+'];
-
-const VENUES = ['Your venue', 'Our venue', 'Flexible'];
-
-const BUDGETS = [
-  { amount: 'Under £200', sub: 'Small group' },
-  { amount: '£200–£400', sub: 'Mid-size'   },
-  { amount: '£400–£700', sub: 'Larger group'},
-  { amount: '£700–£1,000', sub: 'Big event' },
-  { amount: '£1,000+', sub: 'Premium'       },
-  { amount: 'Not sure', sub: 'Let\'s chat'  },
-];
-
 let currentStep = 1;
 let quoteData = {
   activity_type:    null,
@@ -35,7 +12,6 @@ let quoteData = {
   preferred_date:   '',
   date_flexible:    false,
   venue_preference: null,
-  budget_range:     null,
   notes:            '',
   name:             '',
   email:            '',
@@ -46,49 +22,52 @@ let quoteData = {
 // ─── Init ─────────────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', async () => {
-  buildStep1();
-  buildStep2();
-  await applyDesignSettings();
+  await Promise.all([loadFormConfig(), applyDesignSettings()]);
 });
 
-function buildStep1() {
-  // Activity grid
-  const grid = document.getElementById('pe-activity-grid');
-  if (grid) {
-    grid.innerHTML = ACTIVITIES.map(a => `
-      <div class="pe-activity-card" data-activity="${escHtml(a.name)}" onclick="selectActivity('${escHtml(a.name)}', this)">
-        <div class="pe-activity-icon">${a.icon}</div>
-        <div class="pe-activity-name">${escHtml(a.name)}</div>
+async function loadFormConfig() {
+  try {
+    const config = await fetch('/api/private-quotes/config').then(r => r.json());
+    buildStep1(config);
+    buildStep2(config);
+  } catch {
+    // Fallback defaults if fetch fails
+    buildStep1({
+      activities:  [{ name: 'Sip & Paint' }, { name: 'Canvas Workshop' }, { name: 'Watercolour Workshop' }, { name: 'Life Drawing' }, { name: 'Craft Night' }, { name: "Kids' Art Party" }, { name: 'Custom / Other' }],
+      group_sizes: [{ label: '6–10' }, { label: '11–15' }, { label: '16–20' }, { label: '21–30' }, { label: '30+' }],
+      venues:      ['Your venue', 'Our venue', 'Flexible'],
+    });
+    buildStep2({ venues: ['Your venue', 'Our venue', 'Flexible'] });
+  }
+}
+
+function buildStep1(config) {
+  // Activity pills
+  const pills = document.getElementById('pe-activity-pills');
+  if (pills) {
+    pills.innerHTML = config.activities.map(a => `
+      <div class="pe-pill" data-activity="${escHtml(a.name)}" onclick="selectActivity('${escHtml(a.name)}', this)">
+        ${escHtml(a.name)}
       </div>`).join('');
   }
 
   // Group size pills
-  const pills = document.getElementById('pe-group-pills');
-  if (pills) {
-    pills.innerHTML = GROUP_SIZES.map(s => `
-      <div class="pe-pill" data-size="${escHtml(s)}" onclick="selectGroupSize('${escHtml(s)}', this)">
-        ${escHtml(s)} people
+  const groupPills = document.getElementById('pe-group-pills');
+  if (groupPills) {
+    groupPills.innerHTML = config.group_sizes.map(s => `
+      <div class="pe-pill" data-size="${escHtml(s.label)}" onclick="selectGroupSize('${escHtml(s.label)}', this)">
+        ${escHtml(s.label)} people
       </div>`).join('');
   }
 }
 
-function buildStep2() {
+function buildStep2(config) {
   // Venue pills
   const venuePills = document.getElementById('pe-venue-pills');
   if (venuePills) {
-    venuePills.innerHTML = VENUES.map(v => `
+    venuePills.innerHTML = config.venues.map(v => `
       <div class="pe-pill" data-venue="${escHtml(v)}" onclick="selectVenue('${escHtml(v)}', this)">
         ${escHtml(v)}
-      </div>`).join('');
-  }
-
-  // Budget grid
-  const budgetGrid = document.getElementById('pe-budget-grid');
-  if (budgetGrid) {
-    budgetGrid.innerHTML = BUDGETS.map(b => `
-      <div class="pe-budget-card" data-budget="${escHtml(b.amount)}" onclick="selectBudget('${escHtml(b.amount)}', this)">
-        <div class="pe-budget-amount">${escHtml(b.amount)}</div>
-        <div class="pe-budget-sub">${escHtml(b.sub)}</div>
       </div>`).join('');
   }
 }
@@ -96,7 +75,7 @@ function buildStep2() {
 // ─── Selection handlers ───────────────────────────────────────────────────────
 
 function selectActivity(name, el) {
-  document.querySelectorAll('.pe-activity-card').forEach(c => c.classList.remove('selected'));
+  document.querySelectorAll('#pe-activity-pills .pe-pill').forEach(c => c.classList.remove('selected'));
   el.classList.add('selected');
   quoteData.activity_type = name;
   clearError();
@@ -113,12 +92,6 @@ function selectVenue(venue, el) {
   document.querySelectorAll('#pe-venue-pills .pe-pill').forEach(p => p.classList.remove('selected'));
   el.classList.add('selected');
   quoteData.venue_preference = venue;
-}
-
-function selectBudget(budget, el) {
-  document.querySelectorAll('.pe-budget-card').forEach(c => c.classList.remove('selected'));
-  el.classList.add('selected');
-  quoteData.budget_range = budget;
 }
 
 // ─── Step navigation ──────────────────────────────────────────────────────────

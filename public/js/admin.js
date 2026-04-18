@@ -4086,15 +4086,50 @@ async function refreshPQBadge() {
   } catch {}
 }
 
+let _pqSubTab = 'submissions'; // track which sub-tab is active
+
 async function loadPrivateQuotes() {
   const el = document.getElementById('content-private-quotes');
   el.innerHTML = '<div class="loading-state"><div class="spinner"></div></div>';
+
+  // Shell with two sub-tabs
+  el.innerHTML = `
+    <div class="design-tabs-nav content-page-tabs" style="border-bottom:1px solid #F5DDE3;padding:0 24px">
+      <button class="design-tab-btn ${_pqSubTab === 'submissions' ? 'active' : ''}" onclick="switchPQTab('submissions')">Submissions</button>
+      <button class="design-tab-btn ${_pqSubTab === 'config' ? 'active' : ''}" onclick="switchPQTab('config')">Configure Form</button>
+    </div>
+    <div id="pq-submissions-panel"></div>
+    <div id="pq-config-panel" class="${_pqSubTab === 'config' ? '' : 'hidden'}"></div>`;
+
+  if (_pqSubTab === 'submissions') {
+    await renderPQSubmissions();
+  } else {
+    await renderPQConfig();
+  }
+}
+
+async function switchPQTab(tab) {
+  _pqSubTab = tab;
+  // Update active button
+  document.querySelectorAll('#content-private-quotes .design-tab-btn').forEach(b => {
+    b.classList.toggle('active', b.textContent.trim().toLowerCase().startsWith(tab === 'submissions' ? 'sub' : 'con'));
+  });
+  document.getElementById('pq-submissions-panel').classList.toggle('hidden', tab !== 'submissions');
+  document.getElementById('pq-config-panel').classList.toggle('hidden', tab !== 'config');
+
+  if (tab === 'submissions') await renderPQSubmissions();
+  else await renderPQConfig();
+}
+
+async function renderPQSubmissions() {
+  const panel = document.getElementById('pq-submissions-panel');
+  panel.innerHTML = '<div class="loading-state" style="padding:40px 0"><div class="spinner"></div></div>';
   try {
     const quotes = await apiFetch('/api/private-quotes', { headers: authHeaders() });
     refreshPQBadge();
 
     if (!quotes.length) {
-      el.innerHTML = `
+      panel.innerHTML = `
         <div style="text-align:center;padding:64px 24px;color:var(--text-light)">
           <div style="font-size:48px;margin-bottom:16px;opacity:.4">🎨</div>
           <p style="font-weight:700;font-size:15px;margin:0 0 4px">No private event quotes yet</p>
@@ -4104,11 +4139,9 @@ async function loadPrivateQuotes() {
     }
 
     const unread = quotes.filter(q => !q.is_read).length;
-    const fmt = p => p ? `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: 0 })}` : '—';
-
-    el.innerHTML = `
-      <div style="padding:0">
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid #F5DDE3;">
+    panel.innerHTML = `
+      <div>
+        <div style="display:flex;align-items:center;padding:14px 24px;border-bottom:1px solid #F5DDE3;">
           <span style="font-size:14px;color:var(--text-mid)">
             <strong style="color:var(--text)">${quotes.length}</strong> quote${quotes.length !== 1 ? 's' : ''}
             ${unread > 0 ? `&nbsp;·&nbsp; <span style="color:var(--rose);font-weight:700">${unread} new</span>` : ''}
@@ -4119,7 +4152,7 @@ async function loadPrivateQuotes() {
         </div>
       </div>`;
   } catch {
-    el.innerHTML = '<p style="padding:24px;color:red">Failed to load quotes.</p>';
+    panel.innerHTML = '<p style="padding:24px;color:red">Failed to load quotes.</p>';
   }
 }
 
@@ -4150,14 +4183,12 @@ function renderPQRow(q) {
 }
 
 async function openPrivateQuote(id) {
-  // Mark read
   try {
     await apiFetch(`/api/private-quotes/${id}/read`, { method: 'PATCH', headers: authHeaders() });
     document.getElementById(`pq-row-${id}`)?.classList.remove('inbox-row-unread');
     refreshPQBadge();
   } catch {}
 
-  // Fetch fresh list to get this quote
   const quotes = await apiFetch('/api/private-quotes', { headers: authHeaders() });
   const q = quotes.find(x => x.id === id);
   if (!q) return;
@@ -4173,7 +4204,6 @@ async function openPrivateQuote(id) {
       + (q.date_flexible ? ' (flexible)' : '')
     : 'Not specified';
 
-  // Build modal
   if (!document.getElementById('pq-modal')) {
     const m = document.createElement('div');
     m.id = 'pq-modal';
@@ -4192,9 +4222,7 @@ async function openPrivateQuote(id) {
         </button>
         <button class="modal-close" onclick="closePQModal()"><svg viewBox="0 0 20 20" fill="none"><path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
       </div>
-
       <div class="msg-modal-body">
-        <!-- Header strip -->
         <div style="background:linear-gradient(135deg,#2C0F18,#6B2D42);border-radius:14px;padding:20px 24px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
           <div>
             <div style="font-size:11px;color:rgba(255,255,255,.65);font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px">${escHtml(ref)}</div>
@@ -4207,7 +4235,6 @@ async function openPrivateQuote(id) {
           </div>
         </div>
 
-        <!-- Contact -->
         <div class="msg-from-block" style="margin-bottom:20px;">
           <div class="message-avatar">${escHtml(q.name.charAt(0).toUpperCase())}</div>
           <div class="msg-from-info">
@@ -4220,15 +4247,13 @@ async function openPrivateQuote(id) {
           <div class="msg-from-date">${dateStr}</div>
         </div>
 
-        <!-- Details grid -->
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;">
           ${[
-            ['🎨 Activity',    q.activity_type],
-            ['👥 Group Size',  q.group_size + ' people'],
-            ['📅 Preferred Date', preferredDate],
-            ['📍 Venue',       q.venue_preference || 'Not specified'],
-            ['💰 Budget',      q.budget_range     || 'Not specified'],
-            ['📣 How Heard',   q.how_heard        || 'Not specified'],
+            ['Activity',      q.activity_type],
+            ['Group Size',    q.group_size + ' people'],
+            ['Preferred Date', preferredDate],
+            ['Venue',         q.venue_preference || 'Not specified'],
+            ['How Heard',     q.how_heard        || 'Not specified'],
           ].map(([label, val]) => `
           <div style="background:#FFF6F8;border-radius:10px;padding:12px 14px;">
             <div style="font-size:11px;font-weight:700;color:#C4748A;margin-bottom:4px;">${escHtml(label)}</div>
@@ -4238,11 +4263,10 @@ async function openPrivateQuote(id) {
 
         ${q.notes ? `
         <div style="background:#FFF6F8;border-left:3px solid #C4748A;padding:14px 18px;border-radius:0 10px 10px 0;margin-bottom:20px;">
-          <div style="font-size:11px;font-weight:700;color:#C4748A;margin-bottom:6px;">SPECIAL REQUESTS / NOTES</div>
+          <div style="font-size:11px;font-weight:700;color:#C4748A;margin-bottom:6px;">NOTES / SPECIAL REQUESTS</div>
           <div style="font-size:14px;color:#2C2028;line-height:1.6;">${escHtml(q.notes)}</div>
         </div>` : ''}
 
-        <!-- Action buttons -->
         <div style="display:flex;gap:10px;flex-wrap:wrap;padding-top:16px;border-top:1px solid #F5DDE3;">
           <a href="mailto:${escHtml(q.email)}?subject=Re: Your Private Event Quote (${escHtml(ref)})" class="btn btn-primary btn-sm">
             ✉️ Reply to ${escHtml(q.name.split(' ')[0])}
@@ -4271,6 +4295,196 @@ async function deletePQ(id) {
     refreshPQBadge();
     toast('Quote deleted');
   } catch { toast('Failed to delete', 'error'); }
+}
+
+// ---- PRIVATE QUOTES — CONFIGURE FORM ----
+
+async function renderPQConfig() {
+  const panel = document.getElementById('pq-config-panel');
+  panel.innerHTML = '<div class="loading-state" style="padding:40px 0"><div class="spinner"></div></div>';
+  try {
+    const config = await fetch('/api/private-quotes/config').then(r => r.json());
+    renderPQConfigForm(config);
+  } catch {
+    panel.innerHTML = '<p style="padding:24px;color:red">Failed to load config.</p>';
+  }
+}
+
+function renderPQConfigForm(config) {
+  const panel = document.getElementById('pq-config-panel');
+
+  const activityRows = config.activities.map((a, i) => `
+    <div class="pq-config-row" id="pq-act-${i}" style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+      <input class="form-input" style="flex:2;min-width:0" placeholder="Activity name"
+        value="${escHtml(a.name)}" oninput="updatePQActivity(${i},'name',this.value)">
+      <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:0;">
+        <span style="font-size:13px;color:var(--text-light);white-space:nowrap">£ per person</span>
+        <input class="form-input" type="number" min="0" step="1" style="width:80px"
+          value="${Math.round(a.price_pence / 100)}"
+          oninput="updatePQActivity(${i},'price_pence',Math.round(parseFloat(this.value||0)*100))">
+      </div>
+      <button class="btn btn-xs" style="background:#fee2e2;color:#dc2626;border:none;flex-shrink:0"
+        onclick="removePQActivity(${i})">✕</button>
+    </div>`).join('');
+
+  const sizeRows = config.group_sizes.map((s, i) => `
+    <div class="pq-config-row" id="pq-size-${i}" style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+      <input class="form-input" style="flex:2;min-width:0" placeholder='e.g. 6–10'
+        value="${escHtml(s.label)}" oninput="updatePQSize(${i},'label',this.value)">
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span style="font-size:13px;color:var(--text-light)">Min</span>
+        <input class="form-input" type="number" min="1" style="width:68px"
+          value="${s.min}" oninput="updatePQSize(${i},'min',parseInt(this.value)||1)">
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span style="font-size:13px;color:var(--text-light)">Max</span>
+        <input class="form-input" type="number" min="1" style="width:68px"
+          value="${s.max}" oninput="updatePQSize(${i},'max',parseInt(this.value)||1)">
+      </div>
+      <button class="btn btn-xs" style="background:#fee2e2;color:#dc2626;border:none;flex-shrink:0"
+        onclick="removePQSize(${i})">✕</button>
+    </div>`).join('');
+
+  const venueRows = config.venues.map((v, i) => `
+    <div class="pq-config-row" id="pq-venue-${i}" style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+      <input class="form-input" style="flex:1;min-width:0" placeholder="Venue option"
+        value="${escHtml(v)}" oninput="updatePQVenue(${i},this.value)">
+      <button class="btn btn-xs" style="background:#fee2e2;color:#dc2626;border:none;flex-shrink:0"
+        onclick="removePQVenue(${i})">✕</button>
+    </div>`).join('');
+
+  panel.innerHTML = `
+    <div style="max-width:780px;padding:28px 24px;">
+
+      <!-- Activities -->
+      <div class="design-card" style="margin-bottom:20px;">
+        <div class="design-card-header">
+          <h3 class="design-card-title">Activities</h3>
+          <span class="design-hint">Name and per-person price used to auto-calculate estimates</span>
+        </div>
+        <div class="design-card-body">
+          <div id="pq-activities-list">${activityRows}</div>
+          <button class="btn btn-ghost btn-sm" onclick="addPQActivity()">+ Add Activity</button>
+        </div>
+      </div>
+
+      <!-- Group Sizes -->
+      <div class="design-card" style="margin-bottom:20px;">
+        <div class="design-card-header">
+          <h3 class="design-card-title">Group Sizes</h3>
+          <span class="design-hint">Label shown to customers · Min/Max used for price estimates</span>
+        </div>
+        <div class="design-card-body">
+          <div style="display:flex;gap:10px;margin-bottom:8px;padding:0 0 4px;">
+            <span style="flex:2;font-size:11px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:.5px">Label</span>
+            <span style="flex:1;font-size:11px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:.5px">Min people</span>
+            <span style="flex:1;font-size:11px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:.5px">Max people</span>
+            <span style="width:32px"></span>
+          </div>
+          <div id="pq-sizes-list">${sizeRows}</div>
+          <button class="btn btn-ghost btn-sm" onclick="addPQSize()">+ Add Size</button>
+        </div>
+      </div>
+
+      <!-- Venue Options -->
+      <div class="design-card" style="margin-bottom:28px;">
+        <div class="design-card-header">
+          <h3 class="design-card-title">Venue Options</h3>
+          <span class="design-hint">Shown as selectable choices on the quote form</span>
+        </div>
+        <div class="design-card-body">
+          <div id="pq-venues-list">${venueRows}</div>
+          <button class="btn btn-ghost btn-sm" onclick="addPQVenue()">+ Add Option</button>
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:16px;">
+        <button class="btn btn-primary" onclick="savePQConfig()">Save Changes</button>
+        <span id="pq-config-status" style="font-size:13px;color:var(--text-light)"></span>
+      </div>
+    </div>`;
+
+  // Store live config in JS for mutation
+  window._pqConfig = JSON.parse(JSON.stringify(config));
+}
+
+// Mutation helpers
+function updatePQActivity(i, field, val) {
+  if (!window._pqConfig) return;
+  window._pqConfig.activities[i][field] = val;
+}
+function removePQActivity(i) {
+  if (!window._pqConfig) return;
+  window._pqConfig.activities.splice(i, 1);
+  renderPQConfigForm(window._pqConfig);
+}
+function addPQActivity() {
+  if (!window._pqConfig) return;
+  window._pqConfig.activities.push({ name: '', price_pence: 3500 });
+  renderPQConfigForm(window._pqConfig);
+  // Focus the new name input
+  const rows = document.querySelectorAll('#pq-activities-list .pq-config-row');
+  const last = rows[rows.length - 1];
+  if (last) last.querySelector('input')?.focus();
+}
+
+function updatePQSize(i, field, val) {
+  if (!window._pqConfig) return;
+  window._pqConfig.group_sizes[i][field] = val;
+}
+function removePQSize(i) {
+  if (!window._pqConfig) return;
+  window._pqConfig.group_sizes.splice(i, 1);
+  renderPQConfigForm(window._pqConfig);
+}
+function addPQSize() {
+  if (!window._pqConfig) return;
+  window._pqConfig.group_sizes.push({ label: '', min: 1, max: 1 });
+  renderPQConfigForm(window._pqConfig);
+  const rows = document.querySelectorAll('#pq-sizes-list .pq-config-row');
+  const last = rows[rows.length - 1];
+  if (last) last.querySelector('input')?.focus();
+}
+
+function updatePQVenue(i, val) {
+  if (!window._pqConfig) return;
+  window._pqConfig.venues[i] = val;
+}
+function removePQVenue(i) {
+  if (!window._pqConfig) return;
+  window._pqConfig.venues.splice(i, 1);
+  renderPQConfigForm(window._pqConfig);
+}
+function addPQVenue() {
+  if (!window._pqConfig) return;
+  window._pqConfig.venues.push('');
+  renderPQConfigForm(window._pqConfig);
+  const rows = document.querySelectorAll('#pq-venues-list .pq-config-row');
+  const last = rows[rows.length - 1];
+  if (last) last.querySelector('input')?.focus();
+}
+
+async function savePQConfig() {
+  if (!window._pqConfig) return;
+  const statusEl = document.getElementById('pq-config-status');
+  statusEl.textContent = 'Saving…';
+  statusEl.style.color = 'var(--text-light)';
+  try {
+    const result = await apiFetch('/api/private-quotes/config', {
+      method: 'PUT',
+      headers: authHeaders(),
+      body: JSON.stringify(window._pqConfig),
+    });
+    window._pqConfig = result.config;
+    statusEl.textContent = 'Saved!';
+    statusEl.style.color = 'var(--green)';
+    setTimeout(() => { statusEl.textContent = ''; }, 3000);
+    toast('Quote form config saved', 'success');
+  } catch (err) {
+    statusEl.textContent = err.message || 'Save failed';
+    statusEl.style.color = '#dc2626';
+    toast('Failed to save config', 'error');
+  }
 }
 
 // ---- GIFT VOUCHERS ----

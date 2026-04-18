@@ -544,6 +544,29 @@ db.exec(`
   )
 `);
 
+// Seed default quote form config if not already set
+db.prepare("INSERT OR IGNORE INTO site_settings (key, value) VALUES ('pe_quote_config', ?)").run(
+  JSON.stringify({
+    activities: [
+      { name: 'Sip & Paint',         price_pence: 3500 },
+      { name: 'Canvas Workshop',      price_pence: 4000 },
+      { name: 'Watercolour Workshop', price_pence: 3500 },
+      { name: 'Life Drawing',         price_pence: 4500 },
+      { name: 'Craft Night',          price_pence: 3000 },
+      { name: "Kids' Art Party",      price_pence: 2500 },
+      { name: 'Custom / Other',       price_pence: 3500 },
+    ],
+    group_sizes: [
+      { label: '6–10',  min: 6,  max: 10 },
+      { label: '11–15', min: 11, max: 15 },
+      { label: '16–20', min: 16, max: 20 },
+      { label: '21–30', min: 21, max: 30 },
+      { label: '30+',   min: 30, max: 50  },
+    ],
+    venues: ['Your venue', 'Our venue', 'Flexible'],
+  })
+);
+
 // Ensure SEO settings exist
 {
   const check = db.prepare("SELECT COUNT(*) as count FROM site_settings WHERE key = 'seo_business_name'").get();
