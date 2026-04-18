@@ -145,7 +145,8 @@ app.use('/api/contact',    require('./routes/contact'));
 app.use('/api/vouchers',   require('./routes/vouchers'));
 app.use('/api/discounts',  require('./routes/discounts'));
 app.use('/api/categories', require('./routes/categories'));
-app.use('/api/waitlist',   require('./routes/waitlist'));
+app.use('/api/waitlist',        require('./routes/waitlist'));
+app.use('/api/private-quotes', require('./routes/private-quotes'));
 
 // ---- PAGE ROUTES WITH SEO META INJECTION ----
 

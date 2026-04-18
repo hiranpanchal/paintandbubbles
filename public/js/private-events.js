@@ -1,10 +1,245 @@
 /* =============================================
    PAINT & BUBBLES — PRIVATE EVENTS PAGE
+   Quote form, design settings, social section
    ============================================= */
 
+// ─── Quote form state ─────────────────────────────────────────────────────────
+
+const ACTIVITIES = [
+  { icon: '🖌️', name: 'Sip & Paint' },
+  { icon: '🎨', name: 'Canvas Workshop' },
+  { icon: '🌊', name: 'Watercolour Workshop' },
+  { icon: '✏️', name: 'Life Drawing' },
+  { icon: '🎭', name: 'Craft Night' },
+  { icon: '🎈', name: "Kids' Art Party" },
+  { icon: '✨', name: 'Custom / Other' },
+];
+
+const GROUP_SIZES = ['6–10', '11–15', '16–20', '21–30', '30+'];
+
+const VENUES = ['Your venue', 'Our venue', 'Flexible'];
+
+const BUDGETS = [
+  { amount: 'Under £200', sub: 'Small group' },
+  { amount: '£200–£400', sub: 'Mid-size'   },
+  { amount: '£400–£700', sub: 'Larger group'},
+  { amount: '£700–£1,000', sub: 'Big event' },
+  { amount: '£1,000+', sub: 'Premium'       },
+  { amount: 'Not sure', sub: 'Let\'s chat'  },
+];
+
+let currentStep = 1;
+let quoteData = {
+  activity_type:    null,
+  group_size:       null,
+  preferred_date:   '',
+  date_flexible:    false,
+  venue_preference: null,
+  budget_range:     null,
+  notes:            '',
+  name:             '',
+  email:            '',
+  phone:            '',
+  how_heard:        '',
+};
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+
 document.addEventListener('DOMContentLoaded', async () => {
+  buildStep1();
+  buildStep2();
   await applyDesignSettings();
 });
+
+function buildStep1() {
+  // Activity grid
+  const grid = document.getElementById('pe-activity-grid');
+  if (grid) {
+    grid.innerHTML = ACTIVITIES.map(a => `
+      <div class="pe-activity-card" data-activity="${escHtml(a.name)}" onclick="selectActivity('${escHtml(a.name)}', this)">
+        <div class="pe-activity-icon">${a.icon}</div>
+        <div class="pe-activity-name">${escHtml(a.name)}</div>
+      </div>`).join('');
+  }
+
+  // Group size pills
+  const pills = document.getElementById('pe-group-pills');
+  if (pills) {
+    pills.innerHTML = GROUP_SIZES.map(s => `
+      <div class="pe-pill" data-size="${escHtml(s)}" onclick="selectGroupSize('${escHtml(s)}', this)">
+        ${escHtml(s)} people
+      </div>`).join('');
+  }
+}
+
+function buildStep2() {
+  // Venue pills
+  const venuePills = document.getElementById('pe-venue-pills');
+  if (venuePills) {
+    venuePills.innerHTML = VENUES.map(v => `
+      <div class="pe-pill" data-venue="${escHtml(v)}" onclick="selectVenue('${escHtml(v)}', this)">
+        ${escHtml(v)}
+      </div>`).join('');
+  }
+
+  // Budget grid
+  const budgetGrid = document.getElementById('pe-budget-grid');
+  if (budgetGrid) {
+    budgetGrid.innerHTML = BUDGETS.map(b => `
+      <div class="pe-budget-card" data-budget="${escHtml(b.amount)}" onclick="selectBudget('${escHtml(b.amount)}', this)">
+        <div class="pe-budget-amount">${escHtml(b.amount)}</div>
+        <div class="pe-budget-sub">${escHtml(b.sub)}</div>
+      </div>`).join('');
+  }
+}
+
+// ─── Selection handlers ───────────────────────────────────────────────────────
+
+function selectActivity(name, el) {
+  document.querySelectorAll('.pe-activity-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  quoteData.activity_type = name;
+  clearError();
+}
+
+function selectGroupSize(size, el) {
+  document.querySelectorAll('#pe-group-pills .pe-pill').forEach(p => p.classList.remove('selected'));
+  el.classList.add('selected');
+  quoteData.group_size = size;
+  clearError();
+}
+
+function selectVenue(venue, el) {
+  document.querySelectorAll('#pe-venue-pills .pe-pill').forEach(p => p.classList.remove('selected'));
+  el.classList.add('selected');
+  quoteData.venue_preference = venue;
+}
+
+function selectBudget(budget, el) {
+  document.querySelectorAll('.pe-budget-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  quoteData.budget_range = budget;
+}
+
+// ─── Step navigation ──────────────────────────────────────────────────────────
+
+function peStep(dir) {
+  clearError();
+
+  if (dir === 1) {
+    // Validate current step before advancing
+    if (currentStep === 1) {
+      if (!quoteData.activity_type) return showError('Please choose an activity type');
+      if (!quoteData.group_size)    return showError('Please select a group size');
+    }
+    if (currentStep === 2) {
+      // Step 2 is all optional — just collect values
+      quoteData.preferred_date  = document.getElementById('pe-date').value;
+      quoteData.date_flexible   = document.getElementById('pe-date-flexible').checked;
+      quoteData.notes           = document.getElementById('pe-notes').value.trim();
+    }
+    if (currentStep === 3) {
+      quoteData.name     = document.getElementById('pe-name').value.trim();
+      quoteData.email    = document.getElementById('pe-email').value.trim();
+      quoteData.phone    = document.getElementById('pe-phone').value.trim();
+      quoteData.how_heard = document.getElementById('pe-how-heard').value;
+
+      if (!quoteData.name)  return showError('Please enter your name');
+      if (!quoteData.email) return showError('Please enter your email address');
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(quoteData.email)) return showError('Please enter a valid email address');
+
+      submitQuote();
+      return;
+    }
+  }
+
+  const next = currentStep + dir;
+  if (next < 1 || next > 3) return;
+
+  // Hide current panel
+  document.getElementById(`pe-panel-${currentStep}`).classList.add('hidden');
+  // Show next panel
+  document.getElementById(`pe-panel-${next}`).classList.remove('hidden');
+
+  // Update step dots
+  const prevDot = document.getElementById(`step-dot-${currentStep}`);
+  const nextDot = document.getElementById(`step-dot-${next}`);
+  if (dir === 1) {
+    prevDot.classList.remove('active');
+    prevDot.classList.add('done');
+  } else {
+    prevDot.classList.remove('active', 'done');
+    nextDot.classList.remove('done');
+  }
+  nextDot.classList.add('active');
+
+  currentStep = next;
+
+  // Show/hide back button
+  document.getElementById('pe-back-btn').style.display = currentStep === 1 ? 'none' : '';
+  // Update next button label
+  const nextBtn = document.getElementById('pe-next-btn');
+  nextBtn.textContent = currentStep === 3 ? '🎨 Get My Quote' : 'Next →';
+
+  // Scroll form into view on mobile
+  document.getElementById('pe-quote-card').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function showError(msg) {
+  document.getElementById('pe-error').textContent = msg;
+}
+
+function clearError() {
+  const el = document.getElementById('pe-error');
+  if (el) el.textContent = '';
+}
+
+// ─── Submit ───────────────────────────────────────────────────────────────────
+
+async function submitQuote() {
+  const nextBtn = document.getElementById('pe-next-btn');
+  nextBtn.disabled = true;
+  nextBtn.textContent = 'Sending…';
+
+  try {
+    const res = await fetch('/api/private-quotes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(quoteData),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      showError(data.error || 'Something went wrong. Please try again.');
+      nextBtn.disabled = false;
+      nextBtn.textContent = '🎨 Get My Quote';
+      return;
+    }
+
+    // Show success screen
+    document.getElementById('pe-quote-card').classList.add('hidden');
+    document.getElementById('pe-steps').classList.add('hidden');
+    document.getElementById('pe-success').classList.remove('hidden');
+
+    document.getElementById('pe-success-ref').textContent = data.quote_ref;
+
+    const low  = data.estimate.low;
+    const high = data.estimate.high;
+    const fmt  = p => `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: 0 })}`;
+    document.getElementById('pe-estimate-range').textContent = `${fmt(low)} – ${fmt(high)}`;
+    document.getElementById('pe-estimate-note').textContent =
+      `Based on ${quoteData.group_size} people · ${quoteData.activity_type} · final quote may vary`;
+
+    document.getElementById('pe-success').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  } catch (err) {
+    showError('Network error — please check your connection and try again.');
+    nextBtn.disabled = false;
+    nextBtn.textContent = '🎨 Get My Quote';
+  }
+}
+
+// ─── Design settings ──────────────────────────────────────────────────────────
 
 async function applyDesignSettings() {
   try {
@@ -60,20 +295,21 @@ async function applyDesignSettings() {
     if (s.private_events_content) {
       const el = document.getElementById('pe-content');
       if (el) el.innerHTML = s.private_events_content;
+    } else {
+      const el = document.getElementById('pe-content');
+      if (el) el.innerHTML = '';
     }
 
-    // Fonts
     applyFontSettings(s);
-
-    // Social section
     renderSocialSection(s);
   } catch {}
 }
 
-// ---- FONT SETTINGS ----
+// ─── Font settings ────────────────────────────────────────────────────────────
+
 function applyFontSettings(s) {
   const map = {
-    font_body:           { cssVar: '--font-body',           selectors: 'body, p, span, li, label, input, textarea, button, a' },
+    font_body:           { cssVar: '--font-body',           selectors: 'body, p, span, li, label, input, textarea, button, a, select' },
     font_h1:             { cssVar: '--font-h1',             selectors: 'h1' },
     font_h2:             { cssVar: '--font-h2',             selectors: 'h2' },
     font_h3:             { cssVar: '--font-h3',             selectors: 'h3' },
@@ -101,13 +337,15 @@ function applyFontSettings(s) {
     st.textContent = `:root { ${vars.join('; ')} }\n${rules.join('\n')}`; document.head.appendChild(st);
   }
 }
+
 function getFontStack(name) {
   if (['Dancing Script','Pacifico','Caveat','Satisfy','Great Vibes','Lobster'].includes(name)) return `'${name}', cursive`;
   if (['Playfair Display','Merriweather','Lora','Cormorant Garamond','DM Serif Display','EB Garamond'].includes(name)) return `'${name}', serif`;
   return `'${name}', sans-serif`;
 }
 
-// ---- SOCIAL SECTION ----
+// ─── Social section ───────────────────────────────────────────────────────────
+
 const SOCIAL_PLATFORMS = {
   instagram: { label: 'Instagram', color: '#E1306C', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4.5"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>' },
   facebook:  { label: 'Facebook',  color: '#1877F2', icon: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>' },
@@ -139,6 +377,8 @@ function renderSocialSection(s) {
     }).join('');
   }
 }
+
+// ─── Utility ──────────────────────────────────────────────────────────────────
 
 function escHtml(str) {
   if (!str) return '';

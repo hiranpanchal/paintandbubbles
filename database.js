@@ -522,6 +522,28 @@ db.exec(`
   )
 `);
 
+// Create private event quotes table
+db.exec(`
+  CREATE TABLE IF NOT EXISTS private_event_quotes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    email TEXT NOT NULL,
+    phone TEXT DEFAULT '',
+    group_size TEXT NOT NULL,
+    preferred_date TEXT DEFAULT '',
+    date_flexible INTEGER DEFAULT 0,
+    activity_type TEXT NOT NULL,
+    venue_preference TEXT DEFAULT '',
+    budget_range TEXT DEFAULT '',
+    notes TEXT DEFAULT '',
+    how_heard TEXT DEFAULT '',
+    estimate_low INTEGER DEFAULT 0,
+    estimate_high INTEGER DEFAULT 0,
+    is_read INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now'))
+  )
+`);
+
 // Ensure SEO settings exist
 {
   const check = db.prepare("SELECT COUNT(*) as count FROM site_settings WHERE key = 'seo_business_name'").get();

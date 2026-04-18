@@ -76,6 +76,7 @@ function showDashboard() {
     if (nameEl) nameEl.textContent = payload.username || '';
   } catch {}
   refreshMessagesBadge();
+  refreshPQBadge();
   switchTab('overview');
 }
 
@@ -87,7 +88,7 @@ function switchTab(tab) {
   document.getElementById(`content-${tab}`).classList.remove('hidden');
   document.getElementById(`tab-${tab}`).classList.add('active');
 
-  const titles = { overview: 'Overview', events: 'Events', bookings: 'Bookings', customers: 'Customers', payments: 'Payments', design: 'Design', faq: 'FAQ', reviews: 'Reviews', users: 'Users', content: 'Content', enquiries: 'Messages', vouchers: 'Gift Vouchers', discounts: 'Discount Codes' };
+  const titles = { overview: 'Overview', events: 'Events', bookings: 'Bookings', customers: 'Customers', payments: 'Payments', design: 'Design', faq: 'FAQ', reviews: 'Reviews', users: 'Users', content: 'Content', enquiries: 'Messages', 'private-quotes': 'Private Event Quotes', vouchers: 'Gift Vouchers', discounts: 'Discount Codes' };
   document.getElementById('page-title').textContent = titles[tab] || tab;
 
   // Close sidebar on mobile
@@ -106,8 +107,9 @@ function switchTab(tab) {
   else if (tab === 'reviews') loadAdminReviews();
   else if (tab === 'users')     loadAdminUsers();
   else if (tab === 'content')   loadContentTab();
-  else if (tab === 'enquiries') loadEnquiries();
-  else if (tab === 'vouchers')  loadAdminVouchers();
+  else if (tab === 'enquiries')      loadEnquiries();
+  else if (tab === 'private-quotes') loadPrivateQuotes();
+  else if (tab === 'vouchers')       loadAdminVouchers();
   else if (tab === 'discounts')   loadAdminDiscounts();
   else if (tab === 'categories')  loadAdminCategories();
 }
@@ -4065,6 +4067,209 @@ async function deleteEnquiry(id) {
     document.getElementById(`msg-row-${id}`)?.remove();
     refreshMessagesBadge();
     toast('Message deleted');
+  } catch { toast('Failed to delete', 'error'); }
+}
+
+// ---- PRIVATE EVENT QUOTES ----
+
+async function refreshPQBadge() {
+  try {
+    const { count } = await apiFetch('/api/private-quotes/unread-count');
+    const badge = document.getElementById('pq-badge');
+    if (!badge) return;
+    if (count > 0) {
+      badge.textContent = count > 99 ? '99+' : count;
+      badge.classList.remove('hidden');
+    } else {
+      badge.classList.add('hidden');
+    }
+  } catch {}
+}
+
+async function loadPrivateQuotes() {
+  const el = document.getElementById('content-private-quotes');
+  el.innerHTML = '<div class="loading-state"><div class="spinner"></div></div>';
+  try {
+    const quotes = await apiFetch('/api/private-quotes', { headers: authHeaders() });
+    refreshPQBadge();
+
+    if (!quotes.length) {
+      el.innerHTML = `
+        <div style="text-align:center;padding:64px 24px;color:var(--text-light)">
+          <div style="font-size:48px;margin-bottom:16px;opacity:.4">🎨</div>
+          <p style="font-weight:700;font-size:15px;margin:0 0 4px">No private event quotes yet</p>
+          <p style="font-size:13px;margin:0">Submissions from the Private Events page will appear here</p>
+        </div>`;
+      return;
+    }
+
+    const unread = quotes.filter(q => !q.is_read).length;
+    const fmt = p => p ? `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: 0 })}` : '—';
+
+    el.innerHTML = `
+      <div style="padding:0">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid #F5DDE3;">
+          <span style="font-size:14px;color:var(--text-mid)">
+            <strong style="color:var(--text)">${quotes.length}</strong> quote${quotes.length !== 1 ? 's' : ''}
+            ${unread > 0 ? `&nbsp;·&nbsp; <span style="color:var(--rose);font-weight:700">${unread} new</span>` : ''}
+          </span>
+        </div>
+        <div class="inbox-list">
+          ${quotes.map(q => renderPQRow(q)).join('')}
+        </div>
+      </div>`;
+  } catch {
+    el.innerHTML = '<p style="padding:24px;color:red">Failed to load quotes.</p>';
+  }
+}
+
+function renderPQRow(q) {
+  const isUnread = !q.is_read;
+  const now  = new Date();
+  const sent = new Date(q.created_at);
+  const sameDay  = sent.toDateString() === now.toDateString();
+  const sameYear = sent.getFullYear() === now.getFullYear();
+  const dateStr = sameDay
+    ? sent.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+    : sameYear
+      ? sent.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+      : sent.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' });
+  const ref = `#PQ${String(q.id).padStart(5, '0')}`;
+  const fmt = p => p ? `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: 0 })}` : '';
+  const est = (q.estimate_low && q.estimate_high) ? ` · ${fmt(q.estimate_low)}–${fmt(q.estimate_high)}` : '';
+
+  return `<div class="inbox-row ${isUnread ? 'inbox-row-unread' : ''}" id="pq-row-${q.id}" onclick="openPrivateQuote(${q.id})">
+    <div class="inbox-row-avatar">${escHtml(q.name.charAt(0).toUpperCase())}</div>
+    <div class="inbox-row-sender">${escHtml(q.name)}</div>
+    <div class="inbox-row-preview">
+      <span class="inbox-row-subject">${escHtml(ref)} — ${escHtml(q.activity_type)}, ${escHtml(q.group_size)} people${est}</span>
+      <span class="inbox-row-snippet"> — ${escHtml(q.email)}</span>
+    </div>
+    <div class="inbox-row-date">${dateStr}</div>
+  </div>`;
+}
+
+async function openPrivateQuote(id) {
+  // Mark read
+  try {
+    await apiFetch(`/api/private-quotes/${id}/read`, { method: 'PATCH', headers: authHeaders() });
+    document.getElementById(`pq-row-${id}`)?.classList.remove('inbox-row-unread');
+    refreshPQBadge();
+  } catch {}
+
+  // Fetch fresh list to get this quote
+  const quotes = await apiFetch('/api/private-quotes', { headers: authHeaders() });
+  const q = quotes.find(x => x.id === id);
+  if (!q) return;
+
+  const ref = `#PQ${String(q.id).padStart(5, '0')}`;
+  const fmt = p => p ? `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: 0 })}` : '—';
+  const dateStr = new Date(q.created_at).toLocaleString('en-GB', {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+    hour: '2-digit', minute: '2-digit'
+  });
+  const preferredDate = q.preferred_date
+    ? new Date(q.preferred_date + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+      + (q.date_flexible ? ' (flexible)' : '')
+    : 'Not specified';
+
+  // Build modal
+  if (!document.getElementById('pq-modal')) {
+    const m = document.createElement('div');
+    m.id = 'pq-modal';
+    m.className = 'modal-overlay hidden';
+    m.onclick = e => { if (e.target === m) closePQModal(); };
+    document.body.appendChild(m);
+  }
+
+  const modal = document.getElementById('pq-modal');
+  modal.innerHTML = `
+    <div class="modal msg-modal">
+      <div class="msg-modal-header">
+        <button class="msg-back-btn" onclick="closePQModal()">
+          <svg viewBox="0 0 20 20" fill="none" style="width:16px;height:16px"><path d="M13 4l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Back
+        </button>
+        <button class="modal-close" onclick="closePQModal()"><svg viewBox="0 0 20 20" fill="none"><path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+      </div>
+
+      <div class="msg-modal-body">
+        <!-- Header strip -->
+        <div style="background:linear-gradient(135deg,#2C0F18,#6B2D42);border-radius:14px;padding:20px 24px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+          <div>
+            <div style="font-size:11px;color:rgba(255,255,255,.65);font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px">${escHtml(ref)}</div>
+            <div style="font-size:20px;font-weight:800;color:#fff;">${escHtml(q.activity_type)}</div>
+            <div style="font-size:13px;color:rgba(255,255,255,.75);margin-top:2px;">${escHtml(q.group_size)} people</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:11px;color:rgba(255,255,255,.65);margin-bottom:4px;">Estimated</div>
+            <div style="font-size:22px;font-weight:900;color:#fff;">${fmt(q.estimate_low)} – ${fmt(q.estimate_high)}</div>
+          </div>
+        </div>
+
+        <!-- Contact -->
+        <div class="msg-from-block" style="margin-bottom:20px;">
+          <div class="message-avatar">${escHtml(q.name.charAt(0).toUpperCase())}</div>
+          <div class="msg-from-info">
+            <div class="msg-from-name">${escHtml(q.name)}</div>
+            <div class="msg-from-meta">
+              <span>${escHtml(q.email)}</span>
+              ${q.phone ? `<span class="msg-meta-sep">·</span><span>${escHtml(q.phone)}</span>` : ''}
+            </div>
+          </div>
+          <div class="msg-from-date">${dateStr}</div>
+        </div>
+
+        <!-- Details grid -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;">
+          ${[
+            ['🎨 Activity',    q.activity_type],
+            ['👥 Group Size',  q.group_size + ' people'],
+            ['📅 Preferred Date', preferredDate],
+            ['📍 Venue',       q.venue_preference || 'Not specified'],
+            ['💰 Budget',      q.budget_range     || 'Not specified'],
+            ['📣 How Heard',   q.how_heard        || 'Not specified'],
+          ].map(([label, val]) => `
+          <div style="background:#FFF6F8;border-radius:10px;padding:12px 14px;">
+            <div style="font-size:11px;font-weight:700;color:#C4748A;margin-bottom:4px;">${escHtml(label)}</div>
+            <div style="font-size:13px;font-weight:600;color:#2C2028;">${escHtml(val)}</div>
+          </div>`).join('')}
+        </div>
+
+        ${q.notes ? `
+        <div style="background:#FFF6F8;border-left:3px solid #C4748A;padding:14px 18px;border-radius:0 10px 10px 0;margin-bottom:20px;">
+          <div style="font-size:11px;font-weight:700;color:#C4748A;margin-bottom:6px;">SPECIAL REQUESTS / NOTES</div>
+          <div style="font-size:14px;color:#2C2028;line-height:1.6;">${escHtml(q.notes)}</div>
+        </div>` : ''}
+
+        <!-- Action buttons -->
+        <div style="display:flex;gap:10px;flex-wrap:wrap;padding-top:16px;border-top:1px solid #F5DDE3;">
+          <a href="mailto:${escHtml(q.email)}?subject=Re: Your Private Event Quote (${escHtml(ref)})" class="btn btn-primary btn-sm">
+            ✉️ Reply to ${escHtml(q.name.split(' ')[0])}
+          </a>
+          ${q.phone ? `<a href="tel:${escHtml(q.phone)}" class="btn btn-ghost btn-sm">📞 Call</a>` : ''}
+          <button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:none;margin-left:auto"
+            onclick="deletePQ(${q.id})">Delete</button>
+        </div>
+      </div>
+    </div>`;
+
+  modal.classList.remove('hidden');
+}
+
+function closePQModal() {
+  const m = document.getElementById('pq-modal');
+  if (m) m.classList.add('hidden');
+}
+
+async function deletePQ(id) {
+  if (!confirm('Delete this quote request? This cannot be undone.')) return;
+  try {
+    await apiFetch(`/api/private-quotes/${id}`, { method: 'DELETE', headers: authHeaders() });
+    closePQModal();
+    document.getElementById(`pq-row-${id}`)?.remove();
+    refreshPQBadge();
+    toast('Quote deleted');
   } catch { toast('Failed to delete', 'error'); }
 }
 

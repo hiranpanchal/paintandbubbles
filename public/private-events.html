@@ -9,6 +9,358 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    /* ── Quote Form Section ── */
+    .pe-quote-section {
+      padding: 80px 0 100px;
+      background: var(--bg, #FDF8F9);
+    }
+    .pe-quote-header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+    .pe-quote-title {
+      font-size: clamp(1.6rem, 4vw, 2.4rem);
+      font-weight: 900;
+      color: var(--text-dark, #2C2028);
+      margin: 0 0 10px;
+    }
+    .pe-quote-sub {
+      font-size: 16px;
+      color: var(--text-light, #9E8E96);
+      margin: 0;
+    }
+
+    /* ── Step indicator ── */
+    .pe-steps {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+      margin-bottom: 36px;
+    }
+    .pe-step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+    .pe-step-num {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 2px solid #E8D5DA;
+      background: #fff;
+      color: #C8B8BC;
+      font-size: 14px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all .25s;
+    }
+    .pe-step.active .pe-step-num {
+      background: linear-gradient(135deg, var(--rose, #A85D72), var(--rose-deep, #8B3A55));
+      border-color: transparent;
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(168,93,114,0.35);
+    }
+    .pe-step.done .pe-step-num {
+      background: #e8f5e9;
+      border-color: #81c784;
+      color: #388e3c;
+    }
+    .pe-step-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #C8B8BC;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      transition: color .25s;
+    }
+    .pe-step.active .pe-step-label { color: var(--rose, #A85D72); }
+    .pe-step.done  .pe-step-label  { color: #4caf50; }
+    .pe-step-line {
+      width: 60px;
+      height: 2px;
+      background: #EEE0E4;
+      margin: 0 4px;
+      margin-bottom: 22px;
+    }
+    @media (max-width: 480px) { .pe-step-line { width: 30px; } }
+
+    /* ── Quote card ── */
+    .pe-quote-card {
+      max-width: 720px;
+      margin: 0 auto;
+      background: #fff;
+      border-radius: 24px;
+      box-shadow: 0 8px 48px rgba(160,80,110,0.12);
+      overflow: hidden;
+    }
+    .pe-step-panel {
+      padding: 40px 48px;
+    }
+    @media (max-width: 600px) { .pe-step-panel { padding: 28px 20px; } }
+
+    .pe-step-heading {
+      font-size: 20px;
+      font-weight: 900;
+      color: var(--text-dark, #2C2028);
+      margin: 0 0 6px;
+    }
+    .pe-step-hint {
+      font-size: 13px;
+      color: var(--text-light, #9E8E96);
+      margin: 0 0 28px;
+    }
+
+    /* ── Activity cards ── */
+    .pe-activity-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 12px;
+      margin-bottom: 32px;
+    }
+    .pe-activity-card {
+      border: 2px solid #F0E0E6;
+      border-radius: 16px;
+      padding: 18px 12px 14px;
+      text-align: center;
+      cursor: pointer;
+      transition: all .2s;
+      background: #fff;
+      user-select: none;
+    }
+    .pe-activity-card:hover {
+      border-color: var(--rose, #A85D72);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 16px rgba(168,93,114,0.15);
+    }
+    .pe-activity-card.selected {
+      border-color: var(--rose, #A85D72);
+      background: linear-gradient(135deg, #FFF0F4, #FFE0EA);
+      box-shadow: 0 4px 16px rgba(168,93,114,0.2);
+    }
+    .pe-activity-icon { font-size: 28px; margin-bottom: 8px; }
+    .pe-activity-name {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-dark, #2C2028);
+      line-height: 1.3;
+    }
+
+    /* ── Group size pills ── */
+    .pe-field-label {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-dark, #2C2028);
+      margin-bottom: 10px;
+      display: block;
+    }
+    .pe-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 28px;
+    }
+    .pe-pill {
+      padding: 8px 20px;
+      border-radius: 50px;
+      border: 2px solid #F0E0E6;
+      background: #fff;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-dark, #2C2028);
+      cursor: pointer;
+      transition: all .2s;
+      user-select: none;
+    }
+    .pe-pill:hover { border-color: var(--rose, #A85D72); }
+    .pe-pill.selected {
+      background: linear-gradient(135deg, var(--rose, #A85D72), var(--rose-deep, #8B3A55));
+      border-color: transparent;
+      color: #fff;
+      box-shadow: 0 3px 12px rgba(168,93,114,0.3);
+    }
+
+    /* ── Date/budget inputs ── */
+    .pe-form-row {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .pe-form-row .pe-form-group { flex: 1; }
+    .pe-form-group { margin-bottom: 20px; }
+    .pe-form-group label {
+      display: block;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-dark, #2C2028);
+      margin-bottom: 7px;
+    }
+    .pe-form-group label .optional {
+      font-weight: 400;
+      color: var(--text-light, #9E8E96);
+    }
+    .pe-input {
+      width: 100%;
+      padding: 11px 16px;
+      border: 2px solid #F0E0E6;
+      border-radius: 12px;
+      font-size: 14px;
+      font-family: inherit;
+      color: var(--text-dark, #2C2028);
+      background: #fff;
+      transition: border-color .2s;
+      box-sizing: border-box;
+    }
+    .pe-input:focus {
+      outline: none;
+      border-color: var(--rose, #A85D72);
+    }
+    textarea.pe-input { resize: vertical; min-height: 90px; }
+
+    .pe-checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 8px;
+      cursor: pointer;
+    }
+    .pe-checkbox-row input[type=checkbox] { accent-color: var(--rose, #A85D72); width: 16px; height: 16px; }
+    .pe-checkbox-row span { font-size: 13px; color: var(--text-light, #9E8E96); font-weight: 600; }
+
+    /* ── Budget radio cards ── */
+    .pe-budget-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 10px;
+      margin-bottom: 28px;
+    }
+    .pe-budget-card {
+      border: 2px solid #F0E0E6;
+      border-radius: 14px;
+      padding: 14px 8px;
+      text-align: center;
+      cursor: pointer;
+      transition: all .2s;
+      user-select: none;
+    }
+    .pe-budget-card:hover { border-color: var(--rose, #A85D72); }
+    .pe-budget-card.selected {
+      border-color: var(--rose, #A85D72);
+      background: linear-gradient(135deg, #FFF0F4, #FFE0EA);
+    }
+    .pe-budget-amount {
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--text-dark, #2C2028);
+      margin-bottom: 2px;
+    }
+    .pe-budget-sub {
+      font-size: 11px;
+      color: var(--text-light, #9E8E96);
+    }
+
+    /* ── Nav buttons ── */
+    .pe-nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 24px 48px;
+      border-top: 1px solid #F5DDE3;
+      background: #FFFBFC;
+    }
+    @media (max-width: 600px) { .pe-nav { padding: 20px; } }
+    .pe-error {
+      font-size: 13px;
+      color: #dc2626;
+      font-weight: 600;
+      min-height: 18px;
+      margin-bottom: 0;
+    }
+
+    /* ── Success screen ── */
+    .pe-success {
+      max-width: 720px;
+      margin: 0 auto;
+      background: #fff;
+      border-radius: 24px;
+      box-shadow: 0 8px 48px rgba(160,80,110,0.12);
+      padding: 56px 48px;
+      text-align: center;
+    }
+    @media (max-width: 600px) { .pe-success { padding: 40px 24px; } }
+    .pe-success-icon { font-size: 56px; margin-bottom: 16px; }
+    .pe-success-ref {
+      display: inline-block;
+      background: #FFF0F4;
+      border: 1.5px solid #FFCCD8;
+      color: var(--rose, #A85D72);
+      font-size: 13px;
+      font-weight: 800;
+      padding: 5px 16px;
+      border-radius: 50px;
+      margin-bottom: 16px;
+      letter-spacing: .5px;
+    }
+    .pe-success-title {
+      font-size: 26px;
+      font-weight: 900;
+      color: var(--text-dark, #2C2028);
+      margin: 0 0 8px;
+    }
+    .pe-success-sub {
+      font-size: 15px;
+      color: var(--text-light, #9E8E96);
+      margin: 0 0 32px;
+    }
+    .pe-estimate-banner {
+      background: linear-gradient(135deg, #2C0F18, #6B2D42);
+      border-radius: 16px;
+      padding: 24px 32px;
+      margin-bottom: 32px;
+    }
+    .pe-estimate-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: rgba(255,255,255,.65);
+      text-transform: uppercase;
+      letter-spacing: .8px;
+      margin: 0 0 6px;
+    }
+    .pe-estimate-range {
+      font-size: 34px;
+      font-weight: 900;
+      color: #fff;
+      margin: 0 0 4px;
+    }
+    .pe-estimate-note {
+      font-size: 12px;
+      color: rgba(255,255,255,.55);
+    }
+    .pe-next-steps {
+      background: #FFF6F8;
+      border-radius: 14px;
+      padding: 20px 24px;
+      margin-bottom: 32px;
+      text-align: left;
+    }
+    .pe-next-step-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      font-size: 14px;
+      color: var(--text-dark, #2C2028);
+      padding: 8px 0;
+      border-bottom: 1px solid #FFE0EA;
+    }
+    .pe-next-step-item:last-child { border-bottom: none; }
+    .pe-next-step-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+
+    .hidden { display: none !important; }
+  </style>
 </head>
 <body>
 
@@ -41,6 +393,7 @@ function toggleMobileNav(){document.querySelector('.site-header').classList.togg
 document.addEventListener('click',function(e){if(!e.target.closest('.site-header'))document.querySelector('.site-header').classList.remove('nav-open');});
 </script>
 
+<!-- HERO -->
 <section class="faq-hero">
   <div class="container">
     <h1 class="faq-hero-title" id="pe-hero-title">Private Events</h1>
@@ -48,17 +401,174 @@ document.addEventListener('click',function(e){if(!e.target.closest('.site-header
   </div>
 </section>
 
+<!-- PAGE CONTENT (from CMS) -->
 <section class="private-events-section">
   <div class="container">
     <div class="private-events-content wysiwyg-content" id="pe-content">
       <div class="loading-state"><div class="spinner"></div></div>
     </div>
-    <div class="private-events-cta">
-      <a href="/contact" class="btn btn-primary">Enquire About a Private Event</a>
-    </div>
   </div>
 </section>
 
+<!-- QUOTE FORM -->
+<section class="pe-quote-section">
+  <div class="container">
+
+    <div class="pe-quote-header">
+      <h2 class="pe-quote-title">Get Your Personalised Quote</h2>
+      <p class="pe-quote-sub">Tell us about your event and we'll put together a tailored proposal — usually within 24 hours</p>
+    </div>
+
+    <!-- Step indicator -->
+    <div class="pe-steps" id="pe-steps">
+      <div class="pe-step active" id="step-dot-1">
+        <div class="pe-step-num">1</div>
+        <span class="pe-step-label">The Event</span>
+      </div>
+      <div class="pe-step-line"></div>
+      <div class="pe-step" id="step-dot-2">
+        <div class="pe-step-num">2</div>
+        <span class="pe-step-label">Details</span>
+      </div>
+      <div class="pe-step-line"></div>
+      <div class="pe-step" id="step-dot-3">
+        <div class="pe-step-num">3</div>
+        <span class="pe-step-label">About You</span>
+      </div>
+    </div>
+
+    <!-- Multi-step card -->
+    <div class="pe-quote-card" id="pe-quote-card">
+
+      <!-- STEP 1: The Event -->
+      <div class="pe-step-panel" id="pe-panel-1">
+        <h3 class="pe-step-heading">What kind of event are you planning?</h3>
+        <p class="pe-step-hint">Choose an activity and tell us how many people are joining</p>
+
+        <span class="pe-field-label">Activity type *</span>
+        <div class="pe-activity-grid" id="pe-activity-grid">
+          <!-- injected by JS -->
+        </div>
+
+        <span class="pe-field-label">Group size *</span>
+        <div class="pe-pills" id="pe-group-pills">
+          <!-- injected by JS -->
+        </div>
+      </div>
+
+      <!-- STEP 2: Details -->
+      <div class="pe-step-panel hidden" id="pe-panel-2">
+        <h3 class="pe-step-heading">Tell us a bit more</h3>
+        <p class="pe-step-hint">The more detail you give us, the better we can tailor your quote</p>
+
+        <div class="pe-form-row">
+          <div class="pe-form-group">
+            <label for="pe-date">Preferred date <span class="optional">(optional)</span></label>
+            <input type="date" class="pe-input" id="pe-date">
+            <label class="pe-checkbox-row" style="margin-top:8px">
+              <input type="checkbox" id="pe-date-flexible">
+              <span>I'm flexible on the date</span>
+            </label>
+          </div>
+          <div class="pe-form-group">
+            <label>Venue preference</label>
+            <div class="pe-pills" id="pe-venue-pills">
+              <!-- injected by JS -->
+            </div>
+          </div>
+        </div>
+
+        <span class="pe-field-label">Budget range <span style="font-weight:400;color:var(--text-light,#9E8E96)">(optional)</span></span>
+        <div class="pe-budget-grid" id="pe-budget-grid">
+          <!-- injected by JS -->
+        </div>
+
+        <div class="pe-form-group">
+          <label for="pe-notes">Special requests / theme ideas <span class="optional">(optional)</span></label>
+          <textarea class="pe-input" id="pe-notes" placeholder="e.g. It's a hen do! We'd love a floral theme and some prosecco 🥂"></textarea>
+        </div>
+      </div>
+
+      <!-- STEP 3: About You -->
+      <div class="pe-step-panel hidden" id="pe-panel-3">
+        <h3 class="pe-step-heading">And finally, about you</h3>
+        <p class="pe-step-hint">We'll send a confirmation and personalised quote to your email</p>
+
+        <div class="pe-form-row">
+          <div class="pe-form-group">
+            <label for="pe-name">Your name *</label>
+            <input type="text" class="pe-input" id="pe-name" placeholder="Jane Smith" autocomplete="name">
+          </div>
+          <div class="pe-form-group">
+            <label for="pe-phone">Phone number <span class="optional">(optional)</span></label>
+            <input type="tel" class="pe-input" id="pe-phone" placeholder="+44 7700 000000" autocomplete="tel">
+          </div>
+        </div>
+        <div class="pe-form-group">
+          <label for="pe-email">Email address *</label>
+          <input type="email" class="pe-input" id="pe-email" placeholder="jane@example.com" autocomplete="email">
+        </div>
+        <div class="pe-form-group">
+          <label for="pe-how-heard">How did you hear about us? <span class="optional">(optional)</span></label>
+          <select class="pe-input" id="pe-how-heard">
+            <option value="">Choose one…</option>
+            <option>Google search</option>
+            <option>Instagram</option>
+            <option>Facebook</option>
+            <option>TikTok</option>
+            <option>Friend or family recommendation</option>
+            <option>I've attended before</option>
+            <option>Gift voucher</option>
+            <option>Other</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Nav bar -->
+      <div class="pe-nav" id="pe-nav">
+        <button class="btn btn-ghost" id="pe-back-btn" onclick="peStep(-1)" style="display:none">← Back</button>
+        <p class="pe-error" id="pe-error"></p>
+        <button class="btn btn-primary" id="pe-next-btn" onclick="peStep(1)">Next →</button>
+      </div>
+
+    </div><!-- end .pe-quote-card -->
+
+    <!-- Success screen (hidden until submit) -->
+    <div class="pe-success hidden" id="pe-success">
+      <div class="pe-success-icon">🎉</div>
+      <div class="pe-success-ref" id="pe-success-ref"></div>
+      <h2 class="pe-success-title">Quote request sent!</h2>
+      <p class="pe-success-sub">We'll be in touch within 24 hours with a personalised proposal</p>
+
+      <div class="pe-estimate-banner">
+        <p class="pe-estimate-label">Your estimated price range</p>
+        <p class="pe-estimate-range" id="pe-estimate-range"></p>
+        <p class="pe-estimate-note" id="pe-estimate-note"></p>
+      </div>
+
+      <div class="pe-next-steps">
+        <div class="pe-next-step-item">
+          <span class="pe-next-step-icon">✉️</span>
+          <span>Check your inbox — we've sent a confirmation email with your request summary</span>
+        </div>
+        <div class="pe-next-step-item">
+          <span class="pe-next-step-icon">📞</span>
+          <span>We may reach out to clarify any details before preparing your proposal</span>
+        </div>
+        <div class="pe-next-step-item">
+          <span class="pe-next-step-icon">🎨</span>
+          <span>Once you're happy with the quote, we'll lock in your date and get the party started!</span>
+        </div>
+      </div>
+
+      <a href="/events" class="btn btn-primary" style="margin-right:12px">Browse Public Events</a>
+      <a href="/" class="btn btn-ghost">Back to Home</a>
+    </div>
+
+  </div>
+</section>
+
+<!-- SOCIAL MEDIA -->
 <section class="social-section" id="social-section" style="display:none">
   <div class="container social-section-inner">
     <h2 class="social-section-title" id="social-section-title">Social Media</h2>

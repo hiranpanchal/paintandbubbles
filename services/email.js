@@ -831,6 +831,236 @@ async function sendTestEmail(to) {
   console.log(`[Email] Test email sent to ${to}`);
 }
 
+// ─── Private Event Quotes ─────────────────────────────────────────────────────
+
+function formatPricePence(pence) {
+  if (!pence) return '£0';
+  return `£${(pence / 100).toLocaleString('en-GB', { minimumFractionDigits: 0 })}`;
+}
+
+async function sendPrivateQuoteToAdmin(quote, notificationEmail) {
+  if (!notificationEmail) {
+    console.log('[Email] No notification_email set — skipping private quote admin notification');
+    return;
+  }
+
+  const quoteRef = `#PQ${String(quote.id).padStart(5, '0')}`;
+  const siteUrl  = process.env.SITE_URL || 'https://paintandbubbles.co.uk';
+  const dateStr  = quote.preferred_date
+    ? new Date(quote.preferred_date + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+    : 'Not specified';
+  const flexibility = quote.date_flexible ? ' (flexible)' : '';
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet"></head>
+<body style="margin:0;padding:0;background:#FDF8F9;font-family:'Nunito','Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#FDF8F9;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 8px 40px rgba(160,80,110,0.15);">
+
+        <!-- Header -->
+        <tr><td style="background:linear-gradient(135deg,#2C0F18 0%,#6B2D42 50%,#C4748A 100%);padding:44px 48px;text-align:center;">
+          <div style="font-size:44px;margin-bottom:12px;">🎨</div>
+          <h1 style="margin:0 0 6px;color:#fff;font-size:26px;font-weight:700;font-family:'Dancing Script',cursive;">New Private Event Quote</h1>
+          <p style="margin:0;color:rgba(255,255,255,0.85);font-size:14px;font-weight:600;">${quoteRef} &nbsp;·&nbsp; ${new Date(quote.created_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+        </td></tr>
+
+        <!-- Body -->
+        <tr><td style="padding:40px 48px;">
+
+          <!-- Contact info -->
+          <table width="100%" cellpadding="0" cellspacing="0" style="background:#FFF6F8;border:1px solid #FFCCD8;border-radius:14px;margin-bottom:28px;">
+            <tr><td style="padding:20px 24px;">
+              <p style="margin:0 0 4px;font-size:12px;font-weight:700;color:#C4748A;text-transform:uppercase;letter-spacing:.8px">Enquirer</p>
+              <p style="margin:0 0 2px;font-size:18px;font-weight:800;color:#2C2028;">${escapeHtml(quote.name)}</p>
+              <p style="margin:0 0 2px;font-size:14px;color:#6B2D42;"><a href="mailto:${escapeHtml(quote.email)}" style="color:#6B2D42;">${escapeHtml(quote.email)}</a></p>
+              ${quote.phone ? `<p style="margin:0;font-size:14px;color:#9E8E96;">${escapeHtml(quote.phone)}</p>` : ''}
+            </td></tr>
+          </table>
+
+          <!-- Event details grid -->
+          <p style="margin:0 0 14px;font-size:13px;font-weight:700;color:#C4748A;text-transform:uppercase;letter-spacing:.8px">Event Details</p>
+          <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-bottom:28px;">
+            ${[
+              ['Activity',         quote.activity_type],
+              ['Group Size',       quote.group_size + ' people'],
+              ['Preferred Date',   dateStr + flexibility],
+              ['Venue',            quote.venue_preference || 'Not specified'],
+              ['Budget Range',     quote.budget_range    || 'Not specified'],
+            ].map(([label, val], i) => `
+            <tr style="background:${i % 2 === 0 ? '#FFF6F8' : '#fff'}">
+              <td style="padding:10px 14px;font-size:13px;font-weight:700;color:#9E8E96;width:38%;border-radius:${i === 0 ? '10px 10px' : '0'} 0 0;">${label}</td>
+              <td style="padding:10px 14px;font-size:13px;font-weight:600;color:#2C2028;">${escapeHtml(val)}</td>
+            </tr>`).join('')}
+          </table>
+
+          ${quote.notes ? `
+          <!-- Notes -->
+          <p style="margin:0 0 10px;font-size:13px;font-weight:700;color:#C4748A;text-transform:uppercase;letter-spacing:.8px">Special Requests / Notes</p>
+          <p style="margin:0 0 28px;background:#FFF6F8;border-left:3px solid #C4748A;padding:14px 18px;border-radius:0 10px 10px 0;font-size:14px;color:#2C2028;line-height:1.6;">${escapeHtml(quote.notes)}</p>
+          ` : ''}
+
+          <!-- Estimate -->
+          <table width="100%" cellpadding="0" cellspacing="0" style="background:linear-gradient(135deg,#2C0F18,#6B2D42);border-radius:14px;margin-bottom:28px;">
+            <tr><td style="padding:24px 28px;text-align:center;">
+              <p style="margin:0 0 4px;color:rgba(255,255,255,0.7);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px">Auto-Generated Estimate</p>
+              <p style="margin:0;color:#fff;font-size:28px;font-weight:800;">${formatPricePence(quote.estimate_low)} – ${formatPricePence(quote.estimate_high)}</p>
+              <p style="margin:6px 0 0;color:rgba(255,255,255,0.6);font-size:12px;">Based on ${quote.group_size} people · ${escapeHtml(quote.activity_type)}</p>
+            </td></tr>
+          </table>
+
+          ${quote.how_heard ? `<p style="margin:0 0 28px;font-size:13px;color:#9E8E96;">Heard about us via: <strong>${escapeHtml(quote.how_heard)}</strong></p>` : ''}
+
+          <!-- CTA -->
+          <div style="text-align:center;">
+            <a href="mailto:${escapeHtml(quote.email)}?subject=Re: Your Private Event Quote (${quoteRef})" style="display:inline-block;background:linear-gradient(135deg,#A85D72,#6B2D42);color:#fff;text-decoration:none;font-size:15px;font-weight:700;padding:14px 32px;border-radius:50px;box-shadow:0 4px 14px rgba(168,93,114,0.35);">
+              Reply to ${escapeHtml(quote.name.split(' ')[0])}
+            </a>
+          </div>
+
+        </td></tr>
+
+        <!-- Footer -->
+        <tr><td style="padding:24px 48px;text-align:center;border-top:1px solid #F5DDE3;">
+          <p style="margin:0;font-size:12px;color:#C8B8BC;">
+            <a href="${siteUrl}/admin" style="color:#C4748A;text-decoration:none;font-weight:700;">Open Admin Dashboard</a>
+          </p>
+        </td></tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+  await sendEmail({
+    to: notificationEmail,
+    subject: `New Private Event Quote ${quoteRef} — ${quote.name} (${quote.group_size}, ${quote.activity_type})`,
+    html,
+    replyTo: quote.email,
+  });
+  console.log(`[Email] Private quote admin notification sent for quote ${quoteRef}`);
+}
+
+async function sendPrivateQuoteConfirmation(quote) {
+  const quoteRef   = `#PQ${String(quote.id).padStart(5, '0')}`;
+  const siteUrl    = process.env.SITE_URL || 'https://paintandbubbles.co.uk';
+  const firstName  = quote.name.split(' ')[0];
+  const dateStr    = quote.preferred_date
+    ? new Date(quote.preferred_date + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+    : null;
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet"></head>
+<body style="margin:0;padding:0;background:#FDF8F9;font-family:'Nunito','Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#FDF8F9;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 8px 40px rgba(160,80,110,0.15);">
+
+        <!-- Header -->
+        <tr><td style="background:linear-gradient(135deg,#2C0F18 0%,#6B2D42 50%,#C4748A 100%);padding:44px 48px;text-align:center;">
+          <div style="font-size:48px;margin-bottom:12px;">🥂</div>
+          <h1 style="margin:0 0 6px;color:#fff;font-size:28px;font-weight:700;font-family:'Dancing Script',cursive;">Quote Request Received!</h1>
+          <p style="margin:0;color:rgba(255,255,255,0.85);font-size:14px;font-weight:600;">We'll be in touch within 24 hours</p>
+        </td></tr>
+
+        <!-- Body -->
+        <tr><td style="padding:40px 48px;">
+          <p style="margin:0 0 8px;color:#9E8E96;font-size:14px;font-weight:600;">Hi ${escapeHtml(firstName)},</p>
+          <p style="margin:0 0 28px;color:#2C2028;font-size:17px;font-weight:800;">Thank you for your enquiry — we're thrilled you're considering a private event with Paint &amp; Bubbles! 🎨</p>
+
+          <p style="margin:0 0 16px;font-size:14px;color:#6B2D42;line-height:1.6;">Your quote request <strong>${quoteRef}</strong> has been received and one of our team will review your details and send you a personalised proposal within 24 hours.</p>
+
+          <!-- Summary -->
+          <table width="100%" cellpadding="0" cellspacing="0" style="background:#FFF6F8;border:1px solid #FFCCD8;border-radius:14px;margin-bottom:28px;">
+            <tr><td style="padding:20px 24px;">
+              <p style="margin:0 0 14px;font-size:12px;font-weight:700;color:#C4748A;text-transform:uppercase;letter-spacing:.8px">Your Request Summary</p>
+              <table width="100%" cellpadding="0" cellspacing="0">
+                ${[
+                  ['Reference',   quoteRef],
+                  ['Activity',    quote.activity_type],
+                  ['Group Size',  quote.group_size + ' people'],
+                  ...(dateStr ? [['Preferred Date', dateStr + (quote.date_flexible ? ' (flexible)' : '')]] : []),
+                  ...(quote.venue_preference ? [['Venue', quote.venue_preference]] : []),
+                ].map(([label, val]) => `
+                <tr>
+                  <td style="padding:5px 0;font-size:13px;font-weight:700;color:#9E8E96;width:40%;vertical-align:top;">${label}</td>
+                  <td style="padding:5px 0;font-size:13px;font-weight:600;color:#2C2028;">${escapeHtml(val)}</td>
+                </tr>`).join('')}
+              </table>
+            </td></tr>
+          </table>
+
+          <!-- Estimate banner -->
+          <table width="100%" cellpadding="0" cellspacing="0" style="background:linear-gradient(135deg,#2C0F18,#6B2D42);border-radius:14px;margin-bottom:28px;">
+            <tr><td style="padding:24px 28px;text-align:center;">
+              <p style="margin:0 0 4px;color:rgba(255,255,255,0.7);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px">Estimated Price Range</p>
+              <p style="margin:0;color:#fff;font-size:30px;font-weight:800;">${formatPricePence(quote.estimate_low)} – ${formatPricePence(quote.estimate_high)}</p>
+              <p style="margin:8px 0 0;color:rgba(255,255,255,0.65);font-size:12px;line-height:1.5;">This is an initial estimate based on your group size &amp; activity.<br>Your finalised quote may vary based on your specific requirements.</p>
+            </td></tr>
+          </table>
+
+          <!-- What happens next -->
+          <p style="margin:0 0 16px;font-size:14px;font-weight:700;color:#2C2028;">What happens next?</p>
+          <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:32px;">
+            ${[
+              ['✉️', 'We\'ll review your details and craft a personalised proposal'],
+              ['📞', 'We may call or email you to discuss any specific requirements'],
+              ['🎨', 'Once you\'re happy, we\'ll lock in your date and get the fun started!'],
+            ].map(([icon, text]) => `
+            <tr><td style="padding:8px 0;vertical-align:top;">
+              <table cellpadding="0" cellspacing="0"><tr>
+                <td style="font-size:18px;padding-right:12px;vertical-align:top;padding-top:2px;">${icon}</td>
+                <td style="font-size:14px;color:#6B2D42;line-height:1.5;">${text}</td>
+              </tr></table>
+            </td></tr>`).join('')}
+          </table>
+
+          <!-- CTA -->
+          <div style="text-align:center;margin-bottom:28px;">
+            <a href="${siteUrl}/private-events" style="display:inline-block;background:linear-gradient(135deg,#A85D72,#6B2D42);color:#fff;text-decoration:none;font-size:15px;font-weight:700;padding:14px 32px;border-radius:50px;box-shadow:0 4px 14px rgba(168,93,114,0.35);">
+              View Private Events Page
+            </a>
+          </div>
+
+          <p style="margin:0;font-size:13px;color:#9E8E96;text-align:center;line-height:1.6;">Questions in the meantime? Just reply to this email — we'd love to chat! 💬</p>
+        </td></tr>
+
+        <!-- Footer -->
+        <tr><td style="padding:24px 48px;text-align:center;border-top:1px solid #F5DDE3;">
+          <p style="margin:0 0 6px;font-family:'Dancing Script',cursive;font-size:22px;color:#C4748A;font-weight:700;">Paint &amp; Bubbles</p>
+          <p style="margin:0;font-size:12px;color:#C8B8BC;">Creative experiences for unforgettable moments</p>
+        </td></tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+  await sendEmail({
+    to: `${quote.name} <${quote.email}>`,
+    subject: `Your Private Event Quote Request ${quoteRef} — Paint & Bubbles`,
+    html,
+  });
+  console.log(`[Email] Private quote confirmation sent to ${quote.email}`);
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 module.exports = {
   sendBookingConfirmation,
   sendReminderEmail,
@@ -843,5 +1073,7 @@ module.exports = {
   sendAdminBookingNotification,
   sendAdminVoucherNotification,
   sendEnquiryReply,
+  sendPrivateQuoteToAdmin,
+  sendPrivateQuoteConfirmation,
   sendTestEmail,
 };
