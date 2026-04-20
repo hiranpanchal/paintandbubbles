@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Paint &amp; Sip Events | Paint &amp; Bubbles</title>
+  <link rel="stylesheet" href="/api/design/vars.css">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    /* ── Location hero ── */
+    .loc-hero {
+      background: linear-gradient(135deg, var(--rose-dark, #8A4560) 0%, var(--rose-deep, #A85D72) 55%, var(--rose, #C4748A) 100%);
+      padding: 80px 0 90px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .loc-hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+      pointer-events: none;
+    }
+    .loc-hero-eyebrow {
+      display: inline-block;
+      background: rgba(255,255,255,0.15);
+      color: rgba(255,255,255,0.9);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      padding: 5px 16px;
+      border-radius: 50px;
+      margin-bottom: 18px;
+    }
+    .loc-hero-title {
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      font-weight: 900;
+      color: #fff;
+      margin: 0 0 16px;
+      line-height: 1.15;
+    }
+    .loc-hero-title span { color: rgba(255,255,255,0.85); }
+    .loc-hero-sub {
+      font-size: 18px;
+      color: rgba(255,255,255,0.85);
+      margin: 0 0 32px;
+      max-width: 520px;
+      margin-left: auto;
+      margin-right: auto;
+      line-height: 1.6;
+    }
+    .loc-hero-actions { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+    .btn-white {
+      background: #fff;
+      color: var(--rose-deep, #A85D72);
+      font-weight: 800;
+      border: none;
+      padding: 13px 28px;
+      border-radius: 50px;
+      font-size: 15px;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+      transition: transform .2s, box-shadow .2s;
+    }
+    .btn-white:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.2); }
+    .btn-outline-white {
+      background: transparent;
+      color: #fff;
+      border: 2px solid rgba(255,255,255,0.55);
+      padding: 11px 26px;
+      border-radius: 50px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+      transition: all .2s;
+    }
+    .btn-outline-white:hover { background: rgba(255,255,255,0.1); border-color: #fff; }
+
+    /* ── Trust strip ── */
+    .loc-trust {
+      background: #fff;
+      border-bottom: 1px solid #F5DDE3;
+      padding: 20px 0;
+    }
+    .loc-trust-inner {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 8px 32px;
+    }
+    .loc-trust-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-dark, #2C2028);
+    }
+    .loc-trust-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--rose, #C4748A);
+      flex-shrink: 0;
+    }
+
+    /* ── Events section ── */
+    .loc-events-section {
+      padding: 72px 0 80px;
+      background: var(--bg, #FDF8F9);
+    }
+    .loc-section-header {
+      text-align: center;
+      margin-bottom: 44px;
+    }
+    .loc-section-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--rose, #C4748A);
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      margin-bottom: 10px;
+    }
+    .loc-section-title {
+      font-size: clamp(1.5rem, 3.5vw, 2.2rem);
+      font-weight: 900;
+      color: var(--text-dark, #2C2028);
+      margin: 0 0 10px;
+    }
+    .loc-section-sub {
+      font-size: 16px;
+      color: var(--text-light, #9E8E96);
+      margin: 0;
+    }
+
+    /* ── Event cards (matching site style) ── */
+    .loc-events-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 24px;
+    }
+    .loc-event-card {
+      background: #fff;
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 4px 24px rgba(160,80,110,0.10);
+      transition: transform .2s, box-shadow .2s;
+      cursor: pointer;
+      text-decoration: none;
+      display: block;
+    }
+    .loc-event-card:hover { transform: translateY(-4px); box-shadow: 0 8px 36px rgba(160,80,110,0.18); }
+    .loc-event-img {
+      width: 100%;
+      height: 190px;
+      object-fit: cover;
+      background: linear-gradient(135deg, #F5DDE3, #EED5DF);
+      display: block;
+    }
+    .loc-event-img-placeholder {
+      width: 100%;
+      height: 190px;
+      background: linear-gradient(135deg, #F5DDE3, #EED5DF);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 48px;
+    }
+    .loc-event-body { padding: 20px 22px 22px; }
+    .loc-event-badges { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+    .loc-event-badge {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 50px;
+      background: #FFF0F4;
+      color: var(--rose, #C4748A);
+    }
+    .loc-event-title {
+      font-size: 17px;
+      font-weight: 800;
+      color: var(--text-dark, #2C2028);
+      margin: 0 0 8px;
+      line-height: 1.3;
+    }
+    .loc-event-meta {
+      font-size: 13px;
+      color: var(--text-light, #9E8E96);
+      margin-bottom: 16px;
+      line-height: 1.5;
+    }
+    .loc-event-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .loc-event-price {
+      font-size: 20px;
+      font-weight: 900;
+      color: var(--text-dark, #2C2028);
+    }
+    .loc-event-book {
+      background: linear-gradient(135deg, var(--rose, #C4748A), var(--rose-deep, #A85D72));
+      color: #fff;
+      font-size: 13px;
+      font-weight: 700;
+      padding: 8px 18px;
+      border-radius: 50px;
+      text-decoration: none;
+    }
+
+    .loc-no-events {
+      text-align: center;
+      padding: 48px 24px;
+      background: #fff;
+      border-radius: 20px;
+      box-shadow: 0 4px 24px rgba(160,80,110,0.08);
+    }
+    .loc-no-events-icon { font-size: 48px; margin-bottom: 16px; }
+    .loc-no-events h3 { font-size: 20px; font-weight: 800; color: var(--text-dark, #2C2028); margin: 0 0 8px; }
+    .loc-no-events p { font-size: 15px; color: var(--text-light, #9E8E96); margin: 0 0 24px; }
+
+    /* ── Why us section ── */
+    .loc-why-section {
+      padding: 72px 0 80px;
+      background: #fff;
+    }
+    .loc-why-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 24px;
+      margin-top: 44px;
+    }
+    .loc-why-card {
+      background: var(--bg, #FDF8F9);
+      border-radius: 18px;
+      padding: 28px 24px;
+      text-align: center;
+    }
+    .loc-why-icon { font-size: 36px; margin-bottom: 14px; }
+    .loc-why-title { font-size: 16px; font-weight: 800; color: var(--text-dark, #2C2028); margin: 0 0 8px; }
+    .loc-why-text { font-size: 14px; color: var(--text-light, #9E8E96); margin: 0; line-height: 1.6; }
+
+    /* ── Private events CTA ── */
+    .loc-private-section {
+      padding: 72px 0 80px;
+      background: var(--bg, #FDF8F9);
+    }
+    .loc-private-card {
+      background: linear-gradient(135deg, #2C0F18 0%, #6B2D42 60%, #A85D72 100%);
+      border-radius: 24px;
+      padding: 56px 48px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .loc-private-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+      pointer-events: none;
+    }
+    .loc-private-emoji { font-size: 48px; margin-bottom: 16px; }
+    .loc-private-title { font-size: clamp(1.5rem,4vw,2.2rem); font-weight: 900; color: #fff; margin: 0 0 12px; }
+    .loc-private-sub { font-size: 17px; color: rgba(255,255,255,0.8); margin: 0 0 32px; max-width: 560px; margin-left: auto; margin-right: auto; line-height: 1.6; }
+    .loc-private-tags { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 32px; }
+    .loc-private-tag {
+      background: rgba(255,255,255,0.15);
+      color: rgba(255,255,255,0.9);
+      font-size: 13px;
+      font-weight: 700;
+      padding: 6px 16px;
+      border-radius: 50px;
+    }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container header-inner">
+    <a href="/" class="logo">
+      <img src="/logo.png" alt="Paint &amp; Bubbles" class="logo-img"
+           onerror="this.style.display='none';document.getElementById('logo-fallback').style.display='block'">
+      <span class="logo-text" id="logo-fallback" style="display:none">Paint <span class="logo-and">&amp;</span> Bubbles</span>
+    </a>
+    <nav class="main-nav" id="main-nav">
+      <button class="nav-btn" onclick="window.location.href='/'">Home</button>
+      <button class="nav-btn" onclick="window.location.href='/about'">About</button>
+      <button class="nav-btn active" onclick="window.location.href='/events'">Events</button>
+      <button class="nav-btn" onclick="window.location.href='/reviews'">Reviews</button>
+      <button class="nav-btn" onclick="window.location.href='/faq'">FAQ</button>
+      <button class="nav-btn" onclick="window.location.href='/gallery'">Gallery</button>
+      <button class="nav-btn" onclick="window.location.href='/gift-vouchers'">Gift Vouchers</button>
+      <button class="nav-btn" onclick="window.location.href='/private-events'">Private Events</button>
+      <a href="/contact" class="btn btn-ghost btn-sm">Contact Us</a>
+    </nav>
+    <button class="nav-burger" onclick="toggleMobileNav()" aria-label="Open menu">
+      <svg class="burger-icon-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      <svg class="burger-icon-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg>
+    </button>
+  </div>
+</header>
+<script>
+function toggleMobileNav(){document.querySelector('.site-header').classList.toggle('nav-open');}
+document.addEventListener('click',function(e){if(!e.target.closest('.site-header'))document.querySelector('.site-header').classList.remove('nav-open');});
+</script>
+
+<!-- HERO -->
+<section class="loc-hero">
+  <div class="container">
+    <div class="loc-hero-eyebrow" id="loc-eyebrow">Coventry</div>
+    <h1 class="loc-hero-title">Paint &amp; Sip Events in <span id="loc-city-name">Coventry</span></h1>
+    <p class="loc-hero-sub">Fun, relaxed painting and craft nights with drinks included. All abilities welcome — no experience needed!</p>
+    <div class="loc-hero-actions">
+      <a href="#loc-events" class="btn-white">See Upcoming Events</a>
+      <a href="/private-events" class="btn-outline-white">Private Bookings</a>
+    </div>
+  </div>
+</section>
+
+<!-- TRUST STRIP -->
+<section class="loc-trust">
+  <div class="container">
+    <div class="loc-trust-inner">
+      <div class="loc-trust-item"><div class="loc-trust-dot"></div>All materials provided</div>
+      <div class="loc-trust-item"><div class="loc-trust-dot"></div>Drinks included</div>
+      <div class="loc-trust-item"><div class="loc-trust-dot"></div>No experience needed</div>
+      <div class="loc-trust-item"><div class="loc-trust-dot"></div>Small, friendly groups</div>
+      <div class="loc-trust-item"><div class="loc-trust-dot"></div>All ages welcome</div>
+    </div>
+  </div>
+</section>
+
+<!-- UPCOMING EVENTS -->
+<section class="loc-events-section" id="loc-events">
+  <div class="container">
+    <div class="loc-section-header">
+      <p class="loc-section-label">What's On</p>
+      <h2 class="loc-section-title">Upcoming Events in <span class="loc-city-inline">Coventry</span></h2>
+      <p class="loc-section-sub">Book your spot — all events include materials, guidance and a welcome drink</p>
+    </div>
+    <div id="loc-events-container">
+      <div style="text-align:center;padding:40px 0">
+        <div class="spinner"></div>
+      </div>
+    </div>
+    <div style="text-align:center;margin-top:36px">
+      <a href="/events" class="btn btn-ghost">View All Events Across All Locations →</a>
+    </div>
+  </div>
+</section>
+
+<!-- WHY US -->
+<section class="loc-why-section">
+  <div class="container">
+    <div class="loc-section-header">
+      <p class="loc-section-label">Why Paint &amp; Bubbles</p>
+      <h2 class="loc-section-title">The go-to creative night out in <span class="loc-city-inline">Coventry</span></h2>
+      <p class="loc-section-sub">Here's what you get every single time you come</p>
+    </div>
+    <div class="loc-why-grid">
+      <div class="loc-why-card">
+        <div class="loc-why-icon">🎨</div>
+        <div class="loc-why-title">Everything Included</div>
+        <div class="loc-why-text">Canvas, paints, brushes and all materials provided. Just show up and create.</div>
+      </div>
+      <div class="loc-why-card">
+        <div class="loc-why-icon">🥂</div>
+        <div class="loc-why-title">Drinks Included</div>
+        <div class="loc-why-text">A welcome drink is always included. Because painting is better with a glass in hand.</div>
+      </div>
+      <div class="loc-why-card">
+        <div class="loc-why-icon">👩‍🎨</div>
+        <div class="loc-why-title">Expert Guidance</div>
+        <div class="loc-why-text">Our friendly instructors guide you step by step — even if you've never painted before.</div>
+      </div>
+      <div class="loc-why-card">
+        <div class="loc-why-icon">🎉</div>
+        <div class="loc-why-title">Great for Groups</div>
+        <div class="loc-why-text">Perfect for hen parties, birthdays, date nights or just a fun night out with friends.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PRIVATE EVENTS CTA -->
+<section class="loc-private-section">
+  <div class="container">
+    <div class="loc-private-card">
+      <div class="loc-private-emoji">🎊</div>
+      <h2 class="loc-private-title">Planning a Private Event in <span class="loc-city-inline">Coventry</span>?</h2>
+      <p class="loc-private-sub">We can host your entire group — from intimate birthday dinners to large corporate events. Get a personalised quote online in minutes.</p>
+      <div class="loc-private-tags">
+        <span class="loc-private-tag">Hen Parties</span>
+        <span class="loc-private-tag">Birthdays</span>
+        <span class="loc-private-tag">Corporate Events</span>
+        <span class="loc-private-tag">Team Building</span>
+        <span class="loc-private-tag">Date Nights</span>
+        <span class="loc-private-tag">School Groups</span>
+      </div>
+      <a href="/private-events" class="btn-white">Get a Free Quote →</a>
+    </div>
+  </div>
+</section>
+
+<!-- SOCIAL MEDIA -->
+<section class="social-section" id="social-section" style="display:none">
+  <div class="container social-section-inner">
+    <h2 class="social-section-title" id="social-section-title">Social Media</h2>
+    <div class="social-links-row" id="social-links-row"></div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container footer-inner">
+    <div class="footer-brand">
+      <img src="" alt="Paint &amp; Bubbles" class="footer-logo-img" style="display:none">
+      <span class="footer-logo-text" id="footer-logo-fallback">Paint &amp; Bubbles</span>
+    </div>
+    <p class="footer-tagline">Creative events for everyone</p>
+    <div class="footer-cards">
+      <span class="card-badge visa">
+        <svg viewBox="0 0 48 30" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="48" height="30" rx="4" fill="#1A1F71"/><text x="24" y="20" text-anchor="middle" font-family="Arial,sans-serif" font-size="14" font-weight="bold" font-style="italic" fill="white" letter-spacing="1">VISA</text></svg>
+      </span>
+      <span class="card-badge mastercard">
+        <svg viewBox="0 0 48 30" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="48" height="30" rx="4" fill="#fff"/><circle cx="19" cy="13" r="7" fill="#EB001B"/><circle cx="29" cy="13" r="7" fill="#F79E1B"/><path d="M24 7a7 7 0 010 12A7 7 0 0124 7z" fill="#FF5F00"/><text x="24" y="27" text-anchor="middle" font-family="Arial,sans-serif" font-size="6.5" font-weight="bold" fill="#333" letter-spacing="0.3">CREDIT</text></svg>
+      </span>
+      <span class="card-badge mastercard-debit">
+        <svg viewBox="0 0 48 30" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="48" height="30" rx="4" fill="#fff"/><circle cx="19" cy="13" r="7" fill="#EB001B"/><circle cx="29" cy="13" r="7" fill="#F79E1B"/><path d="M24 7a7 7 0 010 12A7 7 0 0124 7z" fill="#FF5F00"/><text x="24" y="27" text-anchor="middle" font-family="Arial,sans-serif" font-size="6.5" font-weight="bold" fill="#333" letter-spacing="0.3">DEBIT</text></svg>
+      </span>
+      <span class="card-badge amex">
+        <svg viewBox="0 0 48 30" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="48" height="30" rx="4" fill="#2E77BC"/><text x="24" y="19" text-anchor="middle" font-family="Arial,sans-serif" font-size="11" font-weight="bold" fill="white" letter-spacing="0.5">AMEX</text></svg>
+      </span>
+    </div>
+  </div>
+</footer>
+
+<script src="/js/location.js"></script>
+</body>
+</html>

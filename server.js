@@ -97,15 +97,18 @@ app.get('/sitemap.xml', (req, res) => {
   ).all();
 
   const staticPages = [
-    { url: '/',               priority: '1.0', changefreq: 'weekly',  lastmod: now },
-    { url: '/events',         priority: '0.9', changefreq: 'daily',   lastmod: now },
-    { url: '/gift-vouchers',  priority: '0.8', changefreq: 'monthly', lastmod: now },
-    { url: '/private-events', priority: '0.8', changefreq: 'monthly', lastmod: now },
-    { url: '/about',          priority: '0.7', changefreq: 'monthly', lastmod: now },
-    { url: '/reviews',        priority: '0.7', changefreq: 'weekly',  lastmod: now },
-    { url: '/gallery',        priority: '0.6', changefreq: 'weekly',  lastmod: now },
-    { url: '/faq',            priority: '0.6', changefreq: 'monthly', lastmod: now },
-    { url: '/contact',        priority: '0.5', changefreq: 'monthly', lastmod: now },
+    { url: '/',                priority: '1.0', changefreq: 'weekly',  lastmod: now },
+    { url: '/events',          priority: '0.9', changefreq: 'daily',   lastmod: now },
+    { url: '/coventry',        priority: '0.9', changefreq: 'weekly',  lastmod: now },
+    { url: '/leamington-spa',  priority: '0.9', changefreq: 'weekly',  lastmod: now },
+    { url: '/solihull',        priority: '0.9', changefreq: 'weekly',  lastmod: now },
+    { url: '/gift-vouchers',   priority: '0.8', changefreq: 'monthly', lastmod: now },
+    { url: '/private-events',  priority: '0.8', changefreq: 'monthly', lastmod: now },
+    { url: '/about',           priority: '0.7', changefreq: 'monthly', lastmod: now },
+    { url: '/reviews',         priority: '0.7', changefreq: 'weekly',  lastmod: now },
+    { url: '/gallery',         priority: '0.6', changefreq: 'weekly',  lastmod: now },
+    { url: '/faq',             priority: '0.6', changefreq: 'monthly', lastmod: now },
+    { url: '/contact',         priority: '0.5', changefreq: 'monthly', lastmod: now },
   ];
   const eventPages = events.map(e => ({
     url: `/events/${e.id}`,
@@ -451,6 +454,73 @@ app.get('/private-events', (req, res) => {
 // LEAVE A REVIEW page — linked from post-event email
 app.get('/leave-review', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'leave-review.html'));
+});
+
+// ── LOCATION PAGES ────────────────────────────────────────────────────────────
+
+const LOCATION_PAGES = [
+  {
+    path:    '/coventry',
+    city:    'Coventry',
+    county:  'West Midlands',
+    slug:    'coventry',
+  },
+  {
+    path:    '/leamington-spa',
+    city:    'Leamington Spa',
+    county:  'Warwickshire',
+    slug:    'leamington-spa',
+  },
+  {
+    path:    '/solihull',
+    city:    'Solihull',
+    county:  'West Midlands',
+    slug:    'solihull',
+  },
+];
+
+LOCATION_PAGES.forEach(({ path: routePath, city, county }) => {
+  app.get(routePath, (req, res) => {
+    try {
+      const s       = getSeoSettings();
+      const siteUrl = getSiteUrl(req);
+      const ogImage = getOgImage(s, siteUrl);
+      const biz     = s.seo_business_name || 'Paint & Bubbles';
+
+      const schema = {
+        '@context': 'https://schema.org',
+        '@type':    'EntertainmentBusiness',
+        name:       biz,
+        description: `Fun, relaxed paint and sip events in ${city}, ${county}. All materials and drinks included. No experience needed.`,
+        url:        `${siteUrl}${routePath}`,
+        ...(s.seo_business_phone ? { telephone: s.seo_business_phone } : {}),
+        ...(ogImage              ? { image: ogImage }                  : {}),
+        priceRange: '££',
+        currenciesAccepted: 'GBP',
+        address: {
+          '@type':           'PostalAddress',
+          addressLocality:   city,
+          addressRegion:     county,
+          addressCountry:    'GB',
+        },
+        areaServed: {
+          '@type': 'City',
+          name:    city,
+        },
+      };
+
+      serveSeoPage(res, 'location.html', {
+        title:        `Paint and Sip Events in ${city} | ${biz}`,
+        description:  `Join ${biz} for fun, relaxed paint and sip events in ${city}. All materials and drinks included. All abilities welcome — no experience needed. Book your spot online!`,
+        canonicalUrl: `${siteUrl}${routePath}`,
+        ogImage,
+        schema,
+      });
+    } catch (err) {
+      console.error(`Location page error (${routePath}):`, err);
+      res.sendFile(path.join(__dirname, 'public', 'location.html'));
+    }
+  });
 });
 
 // CATCH-ALL
