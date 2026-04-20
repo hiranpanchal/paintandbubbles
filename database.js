@@ -149,13 +149,13 @@ if (settingsCount.count === 0) {
   const defaults = {
     hero_title:                'Paint, Create',
     hero_title_highlight:      '& Celebrate',
-    hero_subtitle:             'Discover unique painting and craft events in Brighton. All materials provided. Drinks included. Just bring yourself!',
+    hero_subtitle:             'Discover unique painting and craft events across Coventry, Leamington Spa and Solihull. All materials provided. Drinks included. Just bring yourself!',
     hero_cta_primary_text:     'Browse All Events',
     hero_cta_primary_url:      '/events',
     hero_cta_secondary_text:   'About Us',
     hero_cta_secondary_url:    '#about',
     about_title:               'Where creativity meets good company',
-    about_body_1:              "Paint & Bubbles is Brighton's favourite creative events studio. We host relaxed, fun painting and craft sessions for all skill levels — whether you're a total beginner or a seasoned artist, you'll leave with something you're proud of and a smile on your face.",
+    about_body_1:              "Paint & Bubbles is the Midlands' go-to creative events studio, hosting relaxed, fun painting and craft sessions across Coventry, Leamington Spa and Solihull. All skill levels welcome — whether you're a total beginner or a seasoned artist, you'll leave with something you're proud of and a smile on your face.",
     about_body_2:              'Every event includes all the materials you need, a welcoming space, and drinks to keep the creativity flowing. No experience necessary — just show up, let loose, and enjoy the ride.',
     footer_tagline:            'Creative events for everyone',
     color_rose:                '#C4748A',
@@ -264,7 +264,7 @@ if (settingsCount.count === 0) {
     ins.run('aboutpage_hero_sub', 'The story behind Paint & Bubbles');
     ins.run('aboutpage_label', 'Our Story');
     ins.run('aboutpage_title', 'Where creativity meets good company');
-    ins.run('aboutpage_body_1', "Paint & Bubbles is Brighton's favourite creative events studio. We host relaxed, fun painting and craft sessions for all skill levels — whether you're a total beginner or a seasoned artist, you'll leave with something you're proud of and a smile on your face.");
+    ins.run('aboutpage_body_1', "Paint & Bubbles is the Midlands' go-to creative events studio, hosting relaxed, fun painting and craft sessions across Coventry, Leamington Spa and Solihull. All skill levels welcome — whether you're a total beginner or a seasoned artist, you'll leave with something you're proud of and a smile on your face.");
     ins.run('aboutpage_body_2', 'Every event includes all the materials you need, a welcoming space, and drinks to keep the creativity flowing. No experience necessary — just show up, let loose, and enjoy the ride.');
     ins.run('aboutpage_body_3', '');
     ins.run('aboutpage_pillar_1_title', 'All levels welcome');
@@ -275,6 +275,26 @@ if (settingsCount.count === 0) {
     ins.run('aboutpage_pillar_3_text', 'Intimate sessions for a personal experience');
     console.log('Seeded about page defaults.');
   }
+}
+
+// ─── Migration: fix legacy Brighton references ────────────────────────────────
+// Runs on every startup; UPDATE WHERE LIKE '%Brighton%' is a no-op once fixed.
+{
+  const brightonFix = db.prepare(
+    "UPDATE site_settings SET value = ? WHERE key = ? AND value LIKE '%Brighton%'"
+  );
+  brightonFix.run(
+    'Discover unique painting and craft events across Coventry, Leamington Spa and Solihull. All materials provided. Drinks included. Just bring yourself!',
+    'hero_subtitle'
+  );
+  brightonFix.run(
+    "Paint & Bubbles is the Midlands' go-to creative events studio, hosting relaxed, fun painting and craft sessions across Coventry, Leamington Spa and Solihull. All skill levels welcome — whether you're a total beginner or a seasoned artist, you'll leave with something you're proud of and a smile on your face.",
+    'about_body_1'
+  );
+  brightonFix.run(
+    "Paint & Bubbles is the Midlands' go-to creative events studio, hosting relaxed, fun painting and craft sessions across Coventry, Leamington Spa and Solihull. All skill levels welcome — whether you're a total beginner or a seasoned artist, you'll leave with something you're proud of and a smile on your face.",
+    'aboutpage_body_1'
+  );
 }
 
 // Ensure Contact page settings exist
