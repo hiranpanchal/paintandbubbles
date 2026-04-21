@@ -16,12 +16,44 @@ function isConfigured() {
   return !!process.env.RESEND_API_KEY;
 }
 
-// Returns the logo URL from site_settings, or null if not set
+// Canonical public site URL. Email clients can't resolve relative URLs or
+// reach localhost, so every href / img src in an email must be absolute.
+function getSiteBaseUrl() {
+  const raw = (process.env.SITE_URL || '').trim();
+  if (raw && !/localhost|127\.0\.0\.1/i.test(raw)) {
+    return raw.replace(/\/+$/, '');
+  }
+  return 'https://paintandbubbles.co.uk';
+}
+
+// Turn a stored asset URL (which may be relative like "/uploads/x.png")
+// into a fully-qualified URL that email clients can fetch.
+function absolutizeUrl(url) {
+  if (!url) return url;
+  if (/^https?:\/\//i.test(url) || /^data:/i.test(url)) return url;
+  const base = getSiteBaseUrl();
+  return url.startsWith('/') ? `${base}${url}` : `${base}/${url}`;
+}
+
+// Returns the logo URL from site_settings (absolutized), or null if not set
 function getSiteLogo() {
   try {
     const row = db.prepare("SELECT value FROM site_settings WHERE key = 'logo_url'").get();
-    return (row && row.value) ? row.value : null;
+    const raw = (row && row.value) ? row.value : null;
+    return raw ? absolutizeUrl(raw) : null;
   } catch { return null; }
+}
+
+// Returns the footer logo URL from site_settings (absolutized); falls back to
+// the main logo so both header and footer are consistent when no dedicated
+// footer logo has been uploaded.
+function getSiteFooterLogo() {
+  try {
+    const row = db.prepare("SELECT value FROM site_settings WHERE key = 'footer_logo_url'").get();
+    const raw = (row && row.value) ? row.value : null;
+    if (raw) return absolutizeUrl(raw);
+  } catch {}
+  return getSiteLogo();
 }
 
 // Header logo block — shows logo on white pill, or falls back to decorative dots + text
@@ -40,7 +72,7 @@ function getLogoHeaderHtml() {
 
 // Footer logo block — shows logo or Dancing Script text fallback
 function getLogoFooterHtml() {
-  const logo = getSiteLogo();
+  const logo = getSiteFooterLogo();
   if (logo) {
     return `<img src="${logo}" alt="Paint &amp; Bubbles" style="height:48px;max-width:180px;object-fit:contain;margin-bottom:4px;display:inline-block;">`;
   }
@@ -109,7 +141,7 @@ function formatPrice(pence) {
 // ─── Public functions ─────────────────────────────────────────────────────────
 
 async function sendBookingConfirmation(booking) {
-  const siteUrl = process.env.SITE_URL || 'http://localhost:3000';
+  const siteUrl = getSiteBaseUrl();
   const bookingRef = `#PB${String(booking.id).padStart(5, '0')}`;
   const bookingRefPlain = `PB${String(booking.id).padStart(5, '0')}`;
   const logoHeader = getLogoHeaderHtml();
@@ -338,7 +370,7 @@ async function sendEnquiryNotification(submission, notificationEmail) {
 }
 
 async function sendGiftVoucher(voucher) {
-  const siteUrl = process.env.SITE_URL || 'http://localhost:3000';
+  const siteUrl = getSiteBaseUrl();
   const logoHeader = getLogoHeaderHtml();
   const logoFooter = getLogoFooterHtml();
   const amount = formatPrice(voucher.amount_pence);
@@ -446,7 +478,7 @@ async function sendAdminBookingNotification(booking, notificationEmail) {
 
   const bookingRef = `#PB${String(booking.id).padStart(5, '0')}`;
   const charged    = Math.max(0, booking.total_pence - (booking.discount_pence || 0) - (booking.voucher_discount_pence || 0));
-  const siteUrl    = process.env.SITE_URL || 'http://localhost:3000';
+  const siteUrl    = getSiteBaseUrl();
 
   const discountRows = [];
   if (booking.discount_pence > 0) discountRows.push(`<tr><td style="padding:6px 0;color:#9E8E96;font-size:13px;font-weight:600;width:30%">Discount code</td><td style="padding:6px 0;color:#2C2028;font-size:13px;font-weight:700;">−${formatPrice(booking.discount_pence)} (${booking.discount_code || ''})</td></tr>`);
@@ -503,7 +535,7 @@ async function sendAdminBookingNotification(booking, notificationEmail) {
 async function sendAdminVoucherNotification(voucher, notificationEmail) {
   if (!notificationEmail) return;
 
-  const siteUrl     = process.env.SITE_URL || 'http://localhost:3000';
+  const siteUrl     = getSiteBaseUrl();
   const amount      = formatPrice(voucher.amount_pence);
   const purchasedAt = new Date(voucher.created_at || new Date()).toLocaleString('en-GB', {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
@@ -611,7 +643,7 @@ async function sendEnquiryReply(submission, replyBody) {
 }
 
 async function sendReminderEmail(booking) {
-  const siteUrl = process.env.SITE_URL || 'https://paintandbubbles.co.uk';
+  const siteUrl = getSiteBaseUrl();
   const bookingRef = `#PB${String(booking.id).padStart(5, '0')}`;
   const firstName = booking.customer_name.split(' ')[0];
   const logoFooter = getLogoFooterHtml();
@@ -708,7 +740,7 @@ async function sendReviewRequest(booking, reviewUrl) {
 }
 
 async function sendWaitlistConfirmation(entry, event) {
-  const siteUrl = process.env.SITE_URL || 'https://paintandbubbles.co.uk';
+  const siteUrl = getSiteBaseUrl();
   const firstName = entry.name.split(' ')[0];
   const logoHeader = getLogoHeaderHtml();
   const logoFooter = getLogoFooterHtml();
@@ -757,7 +789,7 @@ async function sendWaitlistConfirmation(entry, event) {
 }
 
 async function sendWaitlistSpotAvailable(entry, event) {
-  const siteUrl = process.env.SITE_URL || 'https://paintandbubbles.co.uk';
+  const siteUrl = getSiteBaseUrl();
   const firstName = entry.name.split(' ')[0];
   const bookingUrl = `${siteUrl}/events/${event.id}`;
   const logoFooter = getLogoFooterHtml();
@@ -807,7 +839,7 @@ async function sendWaitlistSpotAvailable(entry, event) {
 }
 
 async function sendEnquiryConfirmation(submission) {
-  const siteUrl = process.env.SITE_URL || 'https://paintandbubbles.co.uk';
+  const siteUrl = getSiteBaseUrl();
   const firstName = submission.name.split(' ')[0];
   const receivedAt = new Date(submission.created_at || new Date()).toLocaleString('en-GB', {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
@@ -886,7 +918,7 @@ async function sendEnquiryConfirmation(submission) {
 }
 
 async function sendCancellationEmail(booking, isRefund = false) {
-  const siteUrl = process.env.SITE_URL || 'http://localhost:3000';
+  const siteUrl = getSiteBaseUrl();
   const bookingRef = `#PB${String(booking.id).padStart(5, '0')}`;
   const logoHeader = getLogoHeaderHtml();
   const logoFooter = getLogoFooterHtml();
@@ -1036,7 +1068,7 @@ async function sendPrivateQuoteToAdmin(quote, notificationEmail, labelledAnswers
   }
 
   const quoteRef = `#PQ${String(quote.id).padStart(5, '0')}`;
-  const siteUrl  = process.env.SITE_URL || 'https://paintandbubbles.co.uk';
+  const siteUrl  = getSiteBaseUrl();
   const dateStr  = quote.preferred_date
     ? new Date(quote.preferred_date + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
     : 'Not specified';
@@ -1149,7 +1181,7 @@ async function sendPrivateQuoteToAdmin(quote, notificationEmail, labelledAnswers
 
 async function sendPrivateQuoteConfirmation(quote, labelledAnswers = []) {
   const quoteRef   = `#PQ${String(quote.id).padStart(5, '0')}`;
-  const siteUrl    = process.env.SITE_URL || 'https://paintandbubbles.co.uk';
+  const siteUrl    = getSiteBaseUrl();
   const firstName  = quote.name.split(' ')[0];
   const logoFooter = getLogoFooterHtml();
   const dateStr    = quote.preferred_date
@@ -1369,7 +1401,7 @@ async function sendCorporateQuoteToAdmin(quote, notificationEmail) {
 
 async function sendCorporateQuoteConfirmation(quote) {
   const quoteRef   = `#PQ${String(quote.id).padStart(5, '0')}`;
-  const siteUrl    = process.env.SITE_URL || 'https://paintandbubbles.co.uk';
+  const siteUrl    = getSiteBaseUrl();
   const firstName  = quote.name.split(' ')[0];
   const logoHeader = getLogoHeaderHtml();
   const logoFooter = getLogoFooterHtml();
@@ -1477,7 +1509,7 @@ async function sendCorporateQuoteConfirmation(quote) {
 // Goal: recover the sale. Tone: warm, not pushy — "your seats are still here".
 
 async function sendAbandonedCartEmail(booking) {
-  const siteUrl    = process.env.SITE_URL || 'https://paintandbubbles.co.uk';
+  const siteUrl    = getSiteBaseUrl();
   const logoHeader = getLogoHeaderHtml();
   const logoFooter = getLogoFooterHtml();
   const eventUrl   = `${siteUrl}/events/${booking.event_slug || booking.event_id}`;
