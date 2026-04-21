@@ -1368,7 +1368,7 @@ h4 { font-family: var(--font-h4); }
 }
 
 .footer-logo-img {
-  height: 70px;
+  height: 110px;
   width: auto;
   object-fit: contain;
   display: block;
