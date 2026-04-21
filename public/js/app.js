@@ -81,11 +81,13 @@ async function applyDesignSettings() {
     if (aboutBodies[0] && s.about_body_1) aboutBodies[0].textContent = s.about_body_1;
     if (aboutBodies[1] && s.about_body_2) aboutBodies[1].textContent = s.about_body_2;
 
-    // Hero background image
+    // Hero background image — overlay is handled by CSS ::before
     if (s.hero_image_url) {
       const hero = document.querySelector('.hero');
       if (hero) {
-        hero.style.background = `linear-gradient(135deg, rgba(44,15,24,0.82) 0%, rgba(107,45,66,0.72) 45%, rgba(196,116,138,0.55) 100%), url(${s.hero_image_url}) center/cover no-repeat`;
+        hero.style.backgroundImage  = `url(${s.hero_image_url})`;
+        hero.style.backgroundSize   = 'cover';
+        hero.style.backgroundPosition = 'center';
       }
     }
 

@@ -88,11 +88,15 @@ h4 { font-family: var(--font-h4); }
   border-bottom: 1px solid var(--border);
 }
 
+/* Centred two-row layout: logo above, nav below */
 .header-inner {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 24px;
-  height: 88px;
+  height: auto;
+  gap: 0;
+  padding: 14px 0 0;
+  position: relative;
 }
 
 .logo {
@@ -102,6 +106,9 @@ h4 { font-family: var(--font-h4); }
   text-decoration: none;
   white-space: nowrap;
   flex-shrink: 0;
+  justify-content: center;
+  width: 100%;
+  padding-bottom: 12px;
 }
 
 .logo-img {
@@ -123,20 +130,24 @@ h4 { font-family: var(--font-h4); }
   color: var(--rose);
 }
 
+/* Nav row — full width, centred */
 .main-nav {
   display: flex;
   align-items: center;
-  gap: 4px;
-  flex: 1;
-  justify-content: flex-end;
+  gap: 2px;
+  justify-content: center;
+  width: 100%;
+  border-top: 1px solid var(--border);
+  padding: 8px 0;
+  flex-wrap: wrap;
 }
 
 .nav-btn {
   background: none;
   border: none;
-  padding: 8px 16px;
+  padding: 7px 13px;
   border-radius: 8px;
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 700;
   color: var(--text-mid);
   cursor: pointer;
@@ -147,6 +158,7 @@ h4 { font-family: var(--font-h4); }
 .nav-btn.active { background: var(--rose-50); color: var(--rose-deep); font-weight: 800; }
 
 /* ---- BURGER BUTTON ---- */
+/* Absolutely positioned top-right so it doesn't shift the centred logo */
 .nav-burger {
   display: none;
   align-items: center;
@@ -157,8 +169,10 @@ h4 { font-family: var(--font-h4); }
   padding: 8px;
   border-radius: 8px;
   color: var(--text-dark);
-  flex-shrink: 0;
   transition: background var(--transition);
+  position: absolute;
+  right: 0;
+  top: 14px;
 }
 .nav-burger:hover { background: var(--rose-50); }
 .nav-burger svg { width: 24px; height: 24px; display: block; transition: var(--transition); }
@@ -206,52 +220,65 @@ h4 { font-family: var(--font-h4); }
 
 /* ---- HERO ---- */
 .hero {
-  background: linear-gradient(135deg, var(--banner-start) 0%, var(--banner-mid) 45%, var(--banner-end) 100%);
-  padding: 180px 0 0;
+  background-color: var(--banner-start);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  min-height: 88vh;
+  padding: 0;
   position: relative;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
+/* Dark overlay over the photo */
 .hero::before {
   content: '';
   position: absolute;
-  width: 600px;
-  height: 600px;
-  background: radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 65%);
-  top: -150px;
-  right: -120px;
-  border-radius: 50%;
+  inset: 0;
+  background: rgba(18, 5, 10, 0.58);
+  z-index: 1;
   pointer-events: none;
 }
 
-.hero::after {
-  content: '';
-  position: absolute;
-  width: 350px;
-  height: 350px;
-  background: radial-gradient(circle, rgba(143,168,181,0.18) 0%, transparent 70%);
-  bottom: 0;
-  left: 3%;
-  border-radius: 50%;
-  pointer-events: none;
-}
+.hero::after { display: none; }
 
 .hero-content {
   text-align: center;
-  padding-bottom: 72px;
+  padding: 100px 0 72px;
   position: relative;
   z-index: 2;
 }
 
+/* Eyebrow: — PAINT & SIP · COVENTRY · LEAMINGTON · SOLIHULL — */
+.hero-eyebrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.65);
+  text-transform: uppercase;
+  letter-spacing: 2.5px;
+  margin-bottom: 28px;
+}
+.hero-eyebrow-line {
+  flex: 0 0 36px;
+  height: 1px;
+  background: rgba(255,255,255,0.3);
+}
 
 .hero-title {
   font-family: 'Dancing Script', cursive;
-  font-size: clamp(44px, 7vw, 78px);
+  font-size: clamp(44px, 7vw, 82px);
   font-weight: 700;
   color: white;
   line-height: 1.1;
   margin-bottom: 18px;
-  text-shadow: 0 2px 20px rgba(0,0,0,0.2);
+  text-shadow: 0 2px 24px rgba(0,0,0,0.3);
 }
 
 .hero-highlight {
@@ -268,7 +295,6 @@ h4 { font-family: var(--font-h4); }
 }
 
 /* ---- HERO ACTIONS ---- */
-
 .hero-actions {
   display: flex;
   gap: 14px;
@@ -286,6 +312,31 @@ h4 { font-family: var(--font-h4); }
   background: rgba(255,255,255,0.12);
   border-color: rgba(255,255,255,0.85);
   transform: translateY(-1px);
+}
+
+/* Trust strip at the bottom of the hero */
+.hero-trust {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 52px;
+  padding-top: 28px;
+  border-top: 1px solid rgba(255,255,255,0.15);
+}
+.hero-trust-item {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.6);
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+}
+.hero-trust-sep {
+  color: rgba(255,255,255,0.25);
+  font-size: 16px;
+  font-weight: 300;
+  line-height: 1;
 }
 
 /* ---- VIEW ALL / EVENTS CTA ---- */
@@ -435,8 +486,8 @@ h4 { font-family: var(--font-h4); }
 
 /* ---- ABOUT SECTION ---- */
 .about-section {
-  padding: 80px 0;
-  background: var(--bg-about);
+  padding: 96px 0;
+  background: var(--rose-50);
   border-bottom: 1px solid var(--border);
 }
 
@@ -1325,18 +1376,20 @@ h4 { font-family: var(--font-h4); }
 
 /* ---- RESPONSIVE ---- */
 @media (max-width: 900px) {
-  /* Show burger, hide desktop nav */
-  .nav-burger { display: flex; margin-left: auto; }
+  /* Show burger (already absolute top-right), hide desktop nav row */
+  .nav-burger { display: flex; }
+  .header-inner { padding-bottom: 14px; } /* close up the space the nav row occupied */
   .main-nav {
     display: none;
     flex-direction: column;
     align-items: stretch;
     position: fixed;
-    top: 68px;
+    top: 102px; /* logo height ~62 + top/bottom padding ~40 */
     left: 0;
     right: 0;
     background: rgba(255,255,255,0.98);
     backdrop-filter: blur(16px);
+    border-top: 1px solid var(--border);
     border-bottom: 1px solid var(--border);
     padding: 12px 20px 20px;
     gap: 4px;
@@ -1362,8 +1415,10 @@ h4 { font-family: var(--font-h4); }
 }
 
 @media (max-width: 768px) {
-  .header-inner { gap: 12px; }
-  .hero { padding: 48px 0 0; }
+  .hero-eyebrow { display: none; } /* too cramped on small screens */
+  .hero-trust-sep { display: none; }
+  .hero-trust { gap: 8px 20px; }
+  .hero { min-height: 80vh; }
   .hero-title { font-size: 44px; }
   .hero-sub   { font-size: 15px; }
 
