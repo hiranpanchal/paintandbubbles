@@ -1379,11 +1379,11 @@ h4 { font-family: var(--font-h4); }
   padding: 64px 0 0;
 }
 
-/* 4-column grid: brand (2fr) + 3 nav columns (1fr each) */
+/* 5-column grid: brand (2fr) + 4 nav columns (1fr each) */
 .footer-main {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr;
-  gap: 48px 40px;
+  grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
+  gap: 48px 32px;
   padding-bottom: 48px;
 }
 
@@ -1532,8 +1532,15 @@ h4 { font-family: var(--font-h4); }
   .booking-body   { padding: 20px; }
   .booking-header { padding: 20px; }
   .modal { border-radius: var(--radius); }
-  /* Footer: collapse to 2-column on tablet */
+  /* Footer: collapse to 2-column on tablet — brand spans both */
   .footer-main { grid-template-columns: 1fr 1fr; gap: 32px 24px; }
+  .footer-brand-col { grid-column: 1 / -1; }
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+  /* Footer: 3-column on smaller desktops (brand spans full row) */
+  .footer-main { grid-template-columns: 1fr 1fr 1fr; gap: 36px 28px; }
+  .footer-brand-col { grid-column: 1 / -1; }
 }
 
 @media (max-width: 480px) {
@@ -2647,4 +2654,188 @@ h4 { font-family: var(--font-h4); }
   cursor: pointer;
   color: var(--text-dark);
   margin: 0;
+}
+
+/* =============================================
+   LEGAL PAGES (Terms, Privacy, Refund Policy)
+   ============================================= */
+
+.legal-hero {
+  background: linear-gradient(135deg, var(--banner-start) 0%, var(--banner-mid) 45%, var(--banner-end) 100%);
+  padding: 56px 0;
+  text-align: center;
+}
+
+.legal-section {
+  padding: 60px 0 100px;
+  background: var(--bg, #FDF8F9);
+}
+
+.legal-container {
+  max-width: 820px;
+}
+
+.legal-article {
+  background: #fff;
+  border-radius: 14px;
+  padding: 48px 54px;
+  box-shadow: 0 2px 14px rgba(138, 69, 96, 0.06);
+}
+
+.legal-article h2 {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text-dark);
+  margin: 32px 0 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #F0E3E8;
+}
+.legal-article h2:first-child,
+.legal-article > :first-child + h2 { margin-top: 16px; }
+
+.legal-article h3 {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-dark);
+  margin: 24px 0 10px;
+}
+
+.legal-article p,
+.legal-article li {
+  font-size: 15.5px;
+  line-height: 1.75;
+  color: var(--text-mid, #5A4853);
+}
+
+.legal-article ul,
+.legal-article ol {
+  padding-left: 22px;
+  margin: 8px 0 14px;
+}
+
+.legal-article li {
+  margin-bottom: 6px;
+}
+
+.legal-article a {
+  color: var(--rose-deep);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.legal-article a:hover { color: var(--rose-dark); }
+
+.legal-article em { color: var(--text-light, #9E8E96); font-style: italic; }
+
+@media (max-width: 640px) {
+  .legal-article { padding: 28px 22px; border-radius: 10px; }
+  .legal-article h2 { font-size: 19px; }
+  .legal-article h3 { font-size: 16px; }
+  .legal-article p, .legal-article li { font-size: 15px; }
+}
+
+/* =============================================
+   COOKIE CONSENT BANNER
+   ============================================= */
+
+.pb-cookie-banner {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: 16px;
+  z-index: 9999;
+  background: #2C0F18;
+  color: #fff;
+  border-radius: 14px;
+  box-shadow: 0 16px 50px rgba(0,0,0,0.28), 0 2px 6px rgba(0,0,0,0.18);
+  padding: 18px 22px;
+  animation: pb-cookie-in 0.35s cubic-bezier(.2,.9,.3,1.2);
+  transform-origin: bottom center;
+}
+
+@keyframes pb-cookie-in {
+  from { opacity: 0; transform: translateY(24px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.pb-cookie-banner.pb-cookie-hide {
+  opacity: 0;
+  transform: translateY(24px) scale(0.98);
+  transition: opacity .28s, transform .28s;
+}
+
+.pb-cookie-inner {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  max-width: 1100px;
+  margin: 0 auto;
+  flex-wrap: wrap;
+}
+
+.pb-cookie-icon {
+  color: #F5C5D1;
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.pb-cookie-icon svg { width: 28px; height: 28px; }
+
+.pb-cookie-text {
+  flex: 1 1 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 14px;
+  line-height: 1.55;
+}
+.pb-cookie-text strong {
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.1px;
+}
+.pb-cookie-text span {
+  color: rgba(255,255,255,0.82);
+}
+.pb-cookie-text a {
+  color: #F5C5D1;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.pb-cookie-text a:hover { color: #fff; }
+
+.pb-cookie-actions {
+  flex-shrink: 0;
+}
+
+.pb-cookie-btn {
+  border: 0;
+  cursor: pointer;
+  padding: 12px 26px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  transition: transform .15s, box-shadow .15s, filter .15s;
+}
+
+.pb-cookie-accept {
+  background: linear-gradient(135deg, var(--rose, #C4748A), var(--rose-deep, #A85D72));
+  color: #fff;
+  box-shadow: 0 6px 18px rgba(168, 93, 114, 0.35);
+}
+.pb-cookie-accept:hover { transform: translateY(-1px); filter: brightness(1.06); }
+.pb-cookie-accept:active { transform: translateY(0); }
+
+@media (max-width: 560px) {
+  .pb-cookie-banner { padding: 16px 18px; left: 10px; right: 10px; bottom: 10px; border-radius: 12px; }
+  .pb-cookie-inner { gap: 12px; }
+  .pb-cookie-icon { width: 28px; height: 28px; }
+  .pb-cookie-icon svg { width: 22px; height: 22px; }
+  .pb-cookie-text { font-size: 13px; flex: 1 1 100%; }
+  .pb-cookie-text strong { font-size: 14px; }
+  .pb-cookie-actions { width: 100%; }
+  .pb-cookie-btn { width: 100%; padding: 12px 20px; }
 }

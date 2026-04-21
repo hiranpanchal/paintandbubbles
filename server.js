@@ -109,6 +109,9 @@ app.get('/sitemap.xml', (req, res) => {
     { url: '/gallery',         priority: '0.6', changefreq: 'weekly',  lastmod: now },
     { url: '/faq',             priority: '0.6', changefreq: 'monthly', lastmod: now },
     { url: '/contact',         priority: '0.5', changefreq: 'monthly', lastmod: now },
+    { url: '/terms',           priority: '0.3', changefreq: 'yearly',  lastmod: now },
+    { url: '/privacy',         priority: '0.3', changefreq: 'yearly',  lastmod: now },
+    { url: '/refund-policy',   priority: '0.3', changefreq: 'yearly',  lastmod: now },
   ];
   const eventPages = events.map(e => ({
     url: `/events/${e.slug || e.id}`,
@@ -463,6 +466,74 @@ app.get('/private-events', (req, res) => {
 // LEAVE A REVIEW page — linked from post-event email
 app.get('/leave-review', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'leave-review.html'));
+});
+
+// ── LEGAL PAGES (Terms, Privacy, Refund Policy) ───────────────────────────────
+// All three share public/legal.html — we tag <body data-legal-page="..."> so
+// the shared legal.js knows which settings keys to render.
+
+function serveLegalPage(res, { page, title, description, canonicalUrl, ogImage }) {
+  try {
+    const html = fs.readFileSync(path.join(__dirname, 'public', 'legal.html'), 'utf8');
+    // Tag the <body> with which legal page this is so legal.js picks the right settings
+    const tagged = html.replace(
+      /<body\s+data-legal-page="[^"]*"/,
+      `<body data-legal-page="${page}"`
+    );
+    res.setHeader('Content-Type', 'text/html');
+    res.setHeader('Cache-Control', 'no-store');
+    res.send(injectSeoMeta(tagged, {
+      title, description, canonicalUrl, ogImage, ogType: 'website',
+    }));
+  } catch (err) {
+    console.error('Legal page serve error:', err);
+    res.sendFile(path.join(__dirname, 'public', 'legal.html'));
+  }
+}
+
+app.get('/terms', (req, res) => {
+  try {
+    const s = getSeoSettings();
+    const siteUrl = getSiteUrl(req);
+    serveLegalPage(res, {
+      page: 'terms',
+      title: 'Terms & Conditions — Paint & Bubbles',
+      description: s.seo_desc_terms ||
+        'The terms that apply when you book a Paint & Bubbles creative event — public, corporate or private.',
+      canonicalUrl: `${siteUrl}/terms`,
+      ogImage: getOgImage(s, siteUrl),
+    });
+  } catch (err) { res.sendFile(path.join(__dirname, 'public', 'legal.html')); }
+});
+
+app.get('/privacy', (req, res) => {
+  try {
+    const s = getSeoSettings();
+    const siteUrl = getSiteUrl(req);
+    serveLegalPage(res, {
+      page: 'privacy',
+      title: 'Privacy Policy — Paint & Bubbles',
+      description: s.seo_desc_privacy ||
+        'How Paint & Bubbles collects, uses and protects your personal information.',
+      canonicalUrl: `${siteUrl}/privacy`,
+      ogImage: getOgImage(s, siteUrl),
+    });
+  } catch (err) { res.sendFile(path.join(__dirname, 'public', 'legal.html')); }
+});
+
+app.get('/refund-policy', (req, res) => {
+  try {
+    const s = getSeoSettings();
+    const siteUrl = getSiteUrl(req);
+    serveLegalPage(res, {
+      page: 'refund',
+      title: 'Refund Policy — Paint & Bubbles',
+      description: s.seo_desc_refund ||
+        'Our policy on cancellations, refunds and date changes for Paint & Bubbles events.',
+      canonicalUrl: `${siteUrl}/refund-policy`,
+      ogImage: getOgImage(s, siteUrl),
+    });
+  } catch (err) { res.sendFile(path.join(__dirname, 'public', 'legal.html')); }
 });
 
 // ── LOCATION PAGES ────────────────────────────────────────────────────────────

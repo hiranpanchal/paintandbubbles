@@ -645,6 +645,223 @@ db.prepare("INSERT OR IGNORE INTO site_settings (key, value) VALUES ('pe_quote_c
   }
 }
 
+// Ensure Legal pages (Terms, Privacy, Refund Policy) settings exist
+{
+  const check = db.prepare("SELECT COUNT(*) as count FROM site_settings WHERE key = 'legal_terms_content'").get();
+  if (check.count === 0) {
+    const ins = db.prepare('INSERT OR IGNORE INTO site_settings (key, value) VALUES (?, ?)');
+
+    // Hero titles/subtitles
+    ins.run('legal_terms_hero_title',    'Terms & Conditions');
+    ins.run('legal_terms_hero_sub',      'The terms that apply when you book with us');
+    ins.run('legal_privacy_hero_title',  'Privacy Policy');
+    ins.run('legal_privacy_hero_sub',    'How we collect, use and protect your information');
+    ins.run('legal_refund_hero_title',   'Refund Policy');
+    ins.run('legal_refund_hero_sub',     'Our policy on cancellations, refunds and changes');
+
+    // Terms & Conditions — Paint & Bubbles official copy (Version 1.0 — 2025)
+    ins.run('legal_terms_content', `
+<p><strong>Creative Events — Public, Corporate &amp; Private</strong><br><em>Version 1.0 — 2025</em></p>
+<p>Please read the following terms and conditions carefully. By paying a deposit or any part of your booking fee, you confirm that you have read, understood, and agreed to these terms on behalf of yourself and, where applicable, all members of your group or organisation.</p>
+
+<h2>1. About Paint &amp; Bubbles</h2>
+<p>Paint &amp; Bubbles is a creative events business providing painting and craft experiences for individuals, groups, and corporate clients. Events take place at a variety of venues including third-party venues, outdoor spaces, restaurants, bars, and private homes, as agreed at the time of booking.</p>
+
+<h2>2. Booking &amp; Deposit</h2>
+<p>A deposit of 50% of the total booking value is required to secure your date. Your booking is not confirmed and no date is held until the deposit has been received in full. All deposits are strictly non-refundable under all circumstances.</p>
+<p>The exact deposit amount and payment deadline will be confirmed on your invoice, by email, or via WhatsApp at the time of booking.</p>
+
+<h2>3. Final Balance</h2>
+<p>The remaining balance must be paid in full no later than 4 weeks before your event date, unless a different date has been confirmed on your invoice, by email, or via WhatsApp.</p>
+<p>If full payment is not received by the agreed date, Paint &amp; Bubbles reserves the right to cancel the booking. In the event of cancellation for non-payment, all payments made including the deposit remain non-refundable.</p>
+
+<h2>4. Corporate Bookings &amp; Invoicing</h2>
+<p>Corporate clients booking on behalf of a company or organisation are subject to the following additional terms:</p>
+<ul>
+  <li>A signed booking confirmation or purchase order number may be required before the event date is secured.</li>
+  <li>Payment must be made by the date stated on your invoice or as requested by Paint &amp; Bubbles by email or WhatsApp. Your date is not secured until payment has been received in full.</li>
+  <li>If payment is not made by the agreed date, Paint &amp; Bubbles reserves the right to cancel the booking. All payments made remain non-refundable.</li>
+  <li>The company placing the booking accepts liability for full payment regardless of internal procurement processes or delays.</li>
+  <li>Corporate cancellation terms are the same as those set out in Section 6.</li>
+</ul>
+
+<h2>5. Minimum Guest Numbers</h2>
+<p>All bookings are made on the basis of a minimum guest number, which will be confirmed at the time of booking. If fewer guests attend or numbers drop below this minimum for any reason, the full price for the minimum number remains due and payable.</p>
+
+<h2>6. Cancellations &amp; Date Changes</h2>
+<p>All bookings are strictly non-refundable and non-cancellable once a deposit or full payment has been made. All payments, including deposits, remain non-refundable under all circumstances.</p>
+<p>In exceptional circumstances, a one-time date change may be considered, subject to availability and entirely at the discretion of Paint &amp; Bubbles. All date change requests must be submitted in writing.</p>
+<p>Paint &amp; Bubbles reserves the right to cancel or reschedule an event in circumstances beyond our reasonable control, including but not limited to severe weather, venue unavailability, or safety concerns. In such cases, an alternative date will be offered. Where a suitable alternative cannot be agreed, a credit or partial refund may be considered at the discretion of Paint &amp; Bubbles.</p>
+
+<h2>7. Outdoor &amp; External Venue Events</h2>
+<p>Where events take place outdoors or at external venues (including restaurants, bars, corporate premises, or private outdoor spaces), the following applies:</p>
+<ul>
+  <li>Paint &amp; Bubbles accepts no responsibility for weather conditions affecting outdoor events. No refund will be issued due to weather unless the event is cancelled by Paint &amp; Bubbles.</li>
+  <li>The client or venue host is responsible for ensuring the outdoor or external space is suitable, safe, and accessible for all guests prior to the event.</li>
+  <li>Paint &amp; Bubbles will carry out a basic visual assessment on arrival but does not accept liability for hazards inherent to the venue or outdoor environment.</li>
+  <li>Where a venue cancels or becomes unavailable, Paint &amp; Bubbles will make reasonable efforts to offer an alternative date but accepts no liability for costs incurred by the client as a result.</li>
+</ul>
+
+<h2>8. Private Home Events</h2>
+<p>Where an event takes place at a client's private home or at the home of a guest:</p>
+<ul>
+  <li>The host is responsible for ensuring the space is safe, clear, and suitable for the activity prior to the instructor's arrival.</li>
+  <li>Paint &amp; Bubbles accepts no liability for damage to flooring, furniture, soft furnishings, or personal property. The use of protective coverings is strongly recommended and the responsibility of the host.</li>
+  <li>Paint &amp; Bubbles holds Public Liability Insurance. A copy of the certificate is available upon request.</li>
+</ul>
+
+<h2>9. Public Liability Insurance</h2>
+<p>Paint &amp; Bubbles holds Public Liability Insurance to the value required by our insurers. A copy of our current PLI certificate is available upon written request. Corporate clients requiring evidence of cover prior to an event should request this at the time of booking.</p>
+
+<h2>10. Third-Party Additions</h2>
+<p>Any additional elements arranged alongside your Paint &amp; Bubbles session — such as food, drinks packages, or other venue services — are organised directly with the venue or third-party provider. Paint &amp; Bubbles accepts no responsibility for any part of these arrangements. All payments for third-party additions must be made directly to the relevant provider, subject to their own terms and conditions.</p>
+
+<h2>11. Liability &amp; Damage</h2>
+<p>Paint and art materials are used throughout all Paint &amp; Bubbles events. We strongly recommend that all guests wear clothing they do not mind getting paint on. Paint &amp; Bubbles accepts no responsibility for damage to clothing, personal belongings, or property.</p>
+<p>Where events take place at third-party venues, Paint &amp; Bubbles accepts no liability for any loss, injury, or accident occurring on the premises. All guests attend at their own risk.</p>
+<p>Paint &amp; Bubbles' total liability to any client in connection with any event shall not exceed the total amount paid by that client for the event in question.</p>
+
+<h2>12. Health &amp; Safety</h2>
+<p>Paint &amp; Bubbles will conduct a basic risk assessment prior to or upon arrival at each event location. Clients and guests are expected to follow any reasonable safety instructions given by the Paint &amp; Bubbles instructor.</p>
+<p>Any known health conditions, allergies, or mobility requirements that may be relevant to the event should be disclosed to Paint &amp; Bubbles in writing prior to the event date.</p>
+
+<h2>13. Conduct</h2>
+<p>Paint &amp; Bubbles reserves the right to ask any guest to leave the event if their behaviour is deemed disruptive, threatening, or inappropriate. No refund will be issued in such circumstances.</p>
+
+<h2>14. Photography &amp; Video</h2>
+<p>Paint &amp; Bubbles may take photographs and videos during events for use on our social media, website, and marketing materials. By proceeding with payment you confirm acceptance of this unless you notify us in writing before the event.</p>
+<p>If you or any of your guests do not wish to be photographed or filmed, please inform us in writing prior to your event date and we will ensure those individuals are not included in any content we publish.</p>
+<p>For corporate events, Paint &amp; Bubbles will seek written confirmation from the event organiser regarding photography and video permissions before the event takes place.</p>
+
+<h2>15. Data Protection &amp; Marketing</h2>
+<p>Paint &amp; Bubbles collects and processes personal data (including names, email addresses, and contact details) for the purpose of administering bookings and communicating with clients. Your data will never be sold or shared with third parties except where strictly required to process your booking.</p>
+<p>Unless you have informed us in writing at the time of booking, or verbally during your event, that you do not wish to be contacted for future bookings, Paint &amp; Bubbles may contact you by email or WhatsApp regarding future events and offers. If you wish to opt out at any point, please inform us in writing and we will remove you from all future communications immediately.</p>
+<p>Paint &amp; Bubbles complies with the UK General Data Protection Regulation (UK GDPR) and the Privacy and Electronic Communications Regulations (PECR).</p>
+
+<h2>16. Governing Law</h2>
+<p>These terms and conditions are governed by the laws of England and Wales. Any disputes arising from bookings with Paint &amp; Bubbles shall be subject to the exclusive jurisdiction of the courts of England and Wales.</p>
+
+<p style="text-align:center;margin-top:32px"><strong>By proceeding with payment, you confirm that you have read, understood, and agreed to these Terms &amp; Conditions.</strong></p>
+<p style="text-align:center;font-style:italic;color:#8A4560">Paint &amp; Bubbles | paint · create · connect</p>
+`.trim());
+
+    // Privacy Policy — default body
+    ins.run('legal_privacy_content', `
+<p><em>Last updated: April 2026</em></p>
+<p>Paint &amp; Bubbles (\"we\", \"us\", \"our\") is committed to protecting your privacy. This Privacy Policy explains how we collect, use and protect your personal information when you visit our website, book an event, or get in touch with us.</p>
+
+<h2>1. Information We Collect</h2>
+<p>We collect information that you give us directly, including:</p>
+<ul>
+  <li>Your name, email address and phone number when you book an event, purchase a gift voucher, join a waiting list or submit our contact form.</li>
+  <li>Event booking details, including any notes or dietary requirements you share with us.</li>
+  <li>Records of any correspondence between you and us.</li>
+</ul>
+<p>We also automatically collect limited technical information when you visit our website, such as your IP address, browser type, and pages viewed. This is used only to keep the site secure and improve the experience.</p>
+
+<h2>2. Payment Data</h2>
+<p>Payments are processed directly by our payment provider, SumUp. We never see or store your full card number, CVV or expiry date. SumUp holds this data securely in line with PCI-DSS standards. Please see the SumUp privacy notice for details of how they process your payment information.</p>
+
+<h2>3. How We Use Your Information</h2>
+<p>We use your personal data to:</p>
+<ul>
+  <li>Process your booking and send you confirmation and reminder emails.</li>
+  <li>Contact you if there is a change or problem with your booking.</li>
+  <li>Respond to any enquiries you make through our contact form.</li>
+  <li>Issue refunds or credits where applicable.</li>
+  <li>Send you occasional marketing emails or WhatsApp broadcasts — only if you have opted in.</li>
+  <li>Keep financial records as required by UK tax law.</li>
+</ul>
+
+<h2>4. Legal Basis for Processing</h2>
+<p>We rely on the following lawful bases under UK GDPR:</p>
+<ul>
+  <li><strong>Contract</strong> — to process your booking and deliver the event.</li>
+  <li><strong>Consent</strong> — for marketing messages and non-essential cookies. You can withdraw consent at any time.</li>
+  <li><strong>Legitimate interest</strong> — to improve our website and protect against fraud.</li>
+  <li><strong>Legal obligation</strong> — to keep records required by HMRC and other regulators.</li>
+</ul>
+
+<h2>5. Sharing Your Data</h2>
+<p>We never sell your data. We only share it with trusted service providers who help us run our business, including:</p>
+<ul>
+  <li><strong>SumUp</strong> — to take card payments.</li>
+  <li><strong>Our email provider</strong> — to send booking confirmations and notifications.</li>
+  <li><strong>Our hosting provider</strong> — who stores our website and database securely within the UK/EU.</li>
+</ul>
+<p>We may also disclose your data if required by law, or to protect our rights.</p>
+
+<h2>6. Cookies</h2>
+<p>Our website uses a small number of cookies to function correctly and to remember your preferences. We do not use advertising cookies. You can control cookies at any time through your browser settings.</p>
+
+<h2>7. How Long We Keep Your Data</h2>
+<p>We keep your booking records for up to 6 years to comply with UK accounting requirements. Marketing contacts are kept until you unsubscribe. Contact form enquiries are kept for up to 2 years.</p>
+
+<h2>8. Your Rights</h2>
+<p>Under UK GDPR you have the right to:</p>
+<ul>
+  <li>Access a copy of the personal data we hold about you.</li>
+  <li>Ask us to correct inaccurate data.</li>
+  <li>Ask us to delete your data (subject to legal retention requirements).</li>
+  <li>Object to processing or ask us to restrict it.</li>
+  <li>Withdraw consent for marketing at any time.</li>
+  <li>Lodge a complaint with the Information Commissioner\\'s Office (ICO) at <a href=\"https://ico.org.uk\" target=\"_blank\" rel=\"noopener\">ico.org.uk</a>.</li>
+</ul>
+
+<h2>9. Security</h2>
+<p>We take reasonable steps to protect your personal data, including the use of secure HTTPS, encrypted database storage, and limited access controls. However, no transmission over the internet can be guaranteed 100% secure.</p>
+
+<h2>10. Contact</h2>
+<p>If you have any questions about this policy or wish to exercise your rights, please <a href=\"/contact\">get in touch</a>.</p>
+`.trim());
+
+    // Refund Policy — default body (aligned with Terms & Conditions v1.0)
+    ins.run('legal_refund_content', `
+<p><em>Last updated: April 2026</em></p>
+<p>This Refund Policy sets out how refunds are handled at Paint &amp; Bubbles. It should be read alongside our full <a href="/terms">Terms &amp; Conditions</a>, which take precedence in the event of any conflict.</p>
+
+<h2>1. All Payments Are Non-Refundable</h2>
+<p>All bookings with Paint &amp; Bubbles are strictly non-refundable and non-cancellable once a deposit or full payment has been made. This includes the 50% deposit required to secure your date and any subsequent balance payments.</p>
+<p>We pre-book venues, materials and instructors well in advance of each event, which is why payments cannot be returned once your booking is confirmed.</p>
+
+<h2>2. Date Changes</h2>
+<p>In exceptional circumstances, a one-time date change may be considered, subject to availability and entirely at the discretion of Paint &amp; Bubbles. All date change requests must be submitted in writing to <a href="/contact">our contact page</a>.</p>
+
+<h2>3. Minimum Guest Numbers</h2>
+<p>All bookings are made on the basis of a minimum guest number, which is confirmed at the time of booking. If fewer guests attend or numbers drop below the agreed minimum, the full price for the minimum number remains due and payable — no partial refunds will be issued.</p>
+
+<h2>4. Cancellations By Paint &amp; Bubbles</h2>
+<p>Paint &amp; Bubbles reserves the right to cancel or reschedule an event in circumstances beyond our reasonable control, including but not limited to severe weather, venue unavailability, or safety concerns. In such cases, an alternative date will be offered.</p>
+<p>Where a suitable alternative cannot be agreed, a credit towards a future event or a partial refund may be offered at the discretion of Paint &amp; Bubbles. Approved refunds are issued back to the original card or payment method via SumUp, our payment provider, and usually appear in your account within 5–10 business days.</p>
+
+<h2>5. Outdoor &amp; Weather</h2>
+<p>Paint &amp; Bubbles accepts no responsibility for weather conditions affecting outdoor events. No refund will be issued due to weather unless the event is cancelled by Paint &amp; Bubbles.</p>
+
+<h2>6. Gift Vouchers</h2>
+<p>Gift vouchers are non-refundable and cannot be exchanged for cash. They can be redeemed against any eligible event up to the value of the voucher, and any unused balance remains on the voucher for future use.</p>
+
+<h2>7. Conduct</h2>
+<p>Paint &amp; Bubbles reserves the right to ask any guest to leave an event if their behaviour is deemed disruptive, threatening, or inappropriate. No refund will be issued in such circumstances.</p>
+
+<h2>8. Chargebacks</h2>
+<p>If you believe there has been a genuine issue with your payment, please <a href="/contact">contact us</a> before raising a chargeback with your bank — we'll nearly always be able to resolve things quickly and directly.</p>
+
+<h2>9. Your Statutory Rights</h2>
+<p>Nothing in this Refund Policy affects your statutory rights under the Consumer Rights Act 2015 or any other applicable UK law.</p>
+
+<h2>10. Contact</h2>
+<p>Questions about a booking? Please <a href="/contact">get in touch</a> and we'll do our best to help.</p>
+`.trim());
+
+    // SEO meta descriptions for legal pages
+    ins.run('seo_desc_terms',   '');
+    ins.run('seo_desc_privacy', '');
+    ins.run('seo_desc_refund',  '');
+
+    console.log('Seeded legal pages (Terms, Privacy, Refund) defaults.');
+  }
+}
+
 // Seed sample events if empty
 const eventCount = db.prepare('SELECT COUNT(*) as count FROM events').get();
 if (eventCount.count === 0) {

@@ -3,19 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Customer Reviews | Paint &amp; Bubbles — Coventry, Leamington Spa &amp; Solihull</title>
-  <meta name="description" content="Read genuine customer reviews for Paint &amp; Bubbles events in Coventry, Leamington Spa and Solihull. See what our guests say about our paint and sip nights!">
-  <meta property="og:title" content="Customer Reviews | Paint &amp; Bubbles — Coventry &amp; the Midlands">
-  <meta property="og:description" content="Read genuine customer reviews for Paint &amp; Bubbles events in Coventry, Leamington Spa and Solihull.">
-  <meta property="og:type" content="website">
-  <link rel="canonical" href="https://paintandbubbles.co.uk/reviews">
+  <title>Paint &amp; Bubbles</title>
+  <meta name="description" content="">
   <link rel="stylesheet" href="/api/design/vars.css">
   <link rel="stylesheet" href="/css/style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
-<body>
+<body data-legal-page="">
 
 <!-- HEADER -->
 <header class="site-header">
@@ -29,7 +25,7 @@
       <button class="nav-btn" onclick="window.location.href='/'">Home</button>
       <button class="nav-btn" onclick="window.location.href='/about'">About</button>
       <button class="nav-btn" onclick="window.location.href='/events'">Events</button>
-      <button class="nav-btn active" onclick="window.location.href='/reviews'">Reviews</button>
+      <button class="nav-btn" onclick="window.location.href='/reviews'">Reviews</button>
       <button class="nav-btn" onclick="window.location.href='/faq'">FAQ</button>
       <button class="nav-btn" onclick="window.location.href='/gallery'">Gallery</button>
       <button class="nav-btn" onclick="window.location.href='/gift-vouchers'">Gift Vouchers</button>
@@ -47,61 +43,20 @@ function toggleMobileNav(){document.querySelector('.site-header').classList.togg
 document.addEventListener('click',function(e){if(!e.target.closest('.site-header'))document.querySelector('.site-header').classList.remove('nav-open');});
 </script>
 
-<!-- PAGE HERO -->
-<section class="faq-hero">
+<!-- HERO -->
+<section class="faq-hero legal-hero">
   <div class="container">
-    <h1 class="faq-hero-title">What our guests say</h1>
-    <p class="faq-hero-sub">Real reviews from real guests — unedited and straight from the heart</p>
+    <h1 class="faq-hero-title" id="legal-hero-title">&nbsp;</h1>
+    <p class="faq-hero-sub" id="legal-hero-sub">&nbsp;</p>
   </div>
 </section>
 
-<!-- REVIEWS GRID -->
-<section class="reviews-page-section">
-  <div class="container">
-    <div id="reviews-page-list" class="reviews-page-grid">
-      <div class="loading-state">
-        <div class="spinner"></div>
-        <p>Loading reviews…</p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- LEAVE A REVIEW -->
-<section class="review-form-section">
-  <div class="container">
-    <div class="review-form-wrap">
-      <div class="review-form-intro">
-        <h2 class="review-form-title">Leave a review</h2>
-        <p class="review-form-sub">Had a great time? We'd love to hear about it! Your review will be checked before it goes live.</p>
-      </div>
-      <form id="review-submit-form" class="review-form" onsubmit="submitReview(event)" novalidate>
-        <div class="form-group">
-          <label for="rf-name">Your name <span class="req">*</span></label>
-          <input type="text" id="rf-name" placeholder="e.g. Sarah M." required>
-        </div>
-        <div class="form-group">
-          <label for="rf-class">Class attended <span class="req">*</span></label>
-          <input type="text" id="rf-class" placeholder="e.g. Sip & Paint — Sunset Edition" required>
-        </div>
-        <div class="form-group">
-          <label for="rf-body">Your review <span class="req">*</span></label>
-          <textarea id="rf-body" rows="5" placeholder="Tell us about your experience…" required></textarea>
-        </div>
-        <div id="review-form-msg" class="review-form-msg hidden"></div>
-        <button type="submit" class="btn btn-primary review-form-btn" id="review-submit-btn">
-          Submit Review
-        </button>
-      </form>
-    </div>
-  </div>
-</section>
-
-<!-- SOCIAL MEDIA -->
-<section class="social-section" id="social-section" style="display:none">
-  <div class="container social-section-inner">
-    <h2 class="social-section-title" id="social-section-title">Social Media</h2>
-    <div class="social-links-row" id="social-links-row"></div>
+<!-- CONTENT -->
+<section class="legal-section">
+  <div class="container legal-container">
+    <article class="legal-article wysiwyg-content" id="legal-content">
+      <div class="loading-state"><div class="spinner"></div></div>
+    </article>
   </div>
 </section>
 
@@ -170,7 +125,7 @@ document.addEventListener('click',function(e){if(!e.target.closest('.site-header
   </div>
 </footer>
 
-<script src="/js/reviews.js"></script>
+<script src="/js/legal.js"></script>
 <script src="/js/cookie-banner.js"></script>
 </body>
 </html>

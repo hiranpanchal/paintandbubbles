@@ -3200,15 +3200,27 @@ async function deleteUser(id) {
 
 // ---- CONTENT TAB ----
 let peQuill = null;
+let legalTermsQuill   = null;
+let legalPrivacyQuill = null;
+let legalRefundQuill  = null;
 
 async function loadContentTab() {
   const el = document.getElementById('content-content');
   el.innerHTML = '<div class="loading-state"><div class="spinner"></div></div>';
   peQuill = null;
+  legalTermsQuill = null;
+  legalPrivacyQuill = null;
+  legalRefundQuill = null;
   window._peQuillInitContent = '';
+  window._legalInit = { terms: '', privacy: '', refund: '' };
   try {
     const s = await apiFetch('/api/design/settings');
     window._peQuillInitContent = s.private_events_content || '';
+    window._legalInit = {
+      terms:   s.legal_terms_content   || '',
+      privacy: s.legal_privacy_content || '',
+      refund:  s.legal_refund_content  || '',
+    };
 
     el.innerHTML = `
       <div class="design-tabs-nav content-page-tabs">
@@ -3218,6 +3230,7 @@ async function loadContentTab() {
         <button class="design-tab-btn" onclick="switchContentTab('contact')" data-tab="contact">Contact</button>
         <button class="design-tab-btn" onclick="switchContentTab('private-events')" data-tab="private-events">Private Events</button>
         <button class="design-tab-btn" onclick="switchContentTab('gallery')" data-tab="gallery">Gallery</button>
+        <button class="design-tab-btn" onclick="switchContentTab('legal')" data-tab="legal">⚖️ Legal</button>
         <button class="design-tab-btn" onclick="switchContentTab('seo')" data-tab="seo">🔍 SEO</button>
       </div>
 
@@ -3585,6 +3598,119 @@ async function loadContentTab() {
         </div>
       </div>
 
+      <!-- LEGAL PAGES -->
+      <div class="design-tab-panel hidden" id="ctab-legal">
+        <div class="design-centred-wrap">
+          <div class="design-card" style="background:#FEF3F4;border:1px solid #F5D0D6">
+            <div class="design-card-body" style="padding:16px 20px">
+              <p style="margin:0;font-size:13px;line-height:1.6;color:var(--text-dark)">
+                <strong>⚖️ Legal pages</strong> — these power <a href="/terms" target="_blank">/terms</a>, <a href="/privacy" target="_blank">/privacy</a> and <a href="/refund-policy" target="_blank">/refund-policy</a>. Pre-populated with sensible UK defaults — edit freely. Each page has its own hero title and rich-text body.
+              </p>
+            </div>
+          </div>
+
+          <!-- Legal sub-tabs -->
+          <div class="design-tabs-nav content-page-tabs" style="margin-bottom:20px">
+            <button class="design-tab-btn active" onclick="switchLegalSubTab('terms')"   data-legal-tab="terms">Terms &amp; Conditions</button>
+            <button class="design-tab-btn"        onclick="switchLegalSubTab('privacy')" data-legal-tab="privacy">Privacy Policy</button>
+            <button class="design-tab-btn"        onclick="switchLegalSubTab('refund')"  data-legal-tab="refund">Refund Policy</button>
+          </div>
+
+          <!-- TERMS -->
+          <div class="legal-subpanel" id="lsub-terms">
+            <div class="design-card">
+              <div class="design-card-header"><h3 class="design-card-title">Hero</h3></div>
+              <div class="design-card-body">
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>Hero Title</label>
+                    <input type="text" id="ds-legal_terms_hero_title" value="${escHtml(s.legal_terms_hero_title || 'Terms & Conditions')}">
+                  </div>
+                  <div class="form-group">
+                    <label>Hero Subtitle</label>
+                    <input type="text" id="ds-legal_terms_hero_sub" value="${escHtml(s.legal_terms_hero_sub || '')}">
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="design-card">
+              <div class="design-card-header">
+                <h3 class="design-card-title">Page Content</h3>
+                <span class="design-hint">Use the toolbar to format headings, lists and links</span>
+              </div>
+              <div class="design-card-body">
+                <div id="legal-terms-quill-editor" style="min-height:420px;background:#fff;border-radius:6px"></div>
+              </div>
+            </div>
+            <div class="design-save-bar">
+              <button class="btn btn-primary" onclick="saveContentPage('legal-terms')">Save Terms &amp; Conditions</button>
+            </div>
+          </div>
+
+          <!-- PRIVACY -->
+          <div class="legal-subpanel hidden" id="lsub-privacy">
+            <div class="design-card">
+              <div class="design-card-header"><h3 class="design-card-title">Hero</h3></div>
+              <div class="design-card-body">
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>Hero Title</label>
+                    <input type="text" id="ds-legal_privacy_hero_title" value="${escHtml(s.legal_privacy_hero_title || 'Privacy Policy')}">
+                  </div>
+                  <div class="form-group">
+                    <label>Hero Subtitle</label>
+                    <input type="text" id="ds-legal_privacy_hero_sub" value="${escHtml(s.legal_privacy_hero_sub || '')}">
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="design-card">
+              <div class="design-card-header">
+                <h3 class="design-card-title">Page Content</h3>
+                <span class="design-hint">Use the toolbar to format headings, lists and links</span>
+              </div>
+              <div class="design-card-body">
+                <div id="legal-privacy-quill-editor" style="min-height:420px;background:#fff;border-radius:6px"></div>
+              </div>
+            </div>
+            <div class="design-save-bar">
+              <button class="btn btn-primary" onclick="saveContentPage('legal-privacy')">Save Privacy Policy</button>
+            </div>
+          </div>
+
+          <!-- REFUND -->
+          <div class="legal-subpanel hidden" id="lsub-refund">
+            <div class="design-card">
+              <div class="design-card-header"><h3 class="design-card-title">Hero</h3></div>
+              <div class="design-card-body">
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>Hero Title</label>
+                    <input type="text" id="ds-legal_refund_hero_title" value="${escHtml(s.legal_refund_hero_title || 'Refund Policy')}">
+                  </div>
+                  <div class="form-group">
+                    <label>Hero Subtitle</label>
+                    <input type="text" id="ds-legal_refund_hero_sub" value="${escHtml(s.legal_refund_hero_sub || '')}">
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="design-card">
+              <div class="design-card-header">
+                <h3 class="design-card-title">Page Content</h3>
+                <span class="design-hint">Use the toolbar to format headings, lists and links</span>
+              </div>
+              <div class="design-card-body">
+                <div id="legal-refund-quill-editor" style="min-height:420px;background:#fff;border-radius:6px"></div>
+              </div>
+            </div>
+            <div class="design-save-bar">
+              <button class="btn btn-primary" onclick="saveContentPage('legal-refund')">Save Refund Policy</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- SEO -->
       <div class="design-tab-panel hidden" id="ctab-seo">
         <div class="design-centred-wrap">
@@ -3649,6 +3775,9 @@ async function loadContentTab() {
                 ['seo_desc_contact',        'Contact Page'],
                 ['seo_desc_gift_vouchers',  'Gift Vouchers Page'],
                 ['seo_desc_private_events', 'Private Events Page'],
+                ['seo_desc_terms',          'Terms & Conditions'],
+                ['seo_desc_privacy',        'Privacy Policy'],
+                ['seo_desc_refund',         'Refund Policy'],
               ].map(([key, label]) => `
                 <div class="form-group">
                   <label style="display:flex;justify-content:space-between"><span>${label}</span><span id="${key}-count" style="font-size:11px;color:var(--text-light)"></span></label>
@@ -3672,7 +3801,7 @@ async function loadContentTab() {
 
 function switchContentTab(tab) {
   const container = document.getElementById('content-content');
-  container.querySelectorAll('.design-tab-btn').forEach(btn => {
+  container.querySelectorAll('.design-tab-btn[data-tab]').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.tab === tab);
   });
   container.querySelectorAll('.design-tab-panel').forEach(panel => {
@@ -3680,6 +3809,50 @@ function switchContentTab(tab) {
   });
   if (tab === 'private-events') initContentPEQuill();
   if (tab === 'contact') loadContactFormFields();
+  if (tab === 'legal') initLegalQuill('terms'); // init the default visible legal sub-tab
+}
+
+function switchLegalSubTab(sub) {
+  const container = document.getElementById('ctab-legal');
+  if (!container) return;
+  container.querySelectorAll('.design-tab-btn[data-legal-tab]').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.legalTab === sub);
+  });
+  container.querySelectorAll('.legal-subpanel').forEach(panel => {
+    panel.classList.toggle('hidden', panel.id !== `lsub-${sub}`);
+  });
+  initLegalQuill(sub);
+}
+
+function initLegalQuill(which) {
+  const map = {
+    terms:   { varName: 'legalTermsQuill',   editorId: 'legal-terms-quill-editor',   initKey: 'terms'   },
+    privacy: { varName: 'legalPrivacyQuill', editorId: 'legal-privacy-quill-editor', initKey: 'privacy' },
+    refund:  { varName: 'legalRefundQuill',  editorId: 'legal-refund-quill-editor',  initKey: 'refund'  },
+  };
+  const cfg = map[which];
+  if (!cfg) return;
+  const existing = { terms: legalTermsQuill, privacy: legalPrivacyQuill, refund: legalRefundQuill }[which];
+  if (existing) return;
+  const editorEl = document.getElementById(cfg.editorId);
+  if (!editorEl) return;
+  const q = new Quill('#' + cfg.editorId, {
+    theme: 'snow',
+    modules: {
+      toolbar: [
+        [{ header: [2, 3, false] }],
+        ['bold', 'italic', 'underline'],
+        [{ list: 'ordered' }, { list: 'bullet' }],
+        ['link'],
+        ['clean']
+      ]
+    }
+  });
+  const initial = (window._legalInit && window._legalInit[cfg.initKey]) || '';
+  q.root.innerHTML = initial;
+  if (which === 'terms')   legalTermsQuill   = q;
+  if (which === 'privacy') legalPrivacyQuill = q;
+  if (which === 'refund')  legalRefundQuill  = q;
 }
 
 function initContentPEQuill() {
@@ -3708,7 +3881,10 @@ const CONTENT_PAGE_KEYS = {
   contact:          ['contact_hero_title','contact_hero_sub','contact_page_text','notification_email'],
   'private-events': ['private_events_hero_title','private_events_hero_sub','private_events_content'],
   gallery:          ['gallery_hero_title','gallery_hero_sub'],
-  seo:              ['seo_business_name','seo_business_phone','seo_business_address','seo_business_city','seo_business_postcode','seo_og_image','seo_google_verification','seo_desc_home','seo_desc_events','seo_desc_about','seo_desc_reviews','seo_desc_gallery','seo_desc_faq','seo_desc_contact','seo_desc_gift_vouchers','seo_desc_private_events'],
+  'legal-terms':    ['legal_terms_hero_title','legal_terms_hero_sub','legal_terms_content'],
+  'legal-privacy':  ['legal_privacy_hero_title','legal_privacy_hero_sub','legal_privacy_content'],
+  'legal-refund':   ['legal_refund_hero_title','legal_refund_hero_sub','legal_refund_content'],
+  seo:              ['seo_business_name','seo_business_phone','seo_business_address','seo_business_city','seo_business_postcode','seo_og_image','seo_google_verification','seo_desc_home','seo_desc_events','seo_desc_about','seo_desc_reviews','seo_desc_gallery','seo_desc_faq','seo_desc_contact','seo_desc_gift_vouchers','seo_desc_private_events','seo_desc_terms','seo_desc_privacy','seo_desc_refund'],
 };
 
 function updateSeoCharCount(key, val) {
@@ -3826,10 +4002,17 @@ async function sendTestEmail() {
 
 async function saveContentPage(page) {
   if (page === 'events') syncIncludedItems();
+  const quillForKey = {
+    private_events_content: () => peQuill,
+    legal_terms_content:    () => legalTermsQuill,
+    legal_privacy_content:  () => legalPrivacyQuill,
+    legal_refund_content:   () => legalRefundQuill,
+  };
   const data = {};
   for (const key of (CONTENT_PAGE_KEYS[page] || [])) {
-    if (key === 'private_events_content') {
-      data[key] = peQuill ? peQuill.root.innerHTML : '';
+    if (quillForKey[key]) {
+      const q = quillForKey[key]();
+      data[key] = q ? q.root.innerHTML : '';
     } else {
       const el = document.getElementById(`ds-${key}`);
       if (el) data[key] = el.value;
