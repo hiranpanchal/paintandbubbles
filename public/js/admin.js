@@ -3224,9 +3224,23 @@ async function loadContentTab() {
       privacy: s.legal_privacy_content || '',
       refund:  s.legal_refund_content  || '',
     };
-    // Stash corporate testimonials JSON for the editor (parsed lazily when the tab opens).
+    // Stash corporate content state for the repeater editors (parsed lazily
+    // when the Corporate tab opens so we only pay the work once).
     try { window._corporateTestimonialsState = JSON.parse(s.corporate_events_testimonials || '[]'); }
     catch { window._corporateTestimonialsState = []; }
+    try { window._corporateBenefitsState = JSON.parse(s.corporate_events_benefits || '[]'); }
+    catch { window._corporateBenefitsState = []; }
+    try { window._corporateFormatsState = JSON.parse(s.corporate_events_formats || '[]'); }
+    catch { window._corporateFormatsState = []; }
+    try { window._corporateFaqState = JSON.parse(s.corporate_events_faq || '[]'); }
+    catch { window._corporateFaqState = []; }
+    // Included checklist + success steps use a simple one-per-line textarea —
+    // we still keep the original JSON values around for when we first populate
+    // the textareas after render.
+    try { window._corporateIncludedInit = JSON.parse(s.corporate_events_included || '[]'); }
+    catch { window._corporateIncludedInit = []; }
+    try { window._corporateSuccessStepsInit = JSON.parse(s.corporate_events_success_steps || '[]'); }
+    catch { window._corporateSuccessStepsInit = []; }
 
     el.innerHTML = `
       <div class="design-tabs-nav content-page-tabs">
@@ -3584,45 +3598,233 @@ async function loadContentTab() {
       <!-- CORPORATE / TEAM-BUILDING PAGE -->
       <div class="design-tab-panel hidden" id="ctab-corporate-events">
         <div class="design-centred-wrap">
+
           <div class="design-card">
             <div class="design-card-header"><h3 class="design-card-title">Hero</h3></div>
             <div class="design-card-body">
+              <div class="form-group">
+                <label>Eyebrow <span style="font-size:11px;color:var(--text-light)">(small pill above the title)</span></label>
+                <input type="text" id="ds-corporate_events_hero_eyebrow" value="${escHtml(s.corporate_events_hero_eyebrow || '')}">
+              </div>
               <div class="form-row">
                 <div class="form-group">
                   <label>Hero Title</label>
-                  <input type="text" id="ds-corporate_events_hero_title" value="${escHtml(s.corporate_events_hero_title || 'Team bonding that actually lands')}">
+                  <input type="text" id="ds-corporate_events_hero_title" value="${escHtml(s.corporate_events_hero_title || '')}">
                 </div>
                 <div class="form-group">
                   <label>Hero Subtitle</label>
                   <input type="text" id="ds-corporate_events_hero_sub" value="${escHtml(s.corporate_events_hero_sub || '')}">
                 </div>
               </div>
-              <div class="form-group">
-                <label>Intro paragraph <span style="font-size:11px;color:var(--text-light)">(under "Why teams love this")</span></label>
-                <textarea id="ds-corporate_events_intro" rows="3" style="font-family:inherit;font-size:14px;padding:10px;border:1px solid var(--border);border-radius:8px;width:100%;resize:vertical">${escHtml(s.corporate_events_intro || '')}</textarea>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Primary button — label</label>
+                  <input type="text" id="ds-corporate_events_hero_cta_primary_label" value="${escHtml(s.corporate_events_hero_cta_primary_label || '')}">
+                </div>
+                <div class="form-group">
+                  <label>Primary button — link</label>
+                  <input type="text" id="ds-corporate_events_hero_cta_primary_url" value="${escHtml(s.corporate_events_hero_cta_primary_url || '')}" placeholder="#ce-form or https://…">
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Secondary button — label</label>
+                  <input type="text" id="ds-corporate_events_hero_cta_secondary_label" value="${escHtml(s.corporate_events_hero_cta_secondary_label || '')}">
+                </div>
+                <div class="form-group">
+                  <label>Secondary button — link</label>
+                  <input type="text" id="ds-corporate_events_hero_cta_secondary_url" value="${escHtml(s.corporate_events_hero_cta_secondary_url || '')}" placeholder="#ce-why or https://…">
+                </div>
               </div>
             </div>
           </div>
 
           <div class="design-card">
             <div class="design-card-header">
-              <h3 class="design-card-title">Testimonials</h3>
-              <span class="design-hint">One per block — "Trusted by teams at" row feeds from the next card</span>
+              <h3 class="design-card-title">Trust strip</h3>
+              <span class="design-hint">Four dark stats directly below the hero</span>
             </div>
             <div class="design-card-body">
-              <div id="ce-testimonials-editor"></div>
-              <button type="button" class="btn btn-ghost btn-sm" onclick="addCorporateTestimonial()" style="margin-top:12px">+ Add testimonial</button>
+              ${[1,2,3,4].map(i => `
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>Stat ${i} — headline</label>
+                    <input type="text" id="ds-corporate_events_trust_${i}_num" value="${escHtml(s[`corporate_events_trust_${i}_num`] || '')}">
+                  </div>
+                  <div class="form-group">
+                    <label>Stat ${i} — caption</label>
+                    <input type="text" id="ds-corporate_events_trust_${i}_label" value="${escHtml(s[`corporate_events_trust_${i}_label`] || '')}">
+                  </div>
+                </div>
+              `).join('')}
             </div>
           </div>
 
           <div class="design-card">
             <div class="design-card-header">
-              <h3 class="design-card-title">Trusted by (optional)</h3>
-              <span class="design-hint">Comma-separated company names — shows as a row of pills under testimonials. Leave blank to hide.</span>
+              <h3 class="design-card-title">"Why teams love this" section</h3>
+            </div>
+            <div class="design-card-body">
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Eyebrow</label>
+                  <input type="text" id="ds-corporate_events_why_eyebrow" value="${escHtml(s.corporate_events_why_eyebrow || '')}">
+                </div>
+                <div class="form-group">
+                  <label>Section title</label>
+                  <input type="text" id="ds-corporate_events_why_title" value="${escHtml(s.corporate_events_why_title || '')}">
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Intro paragraph</label>
+                <textarea id="ds-corporate_events_intro" rows="3" style="font-family:inherit;font-size:14px;padding:10px;border:1px solid var(--border);border-radius:8px;width:100%;resize:vertical">${escHtml(s.corporate_events_intro || '')}</textarea>
+              </div>
+              <label style="font-size:13px;font-weight:700;color:var(--c-ink);margin-top:8px;display:block">Benefit cards</label>
+              <div id="ce-benefits-editor" style="margin-top:8px"></div>
+              <button type="button" class="btn btn-ghost btn-sm" onclick="addCorporateBenefit()" style="margin-top:12px">+ Add benefit</button>
+            </div>
+          </div>
+
+          <div class="design-card">
+            <div class="design-card-header">
+              <h3 class="design-card-title">Formats section</h3>
+              <span class="design-hint">The four "At our studio / At your office / …" cards</span>
+            </div>
+            <div class="design-card-body">
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Eyebrow</label>
+                  <input type="text" id="ds-corporate_events_formats_eyebrow" value="${escHtml(s.corporate_events_formats_eyebrow || '')}">
+                </div>
+                <div class="form-group">
+                  <label>Section title</label>
+                  <input type="text" id="ds-corporate_events_formats_title" value="${escHtml(s.corporate_events_formats_title || '')}">
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Lead paragraph</label>
+                <textarea id="ds-corporate_events_formats_lead" rows="2" style="font-family:inherit;font-size:14px;padding:10px;border:1px solid var(--border);border-radius:8px;width:100%;resize:vertical">${escHtml(s.corporate_events_formats_lead || '')}</textarea>
+              </div>
+              <label style="font-size:13px;font-weight:700;color:var(--c-ink);margin-top:8px;display:block">Format cards</label>
+              <div id="ce-formats-editor" style="margin-top:8px"></div>
+              <button type="button" class="btn btn-ghost btn-sm" onclick="addCorporateFormat()" style="margin-top:12px">+ Add format</button>
+            </div>
+          </div>
+
+          <div class="design-card">
+            <div class="design-card-header">
+              <h3 class="design-card-title">"What's included" checklist</h3>
+            </div>
+            <div class="design-card-body">
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Eyebrow</label>
+                  <input type="text" id="ds-corporate_events_included_eyebrow" value="${escHtml(s.corporate_events_included_eyebrow || '')}">
+                </div>
+                <div class="form-group">
+                  <label>Section title</label>
+                  <input type="text" id="ds-corporate_events_included_title" value="${escHtml(s.corporate_events_included_title || '')}">
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Checklist items <span style="font-size:11px;color:var(--text-light)">(one per line)</span></label>
+                <textarea id="ds-corporate_events_included_lines" rows="8" style="font-family:inherit;font-size:14px;padding:10px;border:1px solid var(--border);border-radius:8px;width:100%;resize:vertical"></textarea>
+              </div>
+            </div>
+          </div>
+
+          <div class="design-card">
+            <div class="design-card-header">
+              <h3 class="design-card-title">Social proof section</h3>
+            </div>
+            <div class="design-card-body">
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Eyebrow</label>
+                  <input type="text" id="ds-corporate_events_proof_eyebrow" value="${escHtml(s.corporate_events_proof_eyebrow || '')}">
+                </div>
+                <div class="form-group">
+                  <label>Section title</label>
+                  <input type="text" id="ds-corporate_events_proof_title" value="${escHtml(s.corporate_events_proof_title || '')}">
+                </div>
+              </div>
+              <label style="font-size:13px;font-weight:700;color:var(--c-ink);margin-top:8px;display:block">Testimonials</label>
+              <div id="ce-testimonials-editor" style="margin-top:8px"></div>
+              <button type="button" class="btn btn-ghost btn-sm" onclick="addCorporateTestimonial()" style="margin-top:12px">+ Add testimonial</button>
+
+              <div class="form-row" style="margin-top:20px">
+                <div class="form-group">
+                  <label>"Trusted by" label</label>
+                  <input type="text" id="ds-corporate_events_trusted_label" value="${escHtml(s.corporate_events_trusted_label || '')}">
+                </div>
+                <div class="form-group">
+                  <label>Trusted-by companies <span style="font-size:11px;color:var(--text-light)">(comma-separated, leave blank to hide)</span></label>
+                  <input type="text" id="ds-corporate_events_trusted_by" value="${escHtml(s.corporate_events_trusted_by || '')}" placeholder="Acme Co, Globex, Wayne Enterprises">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="design-card">
+            <div class="design-card-header">
+              <h3 class="design-card-title">FAQ section</h3>
+            </div>
+            <div class="design-card-body">
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Eyebrow</label>
+                  <input type="text" id="ds-corporate_events_faq_eyebrow" value="${escHtml(s.corporate_events_faq_eyebrow || '')}">
+                </div>
+                <div class="form-group">
+                  <label>Section title</label>
+                  <input type="text" id="ds-corporate_events_faq_title" value="${escHtml(s.corporate_events_faq_title || '')}">
+                </div>
+              </div>
+              <label style="font-size:13px;font-weight:700;color:var(--c-ink);margin-top:8px;display:block">FAQ items</label>
+              <div id="ce-faq-editor" style="margin-top:8px"></div>
+              <button type="button" class="btn btn-ghost btn-sm" onclick="addCorporateFaq()" style="margin-top:12px">+ Add FAQ</button>
+            </div>
+          </div>
+
+          <div class="design-card">
+            <div class="design-card-header">
+              <h3 class="design-card-title">Enquiry form copy</h3>
+            </div>
+            <div class="design-card-body">
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Form title</label>
+                  <input type="text" id="ds-corporate_events_form_title" value="${escHtml(s.corporate_events_form_title || '')}">
+                </div>
+                <div class="form-group">
+                  <label>Submit button label</label>
+                  <input type="text" id="ds-corporate_events_form_submit_label" value="${escHtml(s.corporate_events_form_submit_label || '')}">
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Form subtitle</label>
+                <textarea id="ds-corporate_events_form_sub" rows="2" style="font-family:inherit;font-size:14px;padding:10px;border:1px solid var(--border);border-radius:8px;width:100%;resize:vertical">${escHtml(s.corporate_events_form_sub || '')}</textarea>
+              </div>
+            </div>
+          </div>
+
+          <div class="design-card">
+            <div class="design-card-header">
+              <h3 class="design-card-title">Success screen copy</h3>
+              <span class="design-hint">Shown after a successful enquiry submission</span>
             </div>
             <div class="design-card-body">
               <div class="form-group">
-                <input type="text" id="ds-corporate_events_trusted_by" value="${escHtml(s.corporate_events_trusted_by || '')}" placeholder="Acme Co, Globex, Wayne Enterprises">
+                <label>Title</label>
+                <input type="text" id="ds-corporate_events_success_title" value="${escHtml(s.corporate_events_success_title || '')}">
+              </div>
+              <div class="form-group">
+                <label>Subtitle</label>
+                <textarea id="ds-corporate_events_success_sub" rows="2" style="font-family:inherit;font-size:14px;padding:10px;border:1px solid var(--border);border-radius:8px;width:100%;resize:vertical">${escHtml(s.corporate_events_success_sub || '')}</textarea>
+              </div>
+              <div class="form-group">
+                <label>"What happens next" steps <span style="font-size:11px;color:var(--text-light)">(one per line)</span></label>
+                <textarea id="ds-corporate_events_success_steps_lines" rows="5" style="font-family:inherit;font-size:14px;padding:10px;border:1px solid var(--border);border-radius:8px;width:100%;resize:vertical"></textarea>
               </div>
             </div>
           </div>
@@ -3871,7 +4073,7 @@ function switchContentTab(tab) {
   if (tab === 'private-events') initContentPEQuill();
   if (tab === 'contact') loadContactFormFields();
   if (tab === 'legal') initLegalQuill('terms'); // init the default visible legal sub-tab
-  if (tab === 'corporate-events') renderCorporateTestimonialsEditor();
+  if (tab === 'corporate-events') initCorporateEditors();
 }
 
 function switchLegalSubTab(sub) {
@@ -4090,9 +4292,32 @@ async function saveContentPage(page) {
 }
 
 // ---- CORPORATE EVENTS CONTENT TAB ----
-// Renders the live-editable list of testimonials from window._corporateTestimonialsState.
-// Each row writes directly back into the state array on input, so save doesn't have to
-// re-read DOM fields. Adding / removing rows just mutates the array and re-renders.
+// Every section of the corporate landing page is editable here. Repeater
+// editors (testimonials, benefits, formats, FAQ) keep their state on window
+// so admins can add/remove/edit rows without losing focus between inputs.
+// The two "one-per-line" textareas (included checklist, success steps) are
+// simpler to edit in bulk so we don't wrap them in a repeater.
+
+function initCorporateEditors() {
+  renderCorporateTestimonialsEditor();
+  renderCorporateBenefitsEditor();
+  renderCorporateFormatsEditor();
+  renderCorporateFaqEditor();
+  // Populate the one-per-line textareas from their stashed JSON — only once,
+  // so re-opening the tab doesn't overwrite unsaved edits.
+  const incTa = document.getElementById('ds-corporate_events_included_lines');
+  if (incTa && !incTa.dataset.hydrated) {
+    incTa.value = (window._corporateIncludedInit || []).join('\n');
+    incTa.dataset.hydrated = '1';
+  }
+  const stepTa = document.getElementById('ds-corporate_events_success_steps_lines');
+  if (stepTa && !stepTa.dataset.hydrated) {
+    stepTa.value = (window._corporateSuccessStepsInit || []).join('\n');
+    stepTa.dataset.hydrated = '1';
+  }
+}
+
+// ── Testimonials ────────────────────────────────────────────────────────────
 function renderCorporateTestimonialsEditor() {
   const wrap = document.getElementById('ce-testimonials-editor');
   if (!wrap) return;
@@ -4143,8 +4368,144 @@ function removeCorporateTestimonial(index) {
   renderCorporateTestimonialsEditor();
 }
 
+// ── Benefit cards ───────────────────────────────────────────────────────────
+function renderCorporateBenefitsEditor() {
+  const wrap = document.getElementById('ce-benefits-editor');
+  if (!wrap) return;
+  const state = Array.isArray(window._corporateBenefitsState) ? window._corporateBenefitsState : [];
+  if (!state.length) {
+    wrap.innerHTML = `<p style="color:var(--text-light);font-size:0.88rem;margin:0">No benefits yet — click "+ Add benefit" to create one.</p>`;
+    return;
+  }
+  wrap.innerHTML = state.map((b, i) => `
+    <div class="form-field-item" style="flex-direction:column;align-items:stretch;gap:10px">
+      <div class="form-group">
+        <label style="font-size:11px;color:var(--text-light)">Card title</label>
+        <input type="text" value="${escHtml(b.title || '')}" oninput="updateCorporateBenefit(${i},'title',this.value)">
+      </div>
+      <div class="form-group">
+        <label style="font-size:11px;color:var(--text-light)">Body copy</label>
+        <textarea rows="3" oninput="updateCorporateBenefit(${i},'body',this.value)" style="font-family:inherit;font-size:14px;padding:10px;border:1px solid var(--border);border-radius:8px;width:100%;resize:vertical">${escHtml(b.body || '')}</textarea>
+      </div>
+      <div style="display:flex;justify-content:flex-end">
+        <button type="button" class="form-field-item-del" onclick="removeCorporateBenefit(${i})">Remove</button>
+      </div>
+    </div>
+  `).join('');
+}
+function updateCorporateBenefit(i, field, value) {
+  const s = window._corporateBenefitsState;
+  if (s && s[i]) s[i][field] = value;
+}
+function addCorporateBenefit() {
+  if (!Array.isArray(window._corporateBenefitsState)) window._corporateBenefitsState = [];
+  window._corporateBenefitsState.push({ title: '', body: '' });
+  renderCorporateBenefitsEditor();
+}
+function removeCorporateBenefit(i) {
+  const s = window._corporateBenefitsState;
+  if (!s || !s[i]) return;
+  s.splice(i, 1);
+  renderCorporateBenefitsEditor();
+}
+
+// ── Format cards ────────────────────────────────────────────────────────────
+function renderCorporateFormatsEditor() {
+  const wrap = document.getElementById('ce-formats-editor');
+  if (!wrap) return;
+  const state = Array.isArray(window._corporateFormatsState) ? window._corporateFormatsState : [];
+  if (!state.length) {
+    wrap.innerHTML = `<p style="color:var(--text-light);font-size:0.88rem;margin:0">No formats yet — click "+ Add format" to create one.</p>`;
+    return;
+  }
+  wrap.innerHTML = state.map((f, i) => `
+    <div class="form-field-item" style="flex-direction:column;align-items:stretch;gap:10px">
+      <div class="form-row" style="gap:10px">
+        <div class="form-group" style="flex:1">
+          <label style="font-size:11px;color:var(--text-light)">Title</label>
+          <input type="text" value="${escHtml(f.title || '')}" oninput="updateCorporateFormat(${i},'title',this.value)" placeholder="At our studio">
+        </div>
+        <div class="form-group" style="flex:1">
+          <label style="font-size:11px;color:var(--text-light)">Badge <span style="color:var(--text-light)">(optional, e.g. "Popular")</span></label>
+          <input type="text" value="${escHtml(f.badge || '')}" oninput="updateCorporateFormat(${i},'badge',this.value)">
+        </div>
+      </div>
+      <div class="form-group">
+        <label style="font-size:11px;color:var(--text-light)">Body copy</label>
+        <textarea rows="2" oninput="updateCorporateFormat(${i},'body',this.value)" style="font-family:inherit;font-size:14px;padding:10px;border:1px solid var(--border);border-radius:8px;width:100%;resize:vertical">${escHtml(f.body || '')}</textarea>
+      </div>
+      <div class="form-group">
+        <label style="font-size:11px;color:var(--text-light)">Capacity / caption</label>
+        <input type="text" value="${escHtml(f.capacity || '')}" oninput="updateCorporateFormat(${i},'capacity',this.value)" placeholder="Up to 60 people">
+      </div>
+      <div style="display:flex;justify-content:flex-end">
+        <button type="button" class="form-field-item-del" onclick="removeCorporateFormat(${i})">Remove</button>
+      </div>
+    </div>
+  `).join('');
+}
+function updateCorporateFormat(i, field, value) {
+  const s = window._corporateFormatsState;
+  if (s && s[i]) s[i][field] = value;
+}
+function addCorporateFormat() {
+  if (!Array.isArray(window._corporateFormatsState)) window._corporateFormatsState = [];
+  window._corporateFormatsState.push({ badge: '', title: '', body: '', capacity: '' });
+  renderCorporateFormatsEditor();
+}
+function removeCorporateFormat(i) {
+  const s = window._corporateFormatsState;
+  if (!s || !s[i]) return;
+  s.splice(i, 1);
+  renderCorporateFormatsEditor();
+}
+
+// ── FAQ items ───────────────────────────────────────────────────────────────
+function renderCorporateFaqEditor() {
+  const wrap = document.getElementById('ce-faq-editor');
+  if (!wrap) return;
+  const state = Array.isArray(window._corporateFaqState) ? window._corporateFaqState : [];
+  if (!state.length) {
+    wrap.innerHTML = `<p style="color:var(--text-light);font-size:0.88rem;margin:0">No FAQs yet — click "+ Add FAQ" to create one.</p>`;
+    return;
+  }
+  wrap.innerHTML = state.map((f, i) => `
+    <div class="form-field-item" style="flex-direction:column;align-items:stretch;gap:10px">
+      <div class="form-group">
+        <label style="font-size:11px;color:var(--text-light)">Question</label>
+        <input type="text" value="${escHtml(f.q || '')}" oninput="updateCorporateFaq(${i},'q',this.value)">
+      </div>
+      <div class="form-group">
+        <label style="font-size:11px;color:var(--text-light)">Answer</label>
+        <textarea rows="3" oninput="updateCorporateFaq(${i},'a',this.value)" style="font-family:inherit;font-size:14px;padding:10px;border:1px solid var(--border);border-radius:8px;width:100%;resize:vertical">${escHtml(f.a || '')}</textarea>
+      </div>
+      <div style="display:flex;justify-content:flex-end">
+        <button type="button" class="form-field-item-del" onclick="removeCorporateFaq(${i})">Remove</button>
+      </div>
+    </div>
+  `).join('');
+}
+function updateCorporateFaq(i, field, value) {
+  const s = window._corporateFaqState;
+  if (s && s[i]) s[i][field] = value;
+}
+function addCorporateFaq() {
+  if (!Array.isArray(window._corporateFaqState)) window._corporateFaqState = [];
+  window._corporateFaqState.push({ q: '', a: '' });
+  renderCorporateFaqEditor();
+}
+function removeCorporateFaq(i) {
+  const s = window._corporateFaqState;
+  if (!s || !s[i]) return;
+  s.splice(i, 1);
+  renderCorporateFaqEditor();
+}
+
+// ── Save ────────────────────────────────────────────────────────────────────
 async function saveCorporateEventsPage() {
-  // Keep only testimonials with at least a quote — empty rows are treated as discarded.
+  // Filter out empty rows in each repeater — we save only rows with the
+  // required "anchor" field, so admins can leave half-typed rows without
+  // polluting the live page.
   const testimonials = (window._corporateTestimonialsState || [])
     .map(t => ({
       quote:  String(t.quote  || '').trim(),
@@ -4153,19 +4514,73 @@ async function saveCorporateEventsPage() {
     }))
     .filter(t => t.quote);
 
-  const data = {
-    corporate_events_hero_title: document.getElementById('ds-corporate_events_hero_title')?.value || '',
-    corporate_events_hero_sub:   document.getElementById('ds-corporate_events_hero_sub')?.value   || '',
-    corporate_events_intro:      document.getElementById('ds-corporate_events_intro')?.value     || '',
-    corporate_events_testimonials: JSON.stringify(testimonials),
-    corporate_events_trusted_by: document.getElementById('ds-corporate_events_trusted_by')?.value || '',
-  };
+  const benefits = (window._corporateBenefitsState || [])
+    .map(b => ({ title: String(b.title || '').trim(), body: String(b.body || '').trim() }))
+    .filter(b => b.title || b.body);
+
+  const formats = (window._corporateFormatsState || [])
+    .map(f => ({
+      badge:    String(f.badge    || '').trim(),
+      title:    String(f.title    || '').trim(),
+      body:     String(f.body     || '').trim(),
+      capacity: String(f.capacity || '').trim(),
+    }))
+    .filter(f => f.title);
+
+  const faqs = (window._corporateFaqState || [])
+    .map(f => ({ q: String(f.q || '').trim(), a: String(f.a || '').trim() }))
+    .filter(f => f.q);
+
+  const linesToArray = id => (document.getElementById(id)?.value || '')
+    .split('\n').map(x => x.trim()).filter(Boolean);
+  const included = linesToArray('ds-corporate_events_included_lines');
+  const successSteps = linesToArray('ds-corporate_events_success_steps_lines');
+
+  const stringKeys = [
+    'corporate_events_hero_eyebrow',
+    'corporate_events_hero_title',
+    'corporate_events_hero_sub',
+    'corporate_events_hero_cta_primary_label',
+    'corporate_events_hero_cta_primary_url',
+    'corporate_events_hero_cta_secondary_label',
+    'corporate_events_hero_cta_secondary_url',
+    'corporate_events_trust_1_num', 'corporate_events_trust_1_label',
+    'corporate_events_trust_2_num', 'corporate_events_trust_2_label',
+    'corporate_events_trust_3_num', 'corporate_events_trust_3_label',
+    'corporate_events_trust_4_num', 'corporate_events_trust_4_label',
+    'corporate_events_why_eyebrow', 'corporate_events_why_title',
+    'corporate_events_intro',
+    'corporate_events_formats_eyebrow', 'corporate_events_formats_title', 'corporate_events_formats_lead',
+    'corporate_events_included_eyebrow', 'corporate_events_included_title',
+    'corporate_events_proof_eyebrow', 'corporate_events_proof_title',
+    'corporate_events_trusted_label', 'corporate_events_trusted_by',
+    'corporate_events_faq_eyebrow', 'corporate_events_faq_title',
+    'corporate_events_form_title', 'corporate_events_form_sub', 'corporate_events_form_submit_label',
+    'corporate_events_success_title', 'corporate_events_success_sub',
+  ];
+  const data = {};
+  for (const key of stringKeys) {
+    const el = document.getElementById(`ds-${key}`);
+    if (el) data[key] = el.value;
+  }
+  data.corporate_events_testimonials  = JSON.stringify(testimonials);
+  data.corporate_events_benefits      = JSON.stringify(benefits);
+  data.corporate_events_formats       = JSON.stringify(formats);
+  data.corporate_events_faq           = JSON.stringify(faqs);
+  data.corporate_events_included      = JSON.stringify(included);
+  data.corporate_events_success_steps = JSON.stringify(successSteps);
 
   try {
     await apiFetch('/api/design/settings', { method: 'POST', body: JSON.stringify(data) });
-    // Sync state back from sanitised list so empty rows disappear from the UI.
+    // Sync state back from sanitised lists so empty rows vanish from the UI.
     window._corporateTestimonialsState = testimonials;
+    window._corporateBenefitsState     = benefits;
+    window._corporateFormatsState      = formats;
+    window._corporateFaqState          = faqs;
     renderCorporateTestimonialsEditor();
+    renderCorporateBenefitsEditor();
+    renderCorporateFormatsEditor();
+    renderCorporateFaqEditor();
     toast('Saved!', 'success');
   } catch (err) {
     toast(err.message || 'Failed to save', 'error');

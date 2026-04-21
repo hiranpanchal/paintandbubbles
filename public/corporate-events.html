@@ -170,9 +170,10 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 24px;
+      color: #6B2D42;
       margin-bottom: 18px;
     }
+    .ce-benefit-icon svg { width: 24px; height: 24px; }
     .ce-benefit-h {
       font-size: 17px;
       font-weight: 800;
@@ -509,7 +510,14 @@
       align-items: center;
       justify-content: center;
       color: #fff;
-      font-size: 36px;
+    }
+    .ce-success-check svg { width: 38px; height: 38px; }
+    .ce-next-icon {
+      flex-shrink: 0;
+      width: 20px;
+      height: 20px;
+      color: #A85D72;
+      margin-top: 1px;
     }
     .ce-success-ref {
       background: #FFF6F8;
@@ -588,35 +596,24 @@ document.addEventListener('click',function(e){if(!e.target.closest('.site-header
 <!-- HERO -->
 <section class="ce-hero">
   <div class="container ce-hero-inner">
-    <span class="ce-hero-eyebrow">For HR &amp; People Teams</span>
+    <span class="ce-hero-eyebrow" id="ce-hero-eyebrow">For HR &amp; People Teams</span>
     <h1 class="ce-hero-title" id="ce-hero-title">Team bonding that <em>actually lands</em></h1>
     <p class="ce-hero-sub" id="ce-hero-sub">Creative workshops your whole team will enjoy — from the quiet newcomer to the loudest exec.</p>
     <div class="ce-hero-ctas">
-      <a href="#ce-form" class="btn btn-primary">Get a quote within 24h</a>
-      <a href="#ce-why" class="btn btn-ghost">Why this works for teams</a>
+      <a id="ce-cta-primary"   href="#ce-form" class="btn btn-primary">Get a quote within 24h</a>
+      <a id="ce-cta-secondary" href="#ce-why"  class="btn btn-ghost">Why this works for teams</a>
     </div>
   </div>
 </section>
 
 <!-- TRUST STRIP -->
 <section class="ce-trust">
-  <div class="container ce-trust-inner">
-    <div>
-      <p class="ce-trust-num">4–100+</p>
-      <p class="ce-trust-label">People per session</p>
-    </div>
-    <div>
-      <p class="ce-trust-num">On / off-site</p>
-      <p class="ce-trust-label">Or virtual kits</p>
-    </div>
-    <div>
-      <p class="ce-trust-num">24h</p>
-      <p class="ce-trust-label">Quote turnaround</p>
-    </div>
-    <div>
-      <p class="ce-trust-num">PO-friendly</p>
-      <p class="ce-trust-label">VAT invoice, 30-day terms</p>
-    </div>
+  <div class="container ce-trust-inner" id="ce-trust-inner">
+    <!-- 4 stat blocks injected here from site_settings (with HTML defaults as fallback) -->
+    <div><p class="ce-trust-num">4–100+</p><p class="ce-trust-label">People per session</p></div>
+    <div><p class="ce-trust-num">On / off-site</p><p class="ce-trust-label">Or virtual kits</p></div>
+    <div><p class="ce-trust-num">24h</p><p class="ce-trust-label">Quote turnaround</p></div>
+    <div><p class="ce-trust-num">PO-friendly</p><p class="ce-trust-label">VAT invoice, 30-day terms</p></div>
   </div>
 </section>
 
@@ -624,27 +621,13 @@ document.addEventListener('click',function(e){if(!e.target.closest('.site-header
 <section class="ce-section" id="ce-why">
   <div class="container">
     <div class="ce-section-head">
-      <p class="ce-eyebrow">Why teams love this</p>
-      <h2 class="ce-h2">Proper bonding — without the forced fun</h2>
-      <p class="ce-lead" id="ce-intro">We run facilitated painting and craft workshops for teams of 4 to 100+. Book once, everything is handled — materials, venue, drinks, photos, and an invoice your finance team will actually enjoy.</p>
+      <p class="ce-eyebrow" id="ce-why-eyebrow">Why teams love this</p>
+      <h2 class="ce-h2"     id="ce-why-title">Proper bonding — without the forced fun</h2>
+      <p class="ce-lead"    id="ce-intro">We run facilitated painting and craft workshops for teams of 4 to 100+. Book once, everything is handled — materials, venue, drinks, photos, and an invoice your finance team will actually enjoy.</p>
     </div>
 
-    <div class="ce-benefits">
-      <div class="ce-benefit-card">
-        <div class="ce-benefit-icon">🎨</div>
-        <h3 class="ce-benefit-h">Creativity unlocks conversation</h3>
-        <p class="ce-benefit-p">Painting gives everyone something to do with their hands — so real conversation happens naturally, not at a round-robin icebreaker. Hybrid teams bond in one evening.</p>
-      </div>
-      <div class="ce-benefit-card">
-        <div class="ce-benefit-icon">🫶</div>
-        <h3 class="ce-benefit-h">Inclusive by design</h3>
-        <p class="ce-benefit-p">No skill required. Non-competitive. Alcohol optional. Quieter team members thrive. We can adapt for dietary, accessibility and cultural needs — just ask.</p>
-      </div>
-      <div class="ce-benefit-card">
-        <div class="ce-benefit-icon">📦</div>
-        <h3 class="ce-benefit-h">Zero logistical lift for you</h3>
-        <p class="ce-benefit-p">We bring everything — canvases, paints, aprons, music, a professional facilitator. You show up. Your team leaves with their own painting and a much better group chat.</p>
-      </div>
+    <div class="ce-benefits" id="ce-benefits-grid">
+      <!-- Injected from site_settings -->
     </div>
   </div>
 </section>
@@ -653,32 +636,12 @@ document.addEventListener('click',function(e){if(!e.target.closest('.site-header
 <section class="ce-section alt">
   <div class="container">
     <div class="ce-section-head">
-      <p class="ce-eyebrow">Formats</p>
-      <h2 class="ce-h2">On-site, off-site, or entirely remote</h2>
-      <p class="ce-lead">Whatever your team shape, we'll flex around it. Hybrid teams often use our virtual kits for quarterly get-togethers.</p>
+      <p class="ce-eyebrow" id="ce-formats-eyebrow">Formats</p>
+      <h2 class="ce-h2"     id="ce-formats-title">On-site, off-site, or entirely remote</h2>
+      <p class="ce-lead"    id="ce-formats-lead">Whatever your team shape, we'll flex around it. Hybrid teams often use our virtual kits for quarterly get-togethers.</p>
     </div>
-    <div class="ce-formats">
-      <div class="ce-format-card">
-        <span class="ce-format-badge">Popular</span>
-        <h3 class="ce-format-h">At our studio</h3>
-        <p class="ce-format-p">Head to Coventry, Leamington Spa or Solihull. We handle the vibe — you handle getting everyone there.</p>
-        <p class="ce-format-cap">Up to 30 people</p>
-      </div>
-      <div class="ce-format-card">
-        <h3 class="ce-format-h">At your office</h3>
-        <p class="ce-format-p">We come to you with everything. Ideal for Friday afternoons, onboarding weeks or all-hands wrap-ups.</p>
-        <p class="ce-format-cap">Up to 60 people</p>
-      </div>
-      <div class="ce-format-card">
-        <h3 class="ce-format-h">Off-site away day</h3>
-        <p class="ce-format-p">Tie our session into a broader away day. We'll recommend venues across the Midlands and liaise directly.</p>
-        <p class="ce-format-cap">Up to 100+ people</p>
-      </div>
-      <div class="ce-format-card">
-        <h3 class="ce-format-h">Virtual kits</h3>
-        <p class="ce-format-p">Canvas + paints posted to each team member (including remote hires overseas). Live facilitator on Zoom.</p>
-        <p class="ce-format-cap">No upper limit</p>
-      </div>
+    <div class="ce-formats" id="ce-formats-grid">
+      <!-- Injected from site_settings -->
     </div>
   </div>
 </section>
@@ -687,19 +650,12 @@ document.addEventListener('click',function(e){if(!e.target.closest('.site-header
 <section class="ce-section">
   <div class="container">
     <div class="ce-section-head">
-      <p class="ce-eyebrow">What's included</p>
-      <h2 class="ce-h2">One price, everything handled</h2>
+      <p class="ce-eyebrow" id="ce-included-eyebrow">What's included</p>
+      <h2 class="ce-h2"     id="ce-included-title">One price, everything handled</h2>
     </div>
     <div class="ce-included-wrap">
-      <div class="ce-included-grid">
-        <div class="ce-inc-item"><span class="ce-inc-check">✓</span>All materials — canvases, paints, brushes, aprons</div>
-        <div class="ce-inc-item"><span class="ce-inc-check">✓</span>Professional artist to facilitate</div>
-        <div class="ce-inc-item"><span class="ce-inc-check">✓</span>Soft drinks included — prosecco optional</div>
-        <div class="ce-inc-item"><span class="ce-inc-check">✓</span>Themed music playlist</div>
-        <div class="ce-inc-item"><span class="ce-inc-check">✓</span>Photos from the session on request</div>
-        <div class="ce-inc-item"><span class="ce-inc-check">✓</span>Dietary &amp; accessibility adjustments</div>
-        <div class="ce-inc-item"><span class="ce-inc-check">✓</span>Clean VAT invoice with PO number</div>
-        <div class="ce-inc-item"><span class="ce-inc-check">✓</span>Flexible cancellation up to 14 days</div>
+      <div class="ce-included-grid" id="ce-included-grid">
+        <!-- Injected from site_settings -->
       </div>
     </div>
   </div>
@@ -709,8 +665,8 @@ document.addEventListener('click',function(e){if(!e.target.closest('.site-header
 <section class="ce-section alt">
   <div class="container">
     <div class="ce-section-head">
-      <p class="ce-eyebrow">Social proof</p>
-      <h2 class="ce-h2">HR teams keep coming back</h2>
+      <p class="ce-eyebrow" id="ce-proof-eyebrow">Social proof</p>
+      <h2 class="ce-h2"     id="ce-proof-title">HR teams keep coming back</h2>
     </div>
 
     <div class="ce-testimonials" id="ce-testimonials-grid">
@@ -719,7 +675,7 @@ document.addEventListener('click',function(e){if(!e.target.closest('.site-header
 
     <!-- Trusted-by row: hidden if empty, populated from site_settings -->
     <div class="ce-trusted hidden" id="ce-trusted">
-      <p class="ce-trusted-label">Trusted by teams at</p>
+      <p class="ce-trusted-label" id="ce-trusted-label">Trusted by teams at</p>
       <div class="ce-trusted-list" id="ce-trusted-list"></div>
     </div>
   </div>
@@ -729,39 +685,12 @@ document.addEventListener('click',function(e){if(!e.target.closest('.site-header
 <section class="ce-section">
   <div class="container">
     <div class="ce-section-head">
-      <p class="ce-eyebrow">HR-friendly answers</p>
-      <h2 class="ce-h2">The questions we get most often</h2>
+      <p class="ce-eyebrow" id="ce-faq-eyebrow">HR-friendly answers</p>
+      <h2 class="ce-h2"     id="ce-faq-title">The questions we get most often</h2>
     </div>
 
-    <div class="ce-faq-wrap">
-      <details class="ce-faq-item">
-        <summary class="ce-faq-q">Can you accommodate dietary requirements and allergies?</summary>
-        <div class="ce-faq-a">Yes — always. Tell us about any allergies, dietary requirements or dry/no-alcohol preferences in the enquiry form and we'll adjust. Our drinks packages include non-alcoholic options as standard.</div>
-      </details>
-      <details class="ce-faq-item">
-        <summary class="ce-faq-q">Do you invoice with a PO and offer 30-day terms?</summary>
-        <div class="ce-faq-a">Yes. We invoice your finance team directly with a clean VAT invoice quoting your PO number. Standard terms are net-30. We're VAT-registered.</div>
-      </details>
-      <details class="ce-faq-item">
-        <summary class="ce-faq-q">What if some of our team genuinely can't paint?</summary>
-        <div class="ce-faq-a">Nobody can. That's the point. Our facilitators walk everyone through, step by step, and the atmosphere is firmly non-competitive. The "less artistic" people often end up having the most fun.</div>
-      </details>
-      <details class="ce-faq-item">
-        <summary class="ce-faq-q">Is the venue accessible?</summary>
-        <div class="ce-faq-a">Our Coventry studio is step-free. For off-site events we'll always check accessibility upfront — just flag any specific requirements (wheelchair access, step-free route, quiet space) and we'll build it into the plan.</div>
-      </details>
-      <details class="ce-faq-item">
-        <summary class="ce-faq-q">What's your cancellation policy for teams?</summary>
-        <div class="ce-faq-a">Full refund if cancelled 14+ days before. Partial refund (50%) between 7 and 14 days. Within 7 days we can reschedule free of charge up to once — after that, the full fee applies. Everything is in writing before you commit.</div>
-      </details>
-      <details class="ce-faq-item">
-        <summary class="ce-faq-q">Can you run something for a hybrid team split across offices?</summary>
-        <div class="ce-faq-a">Absolutely. We've done this plenty of times — a live in-person session in one office, and our facilitator on Zoom for the remote folks (with kits posted to their homes beforehand). It genuinely works.</div>
-      </details>
-      <details class="ce-faq-item">
-        <summary class="ce-faq-q">How far in advance should we book?</summary>
-        <div class="ce-faq-a">2–4 weeks ahead is ideal so we can lock in your preferred date. For Christmas-party season (Nov–Dec) get in touch 6–8 weeks early — dates disappear quickly.</div>
-      </details>
+    <div class="ce-faq-wrap" id="ce-faq-wrap">
+      <!-- Injected from site_settings -->
     </div>
   </div>
 </section>
@@ -771,8 +700,8 @@ document.addEventListener('click',function(e){if(!e.target.closest('.site-header
   <div class="container">
 
     <div class="ce-form-card" id="ce-form-card">
-      <h2 class="ce-form-title">Get a quote — no commitment</h2>
-      <p class="ce-form-sub">Fill in what you can. We'll come back within 24h with a tailored proposal.</p>
+      <h2 class="ce-form-title" id="ce-form-title">Get a quote — no commitment</h2>
+      <p class="ce-form-sub" id="ce-form-sub">Fill in what you can. We'll come back within 24h with a tailored proposal.</p>
 
       <div class="ce-form-row">
         <div class="ce-group">
@@ -875,15 +804,15 @@ document.addEventListener('click',function(e){if(!e.target.closest('.site-header
 
     <!-- Success screen -->
     <div class="ce-success hidden" id="ce-success">
-      <div class="ce-success-check">✓</div>
+      <div class="ce-success-check">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
       <div class="ce-success-ref" id="ce-success-ref"></div>
-      <h2 class="ce-success-title">Enquiry received — thank you!</h2>
-      <p class="ce-success-sub">We'll put together a tailored proposal and get back to you within 24 hours.</p>
+      <h2 class="ce-success-title" id="ce-success-title">Enquiry received — thank you!</h2>
+      <p class="ce-success-sub" id="ce-success-sub">We'll put together a tailored proposal and get back to you within 24 hours.</p>
 
-      <div class="ce-success-next">
-        <div class="ce-next-item">📨&nbsp; Confirmation email on its way with your enquiry summary</div>
-        <div class="ce-next-item">📞&nbsp; We may call to clarify a detail or two before pricing</div>
-        <div class="ce-next-item">📄&nbsp; You'll receive a formal quote with PO/VAT breakdown</div>
+      <div class="ce-success-next" id="ce-success-next">
+        <!-- Injected from site_settings -->
       </div>
 
       <a href="/events" class="btn btn-ghost">Browse our public events</a>

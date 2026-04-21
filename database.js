@@ -397,6 +397,95 @@ if (settingsCount.count === 0) {
   }
 }
 
+// Extended corporate page defaults — every text block the HR page surfaces is now
+// editable via the admin Content tab. We seed sensible defaults only if the keys
+// don't already exist, so existing installs keep whatever content they've set.
+{
+  const ins = db.prepare('INSERT OR IGNORE INTO site_settings (key, value) VALUES (?, ?)');
+  // Hero
+  ins.run('corporate_events_hero_eyebrow', 'For HR & People Teams');
+  ins.run('corporate_events_hero_cta_primary_label', 'Get a quote within 24h');
+  ins.run('corporate_events_hero_cta_primary_url',   '#ce-form');
+  ins.run('corporate_events_hero_cta_secondary_label', 'Why this works for teams');
+  ins.run('corporate_events_hero_cta_secondary_url',   '#ce-why');
+  // Trust strip (4 stats)
+  ins.run('corporate_events_trust_1_num',   '4–100+');
+  ins.run('corporate_events_trust_1_label', 'People per session');
+  ins.run('corporate_events_trust_2_num',   'On / off-site');
+  ins.run('corporate_events_trust_2_label', 'Or virtual kits');
+  ins.run('corporate_events_trust_3_num',   '24h');
+  ins.run('corporate_events_trust_3_label', 'Quote turnaround');
+  ins.run('corporate_events_trust_4_num',   'PO-friendly');
+  ins.run('corporate_events_trust_4_label', 'VAT invoice, 30-day terms');
+  // Why section
+  ins.run('corporate_events_why_eyebrow', 'Why teams love this');
+  ins.run('corporate_events_why_title',   'Proper bonding — without the forced fun');
+  // Benefit cards (JSON array of {title, body})
+  ins.run('corporate_events_benefits', JSON.stringify([
+    { title: 'Creativity unlocks conversation', body: 'Painting gives everyone something to do with their hands — so real conversation happens naturally, not at a round-robin icebreaker. Hybrid teams bond in one evening.' },
+    { title: 'Inclusive by design',             body: 'No skill required. Non-competitive. Alcohol optional. Quieter team members thrive. We can adapt for dietary, accessibility and cultural needs — just ask.' },
+    { title: 'Zero logistical lift for you',    body: 'We bring everything — canvases, paints, aprons, music, a professional facilitator. You show up. Your team leaves with their own painting and a much better group chat.' },
+  ]));
+  // Formats section
+  ins.run('corporate_events_formats_eyebrow', 'Formats');
+  ins.run('corporate_events_formats_title',   'On-site, off-site, or entirely remote');
+  ins.run('corporate_events_formats_lead',    "Whatever your team shape, we'll flex around it. Hybrid teams often use our virtual kits for quarterly get-togethers.");
+  ins.run('corporate_events_formats', JSON.stringify([
+    { badge: 'Popular', title: 'At our studio',    body: 'Head to Coventry, Leamington Spa or Solihull. We handle the vibe — you handle getting everyone there.', capacity: 'Up to 30 people' },
+    { badge: '',        title: 'At your office',   body: 'We come to you with everything. Ideal for Friday afternoons, onboarding weeks or all-hands wrap-ups.',      capacity: 'Up to 60 people' },
+    { badge: '',        title: 'Off-site away day', body: "Tie our session into a broader away day. We'll recommend venues across the Midlands and liaise directly.", capacity: 'Up to 100+ people' },
+    { badge: '',        title: 'Virtual kits',     body: 'Canvas + paints posted to each team member (including remote hires overseas). Live facilitator on Zoom.',   capacity: 'No upper limit' },
+  ]));
+  // Included checklist
+  ins.run('corporate_events_included_eyebrow', "What's included");
+  ins.run('corporate_events_included_title',   'One price, everything handled');
+  ins.run('corporate_events_included', JSON.stringify([
+    'All materials — canvases, paints, brushes, aprons',
+    'Professional artist to facilitate',
+    'Soft drinks included — prosecco optional',
+    'Themed music playlist',
+    'Photos from the session on request',
+    'Dietary & accessibility adjustments',
+    'Clean VAT invoice with PO number',
+    'Flexible cancellation up to 14 days',
+  ]));
+  // Social proof section
+  ins.run('corporate_events_proof_eyebrow', 'Social proof');
+  ins.run('corporate_events_proof_title',   'HR teams keep coming back');
+  ins.run('corporate_events_trusted_label', 'Trusted by teams at');
+  // FAQ
+  ins.run('corporate_events_faq_eyebrow', 'HR-friendly answers');
+  ins.run('corporate_events_faq_title',   'The questions we get most often');
+  ins.run('corporate_events_faq', JSON.stringify([
+    { q: 'Can you accommodate dietary requirements and allergies?',
+      a: "Yes — always. Tell us about any allergies, dietary requirements or dry/no-alcohol preferences in the enquiry form and we'll adjust. Our drinks packages include non-alcoholic options as standard." },
+    { q: 'Do you invoice with a PO and offer 30-day terms?',
+      a: "Yes. We invoice your finance team directly with a clean VAT invoice quoting your PO number. Standard terms are net-30. We're VAT-registered." },
+    { q: "What if some of our team genuinely can't paint?",
+      a: 'Nobody can. That\'s the point. Our facilitators walk everyone through, step by step, and the atmosphere is firmly non-competitive. The "less artistic" people often end up having the most fun.' },
+    { q: 'Is the venue accessible?',
+      a: "Our Coventry studio is step-free. For off-site events we'll always check accessibility upfront — just flag any specific requirements (wheelchair access, step-free route, quiet space) and we'll build it into the plan." },
+    { q: "What's your cancellation policy for teams?",
+      a: 'Full refund if cancelled 14+ days before. Partial refund (50%) between 7 and 14 days. Within 7 days we can reschedule free of charge up to once — after that, the full fee applies. Everything is in writing before you commit.' },
+    { q: 'Can you run something for a hybrid team split across offices?',
+      a: "Absolutely. We've done this plenty of times — a live in-person session in one office, and our facilitator on Zoom for the remote folks (with kits posted to their homes beforehand). It genuinely works." },
+    { q: 'How far in advance should we book?',
+      a: '2–4 weeks ahead is ideal so we can lock in your preferred date. For Christmas-party season (Nov–Dec) get in touch 6–8 weeks early — dates disappear quickly.' },
+  ]));
+  // Quote form copy
+  ins.run('corporate_events_form_title', 'Get a quote — no commitment');
+  ins.run('corporate_events_form_sub',   "Fill in what you can. We'll come back within 24h with a tailored proposal.");
+  ins.run('corporate_events_form_submit_label', 'Send enquiry');
+  // Success screen copy
+  ins.run('corporate_events_success_title', 'Enquiry received — thank you!');
+  ins.run('corporate_events_success_sub',   "We'll put together a tailored proposal and get back to you within 24 hours.");
+  ins.run('corporate_events_success_steps', JSON.stringify([
+    'Confirmation email on its way with your enquiry summary',
+    'We may call to clarify a detail or two before pricing',
+    "You'll receive a formal quote with PO/VAT breakdown",
+  ]));
+}
+
 // Ensure gallery_images setting exists
 {
   const check = db.prepare("SELECT COUNT(*) as count FROM site_settings WHERE key = 'gallery_images'").get();
