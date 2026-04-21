@@ -2212,7 +2212,9 @@ function renderDropZone(key, currentUrl) {
 }
 
 function initDropZones() {
-  document.querySelectorAll('.drop-zone').forEach(zone => {
+  // Idempotent: safe to call from multiple tab renderers without double-wiring.
+  document.querySelectorAll('.drop-zone:not([data-dz-ready])').forEach(zone => {
+    zone.setAttribute('data-dz-ready', '1');
     zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
     zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
     zone.addEventListener('drop', e => {
@@ -3746,7 +3748,7 @@ async function loadContentTab() {
                 </div>
                 <div class="form-group">
                   <label>Default OG Image <span style="font-size:11px;color:var(--text-light)">(shown when sharing pages on social media)</span></label>
-                  <input type="text" id="ds-seo_og_image" value="${escHtml(s.seo_og_image || '')}" placeholder="/uploads/your-image.jpg">
+                  ${renderDropZone('seo_og_image', s.seo_og_image)}
                 </div>
               </div>
             </div>
@@ -3795,6 +3797,8 @@ async function loadContentTab() {
     `;
 
     // Quill init is deferred until the Private Events tab is clicked
+    // Wire up any drop zones rendered in this tab (e.g. SEO → OG image).
+    initDropZones();
   } catch {
     el.innerHTML = '<p style="padding:24px;color:red">Failed to load content settings.</p>';
   }
@@ -3885,7 +3889,8 @@ const CONTENT_PAGE_KEYS = {
   'legal-terms':    ['legal_terms_hero_title','legal_terms_hero_sub','legal_terms_content'],
   'legal-privacy':  ['legal_privacy_hero_title','legal_privacy_hero_sub','legal_privacy_content'],
   'legal-refund':   ['legal_refund_hero_title','legal_refund_hero_sub','legal_refund_content'],
-  seo:              ['seo_business_name','seo_business_phone','seo_business_address','seo_business_city','seo_business_postcode','seo_og_image','seo_google_verification','seo_desc_home','seo_desc_events','seo_desc_about','seo_desc_reviews','seo_desc_gallery','seo_desc_faq','seo_desc_contact','seo_desc_gift_vouchers','seo_desc_private_events','seo_desc_terms','seo_desc_privacy','seo_desc_refund'],
+  // seo_og_image is handled by its drop zone (auto-saves on upload), not this batch.
+  seo:              ['seo_business_name','seo_business_phone','seo_business_address','seo_business_city','seo_business_postcode','seo_google_verification','seo_desc_home','seo_desc_events','seo_desc_about','seo_desc_reviews','seo_desc_gallery','seo_desc_faq','seo_desc_contact','seo_desc_gift_vouchers','seo_desc_private_events','seo_desc_terms','seo_desc_privacy','seo_desc_refund'],
 };
 
 function updateSeoCharCount(key, val) {
