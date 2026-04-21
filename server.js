@@ -139,6 +139,8 @@ app.use('/uploads', express.static(path.join(DATA_DIR, 'uploads')));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ---- API ROUTES ----
+// Analytics is mounted BEFORE /api/admin so its more-specific path wins.
+app.use('/api/admin/analytics', require('./routes/analytics'));
 app.use('/api/admin',      require('./routes/admin'));
 app.use('/api/events',     require('./routes/events'));
 app.use('/api/bookings',   require('./routes/bookings'));

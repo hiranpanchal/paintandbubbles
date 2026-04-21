@@ -136,6 +136,12 @@ try { db.exec("ALTER TABLE reviews ADD COLUMN image_url TEXT DEFAULT ''"); } cat
 // Migrate: add group_note to bookings if not present
 try { db.exec("ALTER TABLE bookings ADD COLUMN group_note TEXT DEFAULT ''"); } catch {}
 
+// Migrate: add booking source attribution (for analytics dashboard).
+// `source`   is a coarse bucket: 'direct' | 'google' | 'facebook' | 'instagram' | 'email' | 'tiktok' | 'other'
+// `referrer` keeps the raw document.referrer hostname (or UTM source) for audit/debug.
+try { db.exec("ALTER TABLE bookings ADD COLUMN source TEXT DEFAULT 'direct'"); } catch {}
+try { db.exec("ALTER TABLE bookings ADD COLUMN referrer TEXT DEFAULT ''"); } catch {}
+
 // Migrate: add slug to events if not present
 try { db.exec("ALTER TABLE events ADD COLUMN slug TEXT"); } catch {}
 

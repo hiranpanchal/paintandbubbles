@@ -58,6 +58,10 @@
         <svg viewBox="0 0 20 20" fill="none"><rect x="3" y="3" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="11" y="3" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="3" y="11" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="11" y="11" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.5"/></svg>
         Overview
       </button>
+      <button class="sidebar-item" id="tab-analytics" onclick="switchTab('analytics')">
+        <svg viewBox="0 0 20 20" fill="none"><path d="M3 17V8M8 17V5M13 17v-6M18 17v-9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        Analytics
+      </button>
       <button class="sidebar-item" id="tab-events" onclick="switchTab('events')">
         <svg viewBox="0 0 20 20" fill="none"><rect x="3" y="4" width="14" height="14" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 8h14M7 4v2M13 4v2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
         Events
@@ -165,6 +169,24 @@
           </div>
           <div id="revenue-chart" class="chart-container"></div>
         </div>
+      </div>
+    </div>
+
+    <!-- ANALYTICS TAB -->
+    <div class="tab-content hidden" id="content-analytics">
+      <div class="analytics-toolbar">
+        <div class="analytics-range" role="tablist" aria-label="Date range">
+          <button type="button" class="range-btn" data-range="7d">7 days</button>
+          <button type="button" class="range-btn active" data-range="30d">30 days</button>
+          <button type="button" class="range-btn" data-range="90d">90 days</button>
+          <button type="button" class="range-btn" data-range="365d">1 year</button>
+          <button type="button" class="range-btn" data-range="all">All time</button>
+        </div>
+        <div class="analytics-meta" id="analytics-meta"></div>
+      </div>
+
+      <div id="analytics-body">
+        <div class="loading-state" style="padding:60px 0"><div class="spinner"></div></div>
       </div>
     </div>
 

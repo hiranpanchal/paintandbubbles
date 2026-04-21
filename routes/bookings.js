@@ -42,11 +42,20 @@ router.get('/:id', requireAdmin, (req, res) => {
 
 // POST /api/bookings — public (creates a pending booking before payment)
 router.post('/', (req, res) => {
-  const { event_id, name, email, phone, quantity, notes, group_note } = req.body;
+  const { event_id, name, email, phone, quantity, notes, group_note, source, referrer } = req.body;
 
   if (!event_id || !name || !email || !quantity) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
+
+  // Normalise + bucket the source into one of a known set. Anything we don't
+  // recognise is still stored raw in `referrer` but bucketed as 'other' for
+  // the analytics roll-up.
+  const ALLOWED_SOURCES = ['direct', 'google', 'facebook', 'instagram', 'email', 'tiktok', 'youtube', 'pinterest', 'twitter', 'referral', 'other'];
+  const src = (typeof source === 'string' && ALLOWED_SOURCES.includes(source.toLowerCase()))
+    ? source.toLowerCase()
+    : 'direct';
+  const ref = (typeof referrer === 'string') ? referrer.slice(0, 255) : '';
 
   const event = db.prepare(`
     SELECT e.*,
@@ -75,9 +84,9 @@ router.post('/', (req, res) => {
   const total_pence = event.price_pence * quantity;
 
   const result = db.prepare(`
-    INSERT INTO bookings (event_id, customer_id, quantity, total_pence, status, notes, group_note)
-    VALUES (?, ?, ?, ?, 'pending', ?, ?)
-  `).run(event_id, customer.id, quantity, total_pence, notes || null, group_note || null);
+    INSERT INTO bookings (event_id, customer_id, quantity, total_pence, status, notes, group_note, source, referrer)
+    VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?)
+  `).run(event_id, customer.id, quantity, total_pence, notes || null, group_note || null, src, ref);
 
   const booking = db.prepare('SELECT * FROM bookings WHERE id = ?').get(result.lastInsertRowid);
   res.status(201).json({ booking, customer, event });

@@ -88,7 +88,7 @@ function switchTab(tab) {
   document.getElementById(`content-${tab}`).classList.remove('hidden');
   document.getElementById(`tab-${tab}`).classList.add('active');
 
-  const titles = { overview: 'Overview', events: 'Events', bookings: 'Bookings', customers: 'Customers', payments: 'Payments', design: 'Design', faq: 'FAQ', reviews: 'Reviews', users: 'Users', content: 'Content', enquiries: 'Messages', 'private-quotes': 'Private Event Quotes', vouchers: 'Gift Vouchers', discounts: 'Discount Codes' };
+  const titles = { overview: 'Overview', analytics: 'Analytics', events: 'Events', bookings: 'Bookings', customers: 'Customers', payments: 'Payments', design: 'Design', faq: 'FAQ', reviews: 'Reviews', users: 'Users', content: 'Content', enquiries: 'Messages', 'private-quotes': 'Private Event Quotes', vouchers: 'Gift Vouchers', discounts: 'Discount Codes' };
   document.getElementById('page-title').textContent = titles[tab] || tab;
 
   // Close sidebar on mobile
@@ -98,6 +98,7 @@ function switchTab(tab) {
 
   // Load data for tab
   if (tab === 'overview') loadOverview();
+  else if (tab === 'analytics') loadAnalytics();
   else if (tab === 'events') loadAdminEvents();
   else if (tab === 'bookings') loadAdminBookings();
   else if (tab === 'customers') loadAdminCustomers();
@@ -5137,4 +5138,407 @@ async function deleteCategory(id, name, eventCount) {
   } catch (err) {
     toast(err.message || 'Failed to delete category.', 'error');
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ANALYTICS TAB
+// ─────────────────────────────────────────────────────────────────────────────
+
+let analyticsRange = '30d';
+
+// Wire up range switcher the first time the tab is opened.
+let analyticsRangeBound = false;
+function bindAnalyticsRangeButtons() {
+  if (analyticsRangeBound) return;
+  analyticsRangeBound = true;
+  document.querySelectorAll('#content-analytics .range-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      analyticsRange = btn.dataset.range;
+      document.querySelectorAll('#content-analytics .range-btn').forEach(b => b.classList.toggle('active', b === btn));
+      loadAnalytics();
+    });
+  });
+}
+
+async function loadAnalytics() {
+  bindAnalyticsRangeButtons();
+  const body = document.getElementById('analytics-body');
+  body.innerHTML = '<div class="loading-state" style="padding:60px 0"><div class="spinner"></div></div>';
+  try {
+    const data = await apiFetch(`/api/admin/analytics?range=${encodeURIComponent(analyticsRange)}`);
+    renderAnalytics(data);
+  } catch (err) {
+    if (err.status === 401) return handleUnauth();
+    body.innerHTML = `<div class="empty-state"><p>Failed to load analytics. ${escHtml(err.message || '')}</p></div>`;
+  }
+}
+
+function renderAnalytics(d) {
+  const meta = document.getElementById('analytics-meta');
+  if (meta) {
+    const gen = new Date(d.generated_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    meta.textContent = `Updated ${gen}`;
+  }
+
+  const html = [
+    renderKpiRow(d.summary),
+    renderRevenueTrendCard(d),
+    `<div class="analytics-row-2">${renderSourcesCard(d.sources)}${renderTopEventsCard(d.topEvents)}</div>`,
+    `<div class="analytics-row-2">${renderFastestFillingCard(d.fastestFilling)}${renderCategoryCard(d.categoryMix)}</div>`,
+    `<div class="analytics-row-2">${renderDowCard(d.bookingsByDow)}${renderHourCard(d.bookingsByHour)}</div>`,
+    `<div class="analytics-row-2">${renderTopCustomersCard(d.topCustomers, d.repeatCustomers)}${renderExtrasCard(d)}</div>`,
+  ].join('');
+
+  document.getElementById('analytics-body').innerHTML = html;
+}
+
+// ─── KPI row ─────────────────────────────────────────────────────────────────
+
+function renderKpiRow(s) {
+  const kpi = (label, value, deltaPct, inverse = false) => {
+    let badge = '';
+    if (deltaPct !== null && deltaPct !== undefined) {
+      const up = deltaPct >= 0;
+      // "inverse" means higher is worse (e.g. cancellation %).
+      const good = inverse ? !up : up;
+      const cls = deltaPct === 0 ? 'neutral' : (good ? 'good' : 'bad');
+      const arrow = deltaPct === 0 ? '·' : (up ? '▲' : '▼');
+      badge = `<span class="kpi-delta ${cls}">${arrow} ${Math.abs(deltaPct).toFixed(1)}%</span>`;
+    }
+    return `
+      <div class="kpi-card">
+        <div class="kpi-label">${label}</div>
+        <div class="kpi-value">${value}</div>
+        ${badge}
+      </div>`;
+  };
+
+  const dl = s.delta || {};
+  return `
+    <div class="kpi-row">
+      ${kpi('Revenue',          formatPrice(s.revenue_pence),            dl.revenue_pct)}
+      ${kpi('Bookings',         s.bookings_confirmed,                    dl.bookings_pct)}
+      ${kpi('Avg order',        formatPrice(s.avg_order_pence))}
+      ${kpi('New customers',    s.new_customers,                         dl.new_customers_pct)}
+      ${kpi('Tickets sold',     s.tickets_sold)}
+      ${kpi('Cancellation',     s.cancellation_pct.toFixed(1) + '%',     null, true)}
+    </div>`;
+}
+
+// ─── Revenue trend (SVG area chart) ──────────────────────────────────────────
+
+function renderRevenueTrendCard(d) {
+  const series = d.revenueByDay || [];
+  const chart = series.length ? renderRevenueSvg(series, d.bucketByMonth) : '<div class="empty-state"><p>No revenue in this window</p></div>';
+  return `
+    <div class="card analytics-card">
+      <div class="card-header">
+        <h3 class="card-title">Revenue trend</h3>
+        <span class="analytics-sub">${d.bucketByMonth ? 'by month' : 'by day'}</span>
+      </div>
+      <div class="analytics-trend">${chart}</div>
+    </div>`;
+}
+
+function renderRevenueSvg(series, bucketByMonth) {
+  const W = 900, H = 220, PAD_L = 48, PAD_R = 16, PAD_T = 16, PAD_B = 34;
+  const innerW = W - PAD_L - PAD_R, innerH = H - PAD_T - PAD_B;
+  const max = Math.max(1, ...series.map(s => s.revenue_pence));
+  const n = series.length;
+  const x = i => PAD_L + (n <= 1 ? innerW / 2 : (i / (n - 1)) * innerW);
+  const y = v => PAD_T + innerH - (v / max) * innerH;
+
+  const linePath = series.map((s, i) => `${i === 0 ? 'M' : 'L'} ${x(i).toFixed(1)} ${y(s.revenue_pence).toFixed(1)}`).join(' ');
+  const areaPath = `${linePath} L ${x(n - 1).toFixed(1)} ${(PAD_T + innerH).toFixed(1)} L ${x(0).toFixed(1)} ${(PAD_T + innerH).toFixed(1)} Z`;
+
+  // Y ticks — 4 gridlines
+  const ticks = [];
+  for (let k = 0; k <= 4; k++) {
+    const v = (max * k) / 4;
+    const yy = y(v);
+    ticks.push(`
+      <line x1="${PAD_L}" x2="${W - PAD_R}" y1="${yy}" y2="${yy}" stroke="#EDE0E5" stroke-width="1"/>
+      <text x="${PAD_L - 8}" y="${yy + 4}" text-anchor="end" font-size="10" fill="#9E8E96">${formatPrice(v)}</text>`);
+  }
+
+  // X labels — show up to 8 evenly spaced
+  const every = Math.max(1, Math.ceil(n / 8));
+  const xLabels = series.map((s, i) => {
+    if (i % every !== 0 && i !== n - 1) return '';
+    let label = s.bucket;
+    if (!bucketByMonth) label = label.slice(5); // MM-DD
+    return `<text x="${x(i).toFixed(1)}" y="${H - 10}" text-anchor="middle" font-size="10" fill="#9E8E96">${label}</text>`;
+  }).join('');
+
+  const dots = series.map((s, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(s.revenue_pence).toFixed(1)}" r="3" fill="#C4748A"><title>${s.bucket}: ${formatPrice(s.revenue_pence)} (${s.bookings} bookings)</title></circle>`).join('');
+
+  return `
+    <svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" class="analytics-svg">
+      <defs>
+        <linearGradient id="rev-grad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#C4748A" stop-opacity="0.45"/>
+          <stop offset="100%" stop-color="#C4748A" stop-opacity="0.04"/>
+        </linearGradient>
+      </defs>
+      ${ticks.join('')}
+      <path d="${areaPath}" fill="url(#rev-grad)"/>
+      <path d="${linePath}" fill="none" stroke="#A85D72" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+      ${dots}
+      ${xLabels}
+    </svg>`;
+}
+
+// ─── Booking sources ─────────────────────────────────────────────────────────
+
+const SOURCE_LABELS = {
+  direct: 'Direct', google: 'Google', facebook: 'Facebook', instagram: 'Instagram',
+  tiktok: 'TikTok', youtube: 'YouTube', pinterest: 'Pinterest', twitter: 'X (Twitter)',
+  email: 'Email', referral: 'Referral', other: 'Other',
+};
+const SOURCE_EMOJI = {
+  direct: '🔗', google: '🔍', facebook: '📘', instagram: '📸',
+  tiktok: '🎵', youtube: '▶️', pinterest: '📌', twitter: '🐦',
+  email: '✉️', referral: '🔀', other: '•',
+};
+
+function renderSourcesCard(sources) {
+  if (!sources || sources.length === 0) {
+    return `<div class="card analytics-card">
+      <div class="card-header"><h3 class="card-title">Booking sources</h3></div>
+      <div class="empty-state"><p>No source data yet — tracking starts on the next booking</p></div>
+    </div>`;
+  }
+  const max = Math.max(1, ...sources.map(s => s.bookings));
+  const rows = sources.map(s => {
+    const label = `${SOURCE_EMOJI[s.source] || '•'} ${SOURCE_LABELS[s.source] || s.source}`;
+    const pct = (s.bookings / max * 100).toFixed(1);
+    return `
+      <div class="bar-row">
+        <div class="bar-label">${label}</div>
+        <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
+        <div class="bar-value">${s.bookings} <span class="bar-sub">(${s.pct}%)</span></div>
+      </div>`;
+  }).join('');
+  return `
+    <div class="card analytics-card">
+      <div class="card-header">
+        <h3 class="card-title">Booking sources</h3>
+        <span class="analytics-sub">where customers came from</span>
+      </div>
+      <div class="bar-chart">${rows}</div>
+    </div>`;
+}
+
+// ─── Top events by revenue ───────────────────────────────────────────────────
+
+function renderTopEventsCard(events) {
+  if (!events || events.length === 0) {
+    return `<div class="card analytics-card">
+      <div class="card-header"><h3 class="card-title">Top events</h3></div>
+      <div class="empty-state"><p>No events in this window</p></div>
+    </div>`;
+  }
+  const rows = events.map(e => `
+    <div class="top-event-row">
+      <div class="top-event-main">
+        <div class="top-event-title">${escHtml(e.title)}</div>
+        <div class="top-event-meta">${formatDate(e.date)} · ${e.tickets} tickets · ${e.fill_pct}% full</div>
+      </div>
+      <div class="top-event-rev">${formatPrice(e.revenue_pence)}</div>
+    </div>`).join('');
+  return `
+    <div class="card analytics-card">
+      <div class="card-header">
+        <h3 class="card-title">Top events</h3>
+        <span class="analytics-sub">by revenue</span>
+      </div>
+      <div class="top-event-list">${rows}</div>
+    </div>`;
+}
+
+// ─── Fastest-filling events ──────────────────────────────────────────────────
+
+function renderFastestFillingCard(events) {
+  if (!events || events.length === 0) {
+    return `<div class="card analytics-card">
+      <div class="card-header"><h3 class="card-title">Fastest-filling events</h3></div>
+      <div class="empty-state"><p>No sold-out events in this window</p></div>
+    </div>`;
+  }
+  const fmtHours = h => {
+    if (h < 1)   return `${Math.round(h * 60)} min`;
+    if (h < 48)  return `${h.toFixed(1)} hrs`;
+    return `${(h / 24).toFixed(1)} days`;
+  };
+  const rows = events.map(e => `
+    <div class="top-event-row">
+      <div class="top-event-main">
+        <div class="top-event-title">${escHtml(e.title)}</div>
+        <div class="top-event-meta">${formatDate(e.date)} · sold out (${e.capacity} seats)</div>
+      </div>
+      <div class="top-event-rev" title="Time between first and last booking">${fmtHours(e.hours_to_fill)}</div>
+    </div>`).join('');
+  return `
+    <div class="card analytics-card">
+      <div class="card-header">
+        <h3 class="card-title">Fastest-filling events</h3>
+        <span class="analytics-sub">first booking → sold out</span>
+      </div>
+      <div class="top-event-list">${rows}</div>
+    </div>`;
+}
+
+// ─── Category mix ────────────────────────────────────────────────────────────
+
+function renderCategoryCard(cats) {
+  if (!cats || cats.length === 0) {
+    return `<div class="card analytics-card">
+      <div class="card-header"><h3 class="card-title">Category mix</h3></div>
+      <div class="empty-state"><p>No category data yet</p></div>
+    </div>`;
+  }
+  const max = Math.max(1, ...cats.map(c => c.revenue_pence));
+  const rows = cats.map(c => {
+    const pct = (c.revenue_pence / max * 100).toFixed(1);
+    return `
+      <div class="bar-row">
+        <div class="bar-label">${escHtml(c.category)}</div>
+        <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
+        <div class="bar-value">${formatPrice(c.revenue_pence)} <span class="bar-sub">(${c.bookings})</span></div>
+      </div>`;
+  }).join('');
+  return `
+    <div class="card analytics-card">
+      <div class="card-header">
+        <h3 class="card-title">Category mix</h3>
+        <span class="analytics-sub">revenue by category</span>
+      </div>
+      <div class="bar-chart">${rows}</div>
+    </div>`;
+}
+
+// ─── Day of week ─────────────────────────────────────────────────────────────
+
+function renderDowCard(dow) {
+  const max = Math.max(1, ...dow.map(d => d.bookings));
+  // Reorder Mon first for UK reading
+  const ordered = [1, 2, 3, 4, 5, 6, 0].map(i => dow[i]);
+  const bars = ordered.map(d => {
+    const h = (d.bookings / max * 100).toFixed(1);
+    return `
+      <div class="col-bar" title="${d.label}: ${d.bookings} bookings">
+        <div class="col-bar-track"><div class="col-bar-fill" style="height:${h}%"></div></div>
+        <div class="col-bar-label">${d.label.slice(0, 3)}</div>
+        <div class="col-bar-count">${d.bookings}</div>
+      </div>`;
+  }).join('');
+  return `
+    <div class="card analytics-card">
+      <div class="card-header">
+        <h3 class="card-title">Day of week</h3>
+        <span class="analytics-sub">when people book</span>
+      </div>
+      <div class="col-chart">${bars}</div>
+    </div>`;
+}
+
+// ─── Hour of day ─────────────────────────────────────────────────────────────
+
+function renderHourCard(hours) {
+  const max = Math.max(1, ...hours.map(h => h.bookings));
+  const bars = hours.map(h => {
+    const pct = (h.bookings / max * 100).toFixed(1);
+    const labelShow = (h.hour % 3 === 0);
+    const lbl = labelShow ? `${String(h.hour).padStart(2, '0')}` : '';
+    return `
+      <div class="col-bar col-bar-slim" title="${String(h.hour).padStart(2,'0')}:00 UTC · ${h.bookings} bookings">
+        <div class="col-bar-track"><div class="col-bar-fill" style="height:${pct}%"></div></div>
+        <div class="col-bar-label">${lbl}</div>
+      </div>`;
+  }).join('');
+  return `
+    <div class="card analytics-card">
+      <div class="card-header">
+        <h3 class="card-title">Hour of day</h3>
+        <span class="analytics-sub">booking time (UTC)</span>
+      </div>
+      <div class="col-chart col-chart-hours">${bars}</div>
+    </div>`;
+}
+
+// ─── Top customers ───────────────────────────────────────────────────────────
+
+function renderTopCustomersCard(customers, repeat) {
+  const totalCustomers = (repeat?.one_timers || 0) + (repeat?.repeaters || 0);
+  const repeatPct = totalCustomers > 0 ? ((repeat.repeaters / totalCustomers) * 100).toFixed(1) : '0.0';
+  if (!customers || customers.length === 0) {
+    return `<div class="card analytics-card">
+      <div class="card-header"><h3 class="card-title">Top customers</h3></div>
+      <div class="empty-state"><p>No customer data yet</p></div>
+    </div>`;
+  }
+  const rows = customers.map((c, i) => `
+    <div class="top-event-row">
+      <div class="top-event-main">
+        <div class="top-event-title">#${i + 1} ${escHtml(c.name || c.email)}</div>
+        <div class="top-event-meta">${c.bookings} booking${c.bookings === 1 ? '' : 's'} · last ${formatDate((c.last_booking || '').slice(0, 10))}</div>
+      </div>
+      <div class="top-event-rev">${formatPrice(c.total_spent_pence)}</div>
+    </div>`).join('');
+  return `
+    <div class="card analytics-card">
+      <div class="card-header">
+        <h3 class="card-title">Top customers</h3>
+        <span class="analytics-sub">${repeatPct}% repeat rate</span>
+      </div>
+      <div class="top-event-list">${rows}</div>
+    </div>`;
+}
+
+// ─── Extras panel: forecast + vouchers + waitlist ────────────────────────────
+
+function renderExtrasCard(d) {
+  const f = d.forecast || {};
+  const v = d.voucherStats || {};
+  const w = d.waitlistConversion || {};
+
+  const stats = [
+    {
+      h: 'Next 30 days',
+      body: `
+        <div class="extras-stat-big">${formatPrice(f.revenue_booked_pence || 0)}</div>
+        <div class="extras-stat-sub">of ${formatPrice(f.revenue_potential_pence || 0)} potential</div>
+        <div class="extras-progress"><div class="extras-progress-fill" style="width:${f.fill_pct || 0}%"></div></div>
+        <div class="extras-stat-foot">${f.tickets_booked || 0}/${f.capacity_total || 0} seats sold across ${f.events_count || 0} events</div>
+      `,
+    },
+    {
+      h: 'Gift vouchers',
+      body: `
+        <div class="extras-row"><span>Sold</span><span><strong>${v.sold_count || 0}</strong> — ${formatPrice(v.sold_pence || 0)}</span></div>
+        <div class="extras-row"><span>Redeemed</span><span><strong>${v.redeemed_count || 0}</strong> — ${formatPrice(v.redeemed_pence || 0)}</span></div>
+        <div class="extras-row"><span>Outstanding</span><span>${formatPrice(Math.max(0, (v.sold_pence || 0) - (v.redeemed_pence || 0)))}</span></div>
+      `,
+    },
+    {
+      h: 'Waitlist',
+      body: `
+        <div class="extras-row"><span>Signups</span><span><strong>${w.total || 0}</strong></span></div>
+        <div class="extras-row"><span>Notified of a spot</span><span>${w.notified || 0}</span></div>
+        <div class="extras-row"><span>Converted to booking</span><span><strong>${w.converted || 0}</strong> (${w.conversion_pct || 0}%)</span></div>
+      `,
+    },
+  ].map(s => `
+    <div class="extras-block">
+      <div class="extras-block-h">${s.h}</div>
+      <div class="extras-block-body">${s.body}</div>
+    </div>`).join('');
+
+  return `
+    <div class="card analytics-card">
+      <div class="card-header">
+        <h3 class="card-title">Forecast &amp; health</h3>
+      </div>
+      <div class="extras-grid">${stats}</div>
+    </div>`;
 }

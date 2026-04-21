@@ -625,9 +625,10 @@ async function proceedToPayment() {
 
   setLoadingBtn(true, 'Creating booking…');
   try {
+    const src = attributionPayload();
     const data = await apiFetch('/api/bookings', {
       method: 'POST',
-      body: JSON.stringify({ event_id: currentBookingState.event.id, name, email, phone, notes, group_note: groupNote, quantity: currentBookingState.quantity })
+      body: JSON.stringify({ event_id: currentBookingState.event.id, name, email, phone, notes, group_note: groupNote, quantity: currentBookingState.quantity, ...src })
     });
     currentBookingState.booking  = data.booking;
     currentBookingState.customer = data.customer;
@@ -638,11 +639,21 @@ async function proceedToPayment() {
   setLoadingBtn(false);
 }
 
+// Read first-touch attribution from source-tracker.js (sessionStorage).
+// Returns an empty object if PBSource isn't available so we degrade gracefully.
+function attributionPayload() {
+  try {
+    var a = window.PBSource && window.PBSource.get();
+    return a ? { source: a.source, referrer: a.referrer } : {};
+  } catch (e) { return {}; }
+}
+
 async function confirmFreeBooking() {
   setLoadingBtn(true, 'Confirming…');
   try {
     const { event, name, email, phone, notes, groupNote, quantity } = currentBookingState;
-    const data = await apiFetch('/api/bookings', { method: 'POST', body: JSON.stringify({ event_id: event.id, name, email, phone, notes, group_note: groupNote, quantity }) });
+    const src = attributionPayload();
+    const data = await apiFetch('/api/bookings', { method: 'POST', body: JSON.stringify({ event_id: event.id, name, email, phone, notes, group_note: groupNote, quantity, ...src }) });
     await apiFetch(`/api/bookings/${data.booking.id}/confirm`, { method: 'POST', body: JSON.stringify({ payment_reference: null }) });
     currentBookingState.booking = data.booking;
     closeModal('booking-modal');
@@ -657,7 +668,8 @@ async function confirmVoucherCoveredBooking() {
   setLoadingBtn(true, 'Confirming…');
   try {
     const { event, name, email, phone, notes, groupNote, quantity, voucherCode } = currentBookingState;
-    const data = await apiFetch('/api/bookings', { method: 'POST', body: JSON.stringify({ event_id: event.id, name, email, phone, notes, group_note: groupNote, quantity }) });
+    const src = attributionPayload();
+    const data = await apiFetch('/api/bookings', { method: 'POST', body: JSON.stringify({ event_id: event.id, name, email, phone, notes, group_note: groupNote, quantity, ...src }) });
     await apiFetch(`/api/bookings/${data.booking.id}/confirm`, { method: 'POST', body: JSON.stringify({ payment_reference: 'voucher:' + voucherCode }) });
     currentBookingState.booking = data.booking;
     // Redeem voucher (non-blocking)
