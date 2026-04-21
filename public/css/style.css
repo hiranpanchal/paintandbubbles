@@ -710,7 +710,7 @@ h4 { font-family: var(--font-h4); }
 }
 
 .event-card-image {
-  height: 180px;
+  aspect-ratio: 1 / 1;
   background: linear-gradient(135deg, var(--banner-mid), var(--banner-end));
   display: flex;
   align-items: center;
