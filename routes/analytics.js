@@ -407,6 +407,59 @@ router.get('/', requireAdmin, (req, res) => {
     )
   `).get();
 
+  // ─── Abandoned-cart recovery ─────────────────────────────────────────────
+  // A booking counts as "nudged" if abandoned_email_sent_at was set in the window.
+  // It counts as "recovered" if the same booking id later reached status='confirmed'.
+  // Revenue recovered = net charged (total - discount - voucher) on those bookings.
+
+  const abandonedCart = (() => {
+    const enabledRaw = db.prepare("SELECT value FROM site_settings WHERE key = 'abandoned_cart_enabled'").get();
+    const delayRaw   = db.prepare("SELECT value FROM site_settings WHERE key = 'abandoned_cart_delay_minutes'").get();
+    const enabled = !enabledRaw || String(enabledRaw.value) === '1';
+    const delay_minutes = parseInt((delayRaw && delayRaw.value) || '60', 10) || 60;
+
+    // Window gate applied to `abandoned_email_sent_at`.
+    const gate = range.since
+      ? `AND b.abandoned_email_sent_at >= '${range.since}'`
+      : '';
+
+    const stats = db.prepare(`
+      SELECT
+        COUNT(*) AS sent,
+        SUM(CASE WHEN b.status = 'confirmed' THEN 1 ELSE 0 END) AS recovered,
+        COALESCE(SUM(CASE WHEN b.status = 'confirmed'
+          THEN (b.total_pence - COALESCE(b.discount_pence,0) - COALESCE(b.voucher_discount_pence,0))
+          ELSE 0 END), 0) AS revenue_recovered_pence
+      FROM bookings b
+      WHERE b.abandoned_email_sent_at IS NOT NULL
+        ${gate}
+    `).get();
+
+    // Currently-pending bookings that are old enough to be nudged next run.
+    const pending = db.prepare(`
+      SELECT COUNT(*) AS n
+      FROM bookings b
+      JOIN events e ON b.event_id = e.id
+      WHERE b.status = 'pending'
+        AND b.abandoned_email_sent_at IS NULL
+        AND b.created_at <= datetime('now', '-' || ? || ' minutes')
+        AND b.created_at >= datetime('now', '-24 hours')
+        AND e.date >= date('now')
+    `).get(delay_minutes);
+
+    const sent = stats.sent || 0;
+    const recovered = stats.recovered || 0;
+    return {
+      enabled,
+      delay_minutes,
+      sent,
+      recovered,
+      recovery_pct: sent > 0 ? +((recovered / sent) * 100).toFixed(1) : 0,
+      revenue_recovered_pence: stats.revenue_recovered_pence || 0,
+      pending_count: pending.n || 0,
+    };
+  })();
+
   // ─── Response ────────────────────────────────────────────────────────────
 
   res.json({
@@ -431,6 +484,32 @@ router.get('/', requireAdmin, (req, res) => {
       one_timers: repeatCustomers.one_timers || 0,
       repeaters:  repeatCustomers.repeaters  || 0,
     },
+    abandonedCart,
+  });
+});
+
+// ─── Abandoned-cart toggle ───────────────────────────────────────────────────
+// Flip the `abandoned_cart_enabled` site_setting on/off. Optional body:
+//   { enabled: boolean, delay_minutes?: number }
+router.post('/abandoned-cart/settings', requireAdmin, (req, res) => {
+  const { enabled, delay_minutes } = req.body || {};
+  const upsert = db.prepare(
+    "INSERT INTO site_settings (key, value) VALUES (?, ?) " +
+    "ON CONFLICT(key) DO UPDATE SET value = excluded.value"
+  );
+  if (typeof enabled === 'boolean') {
+    upsert.run('abandoned_cart_enabled', enabled ? '1' : '0');
+  }
+  if (delay_minutes != null) {
+    const n = Math.max(15, Math.min(720, parseInt(delay_minutes, 10) || 60));
+    upsert.run('abandoned_cart_delay_minutes', String(n));
+  }
+  const enabledRow = db.prepare("SELECT value FROM site_settings WHERE key = 'abandoned_cart_enabled'").get();
+  const delayRow   = db.prepare("SELECT value FROM site_settings WHERE key = 'abandoned_cart_delay_minutes'").get();
+  res.json({
+    ok: true,
+    enabled: !enabledRow || String(enabledRow.value) === '1',
+    delay_minutes: parseInt((delayRow && delayRow.value) || '60', 10),
   });
 });
 

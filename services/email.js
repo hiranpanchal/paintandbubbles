@@ -1279,6 +1279,106 @@ function escapeHtml(str) {
     .replace(/"/g, '&quot;');
 }
 
+// ─── Abandoned-cart nudge ────────────────────────────────────────────────────
+// Sent ~1 hour after a booking goes to 'pending' without being confirmed.
+// Goal: recover the sale. Tone: warm, not pushy — "your seats are still here".
+
+async function sendAbandonedCartEmail(booking) {
+  const siteUrl    = process.env.SITE_URL || 'https://paintandbubbles.co.uk';
+  const logoHeader = getLogoHeaderHtml();
+  const logoFooter = getLogoFooterHtml();
+  const eventUrl   = `${siteUrl}/events/${booking.event_slug || booking.event_id}`;
+
+  const charged = Math.max(0, (booking.total_pence || 0) - (booking.discount_pence || 0) - (booking.voucher_discount_pence || 0));
+  const priceLine = charged > 0 ? formatPrice(charged) : 'Free';
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body style="margin:0;padding:0;background:#FDF8F9;font-family:'Nunito','Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#FDF8F9;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 8px 40px rgba(160,80,110,0.15);">
+
+        <!-- Header -->
+        <tr><td style="background:linear-gradient(135deg,#2C0F18 0%,#6B2D42 50%,#C4748A 100%);padding:40px 48px;text-align:center;">
+          ${logoHeader}
+          <p style="margin:10px 0 0;color:rgba(255,255,255,0.88);font-size:14px;font-weight:600;letter-spacing:0.3px;">Your seats are still waiting 🎨</p>
+        </td></tr>
+
+        <!-- Body -->
+        <tr><td style="padding:40px 48px;">
+          <p style="margin:0 0 6px;color:#9E8E96;font-size:14px;font-weight:600;">Hi ${escapeHtml(booking.customer_name || 'there')},</p>
+          <p style="margin:0 0 22px;color:#2C2028;font-size:18px;font-weight:800;line-height:1.4;">
+            We held your spot for <em style="font-style:italic;color:#A85D72;">${escapeHtml(booking.event_title)}</em> — did you want to finish booking?
+          </p>
+
+          <p style="margin:0 0 24px;color:#5C4F57;font-size:14px;font-weight:500;line-height:1.7;">
+            No pressure — we just noticed you didn't quite complete checkout. Your details are still saved and the seats haven't been released yet.
+            ${booking.spots_remaining && booking.spots_remaining <= 3 ? `<strong style="color:#d97706;">Only ${booking.spots_remaining} spot${booking.spots_remaining === 1 ? '' : 's'} left.</strong>` : ''}
+          </p>
+
+          <!-- Event card (compact) -->
+          <table width="100%" cellpadding="0" cellspacing="0" style="background:#FFF6F8;border:1px solid #FFCCD8;border-radius:14px;margin-bottom:28px;">
+            <tr><td style="padding:22px 26px;">
+              <p style="margin:0 0 4px;color:#A85D72;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.8px;">Your event</p>
+              <h2 style="margin:0 0 14px;color:#2C2028;font-size:19px;font-weight:900;">${escapeHtml(booking.event_title)}</h2>
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="padding:6px 0;color:#9E8E96;font-size:13px;font-weight:600;width:30%;vertical-align:top;">📅 Date</td>
+                  <td style="padding:6px 0;color:#2C2028;font-size:13px;font-weight:700;">${formatDate(booking.event_date)} · ${booking.event_time}</td>
+                </tr>
+                <tr>
+                  <td style="padding:6px 0;color:#9E8E96;font-size:13px;font-weight:600;vertical-align:top;">📍 Location</td>
+                  <td style="padding:6px 0;color:#2C2028;font-size:13px;font-weight:700;">${escapeHtml(booking.event_location || '')}</td>
+                </tr>
+                <tr>
+                  <td style="padding:6px 0;color:#9E8E96;font-size:13px;font-weight:600;vertical-align:top;">🎟 Tickets</td>
+                  <td style="padding:6px 0;color:#2C2028;font-size:13px;font-weight:700;">${booking.quantity} × ${priceLine}</td>
+                </tr>
+              </table>
+            </td></tr>
+          </table>
+
+          <!-- CTA -->
+          <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:26px;">
+            <tr><td align="center">
+              <a href="${eventUrl}" style="display:inline-block;background:linear-gradient(135deg,#A85D72,#6B2D42);color:#ffffff;text-decoration:none;font-size:16px;font-weight:800;padding:16px 40px;border-radius:50px;box-shadow:0 4px 14px rgba(168,93,114,0.35);">
+                Complete my booking →
+              </a>
+            </td></tr>
+          </table>
+
+          <p style="margin:0;color:#9E8E96;font-size:13px;font-weight:500;line-height:1.7;text-align:center;">
+            Changed your mind? No worries — you don't need to do anything. Your reservation will be released automatically.
+          </p>
+        </td></tr>
+
+        <!-- Footer -->
+        <tr><td style="background:#FFF6F8;padding:22px 48px;text-align:center;border-top:1px solid #FFE8EE;">
+          ${logoFooter}
+          <p style="margin:4px 0 0;color:#9E8E96;font-size:12px;font-weight:500;">Questions? Just reply to this email  •  <a href="${siteUrl}" style="color:#C4748A;text-decoration:none;font-weight:700;">${siteUrl.replace(/^https?:\/\//, '')}</a></p>
+        </td></tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`.trim();
+
+  await sendEmail({
+    to: booking.customer_email,
+    subject: `Still want your spot at ${booking.event_title}? 🎨`,
+    html,
+  });
+  console.log(`[Email] Abandoned-cart nudge sent to ${booking.customer_email} (booking #${booking.id})`);
+}
+
 module.exports = {
   sendBookingConfirmation,
   sendCancellationEmail,
@@ -1295,4 +1395,5 @@ module.exports = {
   sendPrivateQuoteToAdmin,
   sendPrivateQuoteConfirmation,
   sendTestEmail,
+  sendAbandonedCartEmail,
 };

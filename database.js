@@ -142,6 +142,10 @@ try { db.exec("ALTER TABLE bookings ADD COLUMN group_note TEXT DEFAULT ''"); } c
 try { db.exec("ALTER TABLE bookings ADD COLUMN source TEXT DEFAULT 'direct'"); } catch {}
 try { db.exec("ALTER TABLE bookings ADD COLUMN referrer TEXT DEFAULT ''"); } catch {}
 
+// Migrate: add timestamp for the "abandoned cart" nudge email. NULL = not sent.
+// We only ever set this once per booking, to prevent duplicate nudges.
+try { db.exec("ALTER TABLE bookings ADD COLUMN abandoned_email_sent_at TEXT DEFAULT NULL"); } catch {}
+
 // Migrate: add slug to events if not present
 try { db.exec("ALTER TABLE events ADD COLUMN slug TEXT"); } catch {}
 
@@ -230,6 +234,13 @@ if (settingsCount.count === 0) {
     ins.run('font_hero_highlight', 'Dancing Script');
     console.log('Seeded font defaults.');
   }
+}
+
+// Abandoned-cart recovery defaults (on by default, fires ~1 hour after drop-off).
+{
+  const ins = db.prepare('INSERT OR IGNORE INTO site_settings (key, value) VALUES (?, ?)');
+  ins.run('abandoned_cart_enabled',        '1');
+  ins.run('abandoned_cart_delay_minutes',  '60');  // lower bound — booking must be at least this old
 }
 
 // Ensure Social Media settings exist (added after initial seed)

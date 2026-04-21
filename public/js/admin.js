@@ -5187,6 +5187,7 @@ function renderAnalytics(d) {
     `<div class="analytics-row-2">${renderFastestFillingCard(d.fastestFilling)}${renderCategoryCard(d.categoryMix)}</div>`,
     `<div class="analytics-row-2">${renderDowCard(d.bookingsByDow)}${renderHourCard(d.bookingsByHour)}</div>`,
     `<div class="analytics-row-2">${renderTopCustomersCard(d.topCustomers, d.repeatCustomers)}${renderExtrasCard(d)}</div>`,
+    renderAbandonedCartCard(d.abandonedCart),
   ].join('');
 
   document.getElementById('analytics-body').innerHTML = html;
@@ -5542,3 +5543,94 @@ function renderExtrasCard(d) {
       <div class="extras-grid">${stats}</div>
     </div>`;
 }
+
+// ─── Abandoned-cart recovery card ────────────────────────────────────────────
+
+function renderAbandonedCartCard(a) {
+  a = a || {};
+  const sent = a.sent || 0;
+  const recovered = a.recovered || 0;
+  const pct = a.recovery_pct || 0;
+  const pending = a.pending_count || 0;
+  const revenue = a.revenue_recovered_pence || 0;
+  const enabled = !!a.enabled;
+  const delay = a.delay_minutes || 60;
+
+  return `
+    <div class="card analytics-card">
+      <div class="card-header">
+        <h3 class="card-title">Abandoned bookings recovery</h3>
+        <span class="analytics-sub">${enabled ? 'Active' : 'Paused'} · nudging after ${delay} min</span>
+      </div>
+      <div class="abandoned-grid">
+        <div class="abandoned-stat">
+          <div class="abandoned-num">${sent}</div>
+          <div class="abandoned-lbl">Nudges sent</div>
+        </div>
+        <div class="abandoned-stat">
+          <div class="abandoned-num">${recovered}</div>
+          <div class="abandoned-lbl">Recovered</div>
+        </div>
+        <div class="abandoned-stat">
+          <div class="abandoned-num">${pct}%</div>
+          <div class="abandoned-lbl">Recovery rate</div>
+        </div>
+        <div class="abandoned-stat">
+          <div class="abandoned-num">${formatPrice(revenue)}</div>
+          <div class="abandoned-lbl">Revenue recovered</div>
+        </div>
+        <div class="abandoned-stat">
+          <div class="abandoned-num">${pending}</div>
+          <div class="abandoned-lbl">Pending nudge next run</div>
+        </div>
+      </div>
+      <div class="abandoned-toggle-row">
+        <label class="abandoned-toggle">
+          <input type="checkbox" id="abandoned-enabled-toggle" ${enabled ? 'checked' : ''}>
+          <span class="abandoned-toggle-slider"></span>
+          <span class="abandoned-toggle-text">Send recovery nudges automatically</span>
+        </label>
+        <div class="abandoned-delay-wrap">
+          <label for="abandoned-delay-input">Delay (min)</label>
+          <input type="number" id="abandoned-delay-input" min="15" max="720" step="5" value="${delay}">
+          <button type="button" class="btn btn-ghost btn-sm" id="abandoned-save-btn">Save</button>
+        </div>
+      </div>
+      <div class="abandoned-hint">
+        Customers who enter their details but don't pay get one warm follow-up. Scheduler runs hourly, so actual send lands between ${delay}–${delay + 60} min after drop-off.
+      </div>
+    </div>`;
+}
+
+// Wire toggle + delay save via event delegation — survives card re-renders.
+document.addEventListener('change', async (ev) => {
+  if (!ev.target || ev.target.id !== 'abandoned-enabled-toggle') return;
+  try {
+    await apiFetch('/api/admin/analytics/abandoned-cart/settings', {
+      method: 'POST',
+      body: JSON.stringify({ enabled: ev.target.checked }),
+    });
+    toast(ev.target.checked ? 'Recovery nudges enabled' : 'Recovery nudges paused', 'success');
+  } catch (e) {
+    toast('Failed to update setting', 'error');
+  }
+});
+
+document.addEventListener('click', async (ev) => {
+  if (!ev.target || ev.target.id !== 'abandoned-save-btn') return;
+  const input = document.getElementById('abandoned-delay-input');
+  const mins = parseInt(input && input.value, 10);
+  if (!mins || mins < 15 || mins > 720) {
+    toast('Delay must be between 15 and 720 minutes', 'error');
+    return;
+  }
+  try {
+    await apiFetch('/api/admin/analytics/abandoned-cart/settings', {
+      method: 'POST',
+      body: JSON.stringify({ delay_minutes: mins }),
+    });
+    toast('Delay updated', 'success');
+  } catch (e) {
+    toast('Failed to update delay', 'error');
+  }
+});

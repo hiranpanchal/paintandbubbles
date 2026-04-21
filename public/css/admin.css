@@ -2240,3 +2240,123 @@ body {
 }
 .extras-row + .extras-row { border-top: 1px solid rgba(196,116,138,0.2); }
 .extras-row strong { color: var(--text-dark); font-weight: 800; }
+
+/* ─── Abandoned-cart recovery card ──────────────────────────────────────── */
+.abandoned-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 14px;
+  padding: 16px 18px 12px;
+}
+@media (max-width: 900px) { .abandoned-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 500px) { .abandoned-grid { grid-template-columns: 1fr; } }
+
+.abandoned-stat {
+  background: var(--rose-50);
+  border: 1px solid var(--rose-100);
+  border-radius: 12px;
+  padding: 14px 16px;
+  text-align: center;
+}
+.abandoned-num {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text-dark);
+  line-height: 1.1;
+  margin-bottom: 4px;
+}
+.abandoned-lbl {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-light);
+}
+
+.abandoned-toggle-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 18px;
+  border-top: 1px solid var(--rose-100);
+  margin-top: 6px;
+}
+
+.abandoned-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  user-select: none;
+}
+.abandoned-toggle input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.abandoned-toggle-slider {
+  width: 40px;
+  height: 22px;
+  background: #D4C5CB;
+  border-radius: 20px;
+  position: relative;
+  transition: background 0.2s ease;
+  flex-shrink: 0;
+}
+.abandoned-toggle-slider::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  transition: transform 0.2s ease;
+}
+.abandoned-toggle input:checked + .abandoned-toggle-slider {
+  background: linear-gradient(135deg, var(--rose), var(--rose-deep));
+}
+.abandoned-toggle input:checked + .abandoned-toggle-slider::after {
+  transform: translateX(18px);
+}
+.abandoned-toggle-text {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-dark);
+}
+
+.abandoned-delay-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-mid);
+  font-weight: 600;
+}
+.abandoned-delay-wrap input[type="number"] {
+  width: 74px;
+  padding: 6px 10px;
+  border: 1px solid var(--rose-100);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-dark);
+  background: #fff;
+  text-align: center;
+}
+.abandoned-delay-wrap .btn-sm {
+  padding: 6px 14px;
+  font-size: 12px;
+}
+
+.abandoned-hint {
+  font-size: 12px;
+  color: var(--text-light);
+  padding: 0 18px 18px;
+  line-height: 1.6;
+  font-style: italic;
+}
