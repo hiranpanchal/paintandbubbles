@@ -349,7 +349,7 @@ h4 { font-family: var(--font-h4); }
   flex-direction: column;
   align-items: center;
   gap: 6px;
-  color: rgba(255,255,255,0.55);
+  color: #ffffff;
   cursor: pointer;
   animation: hero-scroll-bob 2.4s ease-in-out infinite;
   text-decoration: none;
@@ -368,8 +368,8 @@ h4 { font-family: var(--font-h4); }
   flex-shrink: 0;
 }
 @keyframes hero-scroll-bob {
-  0%, 100% { transform: translateX(-50%) translateY(0);   opacity: 0.55; }
-  50%       { transform: translateX(-50%) translateY(7px); opacity: 0.9; }
+  0%, 100% { transform: translateX(-50%) translateY(0);   opacity: 0.8; }
+  50%       { transform: translateX(-50%) translateY(7px); opacity: 1; }
 }
 
 /* ---- VIEW ALL / EVENTS CTA ---- */
