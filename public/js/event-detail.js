@@ -31,8 +31,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 function getEventIdFromUrl() {
   const parts = window.location.pathname.split('/');
-  const id = parseInt(parts[parts.length - 1]);
-  return isNaN(id) ? null : id;
+  const last = parts[parts.length - 1];
+  return last || null; // returns slug (e.g. "abstract-textured-art-classes") or numeric id string
 }
 
 // ---- APPLY DESIGN SETTINGS ----

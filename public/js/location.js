@@ -84,7 +84,7 @@ function renderEventCard(e) {
     : `<div class="loc-event-img-placeholder">🎨</div>`;
 
   return `
-    <a href="/events/${e.id}" class="loc-event-card">
+    <a href="/events/${e.slug || e.id}" class="loc-event-card">
       ${imgHtml}
       <div class="loc-event-body">
         <div class="loc-event-badges">

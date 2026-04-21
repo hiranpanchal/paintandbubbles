@@ -136,6 +136,27 @@ try { db.exec("ALTER TABLE reviews ADD COLUMN image_url TEXT DEFAULT ''"); } cat
 // Migrate: add group_note to bookings if not present
 try { db.exec("ALTER TABLE bookings ADD COLUMN group_note TEXT DEFAULT ''"); } catch {}
 
+// Migrate: add slug to events if not present
+try { db.exec("ALTER TABLE events ADD COLUMN slug TEXT"); } catch {}
+
+// Generate slugs for any events that don't have one yet
+function toSlug(title) {
+  return title.toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-');
+}
+const eventsNeedingSlugs = db.prepare("SELECT id, title FROM events WHERE slug IS NULL OR slug = ''").all();
+for (const ev of eventsNeedingSlugs) {
+  let slug = toSlug(ev.title);
+  let base = slug, counter = 2;
+  while (db.prepare("SELECT id FROM events WHERE slug = ? AND id != ?").get(slug, ev.id)) {
+    slug = `${base}-${counter++}`;
+  }
+  db.prepare("UPDATE events SET slug = ? WHERE id = ?").run(slug, ev.id);
+}
+
 // Seed admin user if not exists
 const adminUsername = process.env.ADMIN_USERNAME || 'admin';
 const adminPassword = process.env.ADMIN_PASSWORD || 'changeme123';

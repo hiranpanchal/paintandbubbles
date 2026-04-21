@@ -330,7 +330,7 @@ function renderEventsTable(events, waitlistCounts = {}) {
           <td>${e.is_active ? '<span class="badge badge-green">Active</span>' : '<span class="badge badge-gray">Hidden</span>'}</td>
           <td>
             <div class="actions">
-              <button class="btn btn-ghost btn-xs" onclick="window.open('/events/${e.id}','_blank')">View</button>
+              <button class="btn btn-ghost btn-xs" onclick="window.open('/events/${e.slug || e.id}','_blank')">View</button>
               <button class="btn btn-ghost btn-xs" onclick="viewEventBookings(${e.id}, '${escHtml(e.title)}')">Bookings</button>
               <button class="btn btn-ghost btn-xs" onclick="viewWaitlist(${e.id},'${escHtml(e.title)}')">Waitlist</button>
               <button class="btn btn-ghost btn-xs" onclick="openEventForm(${e.id})">Edit</button>
@@ -483,6 +483,7 @@ async function renderEventForm(event = null) {
         <input type="number" id="ef-price" value="${event ? (event.price_pence / 100).toFixed(2) : ''}" min="0" step="0.01" placeholder="0.00">
       </div>
     </div>
+    <input type="hidden" id="ef-slug" value="${escHtml(event?.slug || '')}">
     <div class="form-group">
       <label>Event Image (optional)</label>
       <input type="hidden" id="ef-image" value="${escHtml(event?.image_url || '')}">
@@ -673,7 +674,8 @@ function openSocialPostHelper(eventId) {
   const priceStr = priceRaw === 0 ? 'Free' : `£${priceRaw.toFixed(2)} per person`;
 
   const siteUrl  = window.location.origin;
-  const eventUrl = eventId ? `${siteUrl}/events/${eventId}` : `${siteUrl}/events`;
+  const slug     = document.getElementById('ef-slug')?.value;
+  const eventUrl = eventId ? `${siteUrl}/events/${slug || eventId}` : `${siteUrl}/events`;
 
   // --- Facebook post ---
   const fbPost = `🎨 ${title}

@@ -2,6 +2,23 @@ const router = require('express').Router();
 const db = require('../database');
 const { requireAdmin } = require('../middleware/auth');
 
+function toSlug(title) {
+  return title.toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-');
+}
+
+function uniqueSlug(title, excludeId = null) {
+  let slug = toSlug(title);
+  let base = slug, counter = 2;
+  while (db.prepare('SELECT id FROM events WHERE slug = ? AND id != ?').get(slug, excludeId ?? -1)) {
+    slug = `${base}-${counter++}`;
+  }
+  return slug;
+}
+
 // GET /api/events — public, with optional search/filter
 router.get('/', (req, res) => {
   const { search, category, from, to } = req.query;
@@ -45,8 +62,12 @@ router.get('/categories', (req, res) => {
   res.json(cats.map(c => c.category));
 });
 
-// GET /api/events/:id — public
-router.get('/:id', (req, res) => {
+// GET /api/events/:idOrSlug — public (accepts numeric id or slug)
+router.get('/:idOrSlug', (req, res) => {
+  const param = req.params.idOrSlug;
+  const isNumeric = /^\d+$/.test(param);
+  const whereClause = isNumeric ? 'e.id = ?' : 'e.slug = ?';
+
   const event = db.prepare(`
     SELECT e.*,
       (e.capacity - COALESCE(
@@ -54,8 +75,8 @@ router.get('/:id', (req, res) => {
         0
       )) as spots_remaining
     FROM events e
-    WHERE e.id = ? AND e.is_active = 1
-  `).get(req.params.id);
+    WHERE ${whereClause} AND e.is_active = 1
+  `).get(param);
 
   if (!event) return res.status(404).json({ error: 'Event not found' });
   res.json(event);
@@ -68,10 +89,11 @@ router.post('/', requireAdmin, (req, res) => {
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
+  const slug = uniqueSlug(title);
   const result = db.prepare(`
-    INSERT INTO events (title, description, category, date, time, duration_minutes, location, capacity, price_pence, image_url)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(title, description || '', category || 'General', date, time, duration_minutes || 120, location, capacity, price_pence, image_url || null);
+    INSERT INTO events (title, description, category, date, time, duration_minutes, location, capacity, price_pence, image_url, slug)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(title, description || '', category || 'General', date, time, duration_minutes || 120, location, capacity, price_pence, image_url || null, slug);
 
   const event = db.prepare('SELECT * FROM events WHERE id = ?').get(result.lastInsertRowid);
   res.status(201).json(event);
@@ -84,13 +106,17 @@ router.put('/:id', requireAdmin, (req, res) => {
   const event = db.prepare('SELECT * FROM events WHERE id = ?').get(req.params.id);
   if (!event) return res.status(404).json({ error: 'Event not found' });
 
+  // Regenerate slug if title has changed
+  const newTitle = title ?? event.title;
+  const slug = (title && title !== event.title) ? uniqueSlug(title, parseInt(req.params.id)) : (event.slug || uniqueSlug(event.title, parseInt(req.params.id)));
+
   db.prepare(`
     UPDATE events SET
       title = ?, description = ?, category = ?, date = ?, time = ?,
-      duration_minutes = ?, location = ?, capacity = ?, price_pence = ?, image_url = ?, is_active = ?
+      duration_minutes = ?, location = ?, capacity = ?, price_pence = ?, image_url = ?, is_active = ?, slug = ?
     WHERE id = ?
   `).run(
-    title ?? event.title,
+    newTitle,
     description ?? event.description,
     category ?? event.category,
     date ?? event.date,
@@ -101,6 +127,7 @@ router.put('/:id', requireAdmin, (req, res) => {
     price_pence ?? event.price_pence,
     image_url ?? event.image_url,
     is_active ?? event.is_active,
+    slug,
     req.params.id
   );
 

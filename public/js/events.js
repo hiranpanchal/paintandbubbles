@@ -324,7 +324,7 @@ function renderEventCard(event) {
     : '';
 
   return `
-    <div class="event-card" onclick="window.location.href='/events/${event.id}'" style="cursor:pointer">
+    <div class="event-card" onclick="window.location.href='/events/${event.slug || event.id}'" style="cursor:pointer">
       <div class="event-card-image">
         ${imageHtml}
         <span class="event-card-category">${escHtml(event.category)}</span>

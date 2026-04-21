@@ -93,7 +93,7 @@ app.get('/sitemap.xml', (req, res) => {
   const siteUrl = getSiteUrl(req);
   const now = new Date().toISOString().split('T')[0];
   const events = db.prepare(
-    "SELECT id, date FROM events WHERE is_active = 1 ORDER BY date ASC"
+    "SELECT id, slug, date FROM events WHERE is_active = 1 ORDER BY date ASC"
   ).all();
 
   const staticPages = [
@@ -111,7 +111,7 @@ app.get('/sitemap.xml', (req, res) => {
     { url: '/contact',         priority: '0.5', changefreq: 'monthly', lastmod: now },
   ];
   const eventPages = events.map(e => ({
-    url: `/events/${e.id}`,
+    url: `/events/${e.slug || e.id}`,
     priority: '0.8',
     changefreq: 'weekly',
     lastmod: e.date || now,
@@ -241,16 +241,25 @@ app.get('/events', (req, res) => {
   } catch (err) { res.sendFile(path.join(__dirname, 'public', 'events.html')); }
 });
 
-// EVENT DETAIL — Event schema + OG
-app.get('/events/:id', (req, res) => {
+// EVENT DETAIL — Event schema + OG (accepts numeric id or slug)
+app.get('/events/:idOrSlug', (req, res) => {
   try {
-    const event   = db.prepare('SELECT * FROM events WHERE id = ?').get(req.params.id);
-    const html    = fs.readFileSync(path.join(__dirname, 'public', 'event-detail.html'), 'utf8');
+    const param    = req.params.idOrSlug;
+    const isNumeric = /^\d+$/.test(param);
+    const event    = isNumeric
+      ? db.prepare('SELECT * FROM events WHERE id = ? AND is_active = 1').get(param)
+      : db.prepare('SELECT * FROM events WHERE slug = ? AND is_active = 1').get(param);
+    const html     = fs.readFileSync(path.join(__dirname, 'public', 'event-detail.html'), 'utf8');
     if (!event) return res.send(html);
+
+    // Redirect numeric id URLs to slug URL (301 permanent)
+    if (isNumeric && event.slug) {
+      return res.redirect(301, `/events/${event.slug}`);
+    }
 
     const s        = getSeoSettings();
     const siteUrl  = getSiteUrl(req);
-    const pageUrl  = `${siteUrl}/events/${event.id}`;
+    const pageUrl  = `${siteUrl}/events/${event.slug || event.id}`;
     const imgUrl   = event.image_url
       ? (event.image_url.startsWith('http') ? event.image_url : `${siteUrl}${event.image_url}`)
       : getOgImage(s, siteUrl);
