@@ -2507,7 +2507,7 @@ h4 { font-family: var(--font-h4); }
 .voucher-toggle {
   background: none;
   border: none;
-  color: var(--rose);
+  color: var(--rose-dark);
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
