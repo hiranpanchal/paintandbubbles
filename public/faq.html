@@ -96,22 +96,56 @@ document.addEventListener('click',function(e){if(!e.target.closest('.site-header
 
 <!-- FOOTER -->
 <footer class="site-footer">
-  <div class="container footer-inner">
-    <div class="footer-brand"><img src="" alt="Paint &amp; Bubbles" class="footer-logo-img" style="display:none"><span class="footer-logo-text" id="footer-logo-fallback">Paint &amp; Bubbles</span></div>
-    <p class="footer-tagline">Creative events for everyone</p>
-    <div class="footer-cards">
-      <span class="card-badge visa">
-        <svg viewBox="0 0 48 30" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="48" height="30" rx="4" fill="#1A1F71"/><text x="24" y="20" text-anchor="middle" font-family="Arial,sans-serif" font-size="14" font-weight="bold" font-style="italic" fill="white" letter-spacing="1">VISA</text></svg>
-      </span>
-      <span class="card-badge mastercard">
-        <svg viewBox="0 0 48 30" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="48" height="30" rx="4" fill="#fff"/><circle cx="19" cy="13" r="7" fill="#EB001B"/><circle cx="29" cy="13" r="7" fill="#F79E1B"/><path d="M24 7a7 7 0 010 12A7 7 0 0124 7z" fill="#FF5F00"/><text x="24" y="27" text-anchor="middle" font-family="Arial,sans-serif" font-size="6.5" font-weight="bold" fill="#333" letter-spacing="0.3">CREDIT</text></svg>
-      </span>
-      <span class="card-badge mastercard-debit">
-        <svg viewBox="0 0 48 30" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="48" height="30" rx="4" fill="#fff"/><circle cx="19" cy="13" r="7" fill="#EB001B"/><circle cx="29" cy="13" r="7" fill="#F79E1B"/><path d="M24 7a7 7 0 010 12A7 7 0 0124 7z" fill="#FF5F00"/><text x="24" y="27" text-anchor="middle" font-family="Arial,sans-serif" font-size="6.5" font-weight="bold" fill="#333" letter-spacing="0.3">DEBIT</text></svg>
-      </span>
-      <span class="card-badge amex">
-        <svg viewBox="0 0 48 30" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="48" height="30" rx="4" fill="#2E77BC"/><text x="24" y="19" text-anchor="middle" font-family="Arial,sans-serif" font-size="11" font-weight="bold" fill="white" letter-spacing="0.5">AMEX</text></svg>
-      </span>
+  <div class="container">
+    <div class="footer-main">
+
+      <div class="footer-brand-col">
+        <div class="footer-brand">
+          <img src="" alt="Paint &amp; Bubbles" class="footer-logo-img" style="display:none">
+          <span class="footer-logo-text" id="footer-logo-fallback">Paint &amp; Bubbles</span>
+        </div>
+        <p class="footer-tagline">Creative events for everyone. Paint, sip and create across Coventry, Leamington Spa, Solihull and the Midlands.</p>
+      </div>
+
+      <div class="footer-nav-col">
+        <h4 class="footer-col-heading">Explore</h4>
+        <ul class="footer-col-links">
+          <li><a href="/">Home</a></li>
+          <li><a href="/about">About</a></li>
+          <li><a href="/events">Events</a></li>
+          <li><a href="/gallery">Gallery</a></li>
+          <li><a href="/reviews">Reviews</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-nav-col">
+        <h4 class="footer-col-heading">Book</h4>
+        <ul class="footer-col-links">
+          <li><a href="/events">Upcoming Events</a></li>
+          <li><a href="/private-events">Private Events</a></li>
+          <li><a href="/gift-vouchers">Gift Vouchers</a></li>
+          <li><a href="/faq">FAQ</a></li>
+          <li><a href="/contact">Contact Us</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-nav-col">
+        <h4 class="footer-col-heading">Follow</h4>
+        <ul class="footer-col-links" id="footer-social-links">
+          <!-- Populated by JS from site settings -->
+        </ul>
+      </div>
+
+    </div>
+
+    <div class="footer-bottom">
+      <p class="footer-copyright">&copy; 2026 Paint &amp; Bubbles</p>
+      <div class="footer-cards">
+        <span class="card-badge visa"><svg viewBox="0 0 48 30" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="48" height="30" rx="4" fill="#1A1F71"/><text x="24" y="20" text-anchor="middle" font-family="Arial,sans-serif" font-size="14" font-weight="bold" font-style="italic" fill="white" letter-spacing="1">VISA</text></svg></span>
+        <span class="card-badge mastercard"><svg viewBox="0 0 48 30" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="48" height="30" rx="4" fill="#fff"/><circle cx="19" cy="13" r="7" fill="#EB001B"/><circle cx="29" cy="13" r="7" fill="#F79E1B"/><path d="M24 7a7 7 0 010 12A7 7 0 0124 7z" fill="#FF5F00"/><text x="24" y="27" text-anchor="middle" font-family="Arial,sans-serif" font-size="6.5" font-weight="bold" fill="#333" letter-spacing="0.3">CREDIT</text></svg></span>
+        <span class="card-badge mastercard-debit"><svg viewBox="0 0 48 30" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="48" height="30" rx="4" fill="#fff"/><circle cx="19" cy="13" r="7" fill="#EB001B"/><circle cx="29" cy="13" r="7" fill="#F79E1B"/><path d="M24 7a7 7 0 010 12A7 7 0 0124 7z" fill="#FF5F00"/><text x="24" y="27" text-anchor="middle" font-family="Arial,sans-serif" font-size="6.5" font-weight="bold" fill="#333" letter-spacing="0.3">DEBIT</text></svg></span>
+        <span class="card-badge amex"><svg viewBox="0 0 48 30" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="48" height="30" rx="4" fill="#2E77BC"/><text x="24" y="19" text-anchor="middle" font-family="Arial,sans-serif" font-size="11" font-weight="bold" fill="white" letter-spacing="0.5">AMEX</text></svg></span>
+      </div>
     </div>
   </div>
 </footer>

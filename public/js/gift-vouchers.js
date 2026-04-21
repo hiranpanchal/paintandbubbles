@@ -68,6 +68,16 @@ async function applyDesignSettings() {
       const el = document.querySelector('.footer-tagline');
       if (el) el.textContent = s.footer_tagline;
     }
+    // Populate footer social links (Follow column)
+    const footerSocial = document.getElementById('footer-social-links');
+    if (footerSocial) {
+      let socialLinks = [];
+      try { socialLinks = JSON.parse(s.social_links || '[]'); } catch {}
+      footerSocial.innerHTML = socialLinks.filter(l => l.url).map(({ platform, url }) => {
+        const label = platform ? platform.charAt(0).toUpperCase() + platform.slice(1) : '';
+        return `<li><a href="${url.replace(/"/g,'&quot;')}" target="_blank" rel="noopener">${label}</a></li>`;
+      }).join('');
+    }
   } catch {}
 }
 

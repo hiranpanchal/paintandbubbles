@@ -108,13 +108,25 @@ const SOCIAL_PLATFORMS = {
 };
 
 function renderSocialSection(s) {
+  let links = [];
+  try { links = JSON.parse(s.social_links || '[]'); } catch {}
+  links = links.filter(l => l.url);
+
+  // Populate footer Follow column
+  const footerSocial = document.getElementById('footer-social-links');
+  if (footerSocial) {
+    footerSocial.innerHTML = links.map(({ platform, url }) => {
+      const p = SOCIAL_PLATFORMS[platform];
+      if (!p) return '';
+      return `<li><a href="${url.replace(/"/g,'&quot;')}" target="_blank" rel="noopener">${p.label}</a></li>`;
+    }).join('');
+  }
+
+  // Populate main social section (homepage, about, etc.)
   const section = document.getElementById('social-section');
   if (!section) return;
   const titleEl = document.getElementById('social-section-title');
   if (titleEl && s.social_title) titleEl.textContent = s.social_title;
-  let links = [];
-  try { links = JSON.parse(s.social_links || '[]'); } catch {}
-  links = links.filter(l => l.url);
   if (!links.length) { section.style.display = 'none'; return; }
   section.style.display = '';
   const row = document.getElementById('social-links-row');
