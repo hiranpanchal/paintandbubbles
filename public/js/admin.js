@@ -3224,6 +3224,9 @@ async function loadContentTab() {
       privacy: s.legal_privacy_content || '',
       refund:  s.legal_refund_content  || '',
     };
+    // Stash corporate testimonials JSON for the editor (parsed lazily when the tab opens).
+    try { window._corporateTestimonialsState = JSON.parse(s.corporate_events_testimonials || '[]'); }
+    catch { window._corporateTestimonialsState = []; }
 
     el.innerHTML = `
       <div class="design-tabs-nav content-page-tabs">
@@ -3232,6 +3235,7 @@ async function loadContentTab() {
         <button class="design-tab-btn" onclick="switchContentTab('events')" data-tab="events">Events</button>
         <button class="design-tab-btn" onclick="switchContentTab('contact')" data-tab="contact">Contact</button>
         <button class="design-tab-btn" onclick="switchContentTab('private-events')" data-tab="private-events">Private Events</button>
+        <button class="design-tab-btn" onclick="switchContentTab('corporate-events')" data-tab="corporate-events">Corporate</button>
         <button class="design-tab-btn" onclick="switchContentTab('gallery')" data-tab="gallery">Gallery</button>
         <button class="design-tab-btn" onclick="switchContentTab('legal')" data-tab="legal">⚖️ Legal</button>
         <button class="design-tab-btn" onclick="switchContentTab('seo')" data-tab="seo">🔍 SEO</button>
@@ -3577,6 +3581,58 @@ async function loadContentTab() {
         </div>
       </div>
 
+      <!-- CORPORATE / TEAM-BUILDING PAGE -->
+      <div class="design-tab-panel hidden" id="ctab-corporate-events">
+        <div class="design-centred-wrap">
+          <div class="design-card">
+            <div class="design-card-header"><h3 class="design-card-title">Hero</h3></div>
+            <div class="design-card-body">
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Hero Title</label>
+                  <input type="text" id="ds-corporate_events_hero_title" value="${escHtml(s.corporate_events_hero_title || 'Team bonding that actually lands')}">
+                </div>
+                <div class="form-group">
+                  <label>Hero Subtitle</label>
+                  <input type="text" id="ds-corporate_events_hero_sub" value="${escHtml(s.corporate_events_hero_sub || '')}">
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Intro paragraph <span style="font-size:11px;color:var(--text-light)">(under "Why teams love this")</span></label>
+                <textarea id="ds-corporate_events_intro" rows="3" style="font-family:inherit;font-size:14px;padding:10px;border:1px solid var(--border);border-radius:8px;width:100%;resize:vertical">${escHtml(s.corporate_events_intro || '')}</textarea>
+              </div>
+            </div>
+          </div>
+
+          <div class="design-card">
+            <div class="design-card-header">
+              <h3 class="design-card-title">Testimonials</h3>
+              <span class="design-hint">One per block — "Trusted by teams at" row feeds from the next card</span>
+            </div>
+            <div class="design-card-body">
+              <div id="ce-testimonials-editor"></div>
+              <button type="button" class="btn btn-ghost btn-sm" onclick="addCorporateTestimonial()" style="margin-top:12px">+ Add testimonial</button>
+            </div>
+          </div>
+
+          <div class="design-card">
+            <div class="design-card-header">
+              <h3 class="design-card-title">Trusted by (optional)</h3>
+              <span class="design-hint">Comma-separated company names — shows as a row of pills under testimonials. Leave blank to hide.</span>
+            </div>
+            <div class="design-card-body">
+              <div class="form-group">
+                <input type="text" id="ds-corporate_events_trusted_by" value="${escHtml(s.corporate_events_trusted_by || '')}" placeholder="Acme Co, Globex, Wayne Enterprises">
+              </div>
+            </div>
+          </div>
+
+          <div class="design-save-bar">
+            <button class="btn btn-primary" onclick="saveCorporateEventsPage()">Save Corporate Page</button>
+          </div>
+        </div>
+      </div>
+
       <!-- GALLERY PAGE -->
       <div class="design-tab-panel hidden" id="ctab-gallery">
         <div class="design-centred-wrap">
@@ -3815,6 +3871,7 @@ function switchContentTab(tab) {
   if (tab === 'private-events') initContentPEQuill();
   if (tab === 'contact') loadContactFormFields();
   if (tab === 'legal') initLegalQuill('terms'); // init the default visible legal sub-tab
+  if (tab === 'corporate-events') renderCorporateTestimonialsEditor();
 }
 
 function switchLegalSubTab(sub) {
@@ -4026,6 +4083,89 @@ async function saveContentPage(page) {
   }
   try {
     await apiFetch('/api/design/settings', { method: 'POST', body: JSON.stringify(data) });
+    toast('Saved!', 'success');
+  } catch (err) {
+    toast(err.message || 'Failed to save', 'error');
+  }
+}
+
+// ---- CORPORATE EVENTS CONTENT TAB ----
+// Renders the live-editable list of testimonials from window._corporateTestimonialsState.
+// Each row writes directly back into the state array on input, so save doesn't have to
+// re-read DOM fields. Adding / removing rows just mutates the array and re-renders.
+function renderCorporateTestimonialsEditor() {
+  const wrap = document.getElementById('ce-testimonials-editor');
+  if (!wrap) return;
+  const state = Array.isArray(window._corporateTestimonialsState) ? window._corporateTestimonialsState : [];
+  if (!state.length) {
+    wrap.innerHTML = `<p style="color:var(--text-light);font-size:0.88rem;margin:0">No testimonials yet — click "+ Add testimonial" to create one.</p>`;
+    return;
+  }
+  wrap.innerHTML = state.map((t, i) => `
+    <div class="form-field-item" style="flex-direction:column;align-items:stretch;gap:10px">
+      <div class="form-row" style="gap:10px">
+        <div class="form-group" style="flex:1">
+          <label style="font-size:11px;color:var(--text-light)">Author</label>
+          <input type="text" value="${escHtml(t.author || '')}" oninput="updateCorporateTestimonial(${i},'author',this.value)" placeholder="Jane Smith">
+        </div>
+        <div class="form-group" style="flex:1">
+          <label style="font-size:11px;color:var(--text-light)">Role / company</label>
+          <input type="text" value="${escHtml(t.role || '')}" oninput="updateCorporateTestimonial(${i},'role',this.value)" placeholder="Head of People, Acme Co">
+        </div>
+      </div>
+      <div class="form-group">
+        <label style="font-size:11px;color:var(--text-light)">Quote</label>
+        <textarea rows="2" oninput="updateCorporateTestimonial(${i},'quote',this.value)" style="font-family:inherit;font-size:14px;padding:10px;border:1px solid var(--border);border-radius:8px;width:100%;resize:vertical">${escHtml(t.quote || '')}</textarea>
+      </div>
+      <div style="display:flex;justify-content:flex-end">
+        <button type="button" class="form-field-item-del" onclick="removeCorporateTestimonial(${i})">Remove</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function updateCorporateTestimonial(index, field, value) {
+  const state = window._corporateTestimonialsState;
+  if (!state || !state[index]) return;
+  state[index][field] = value;
+}
+
+function addCorporateTestimonial() {
+  if (!Array.isArray(window._corporateTestimonialsState)) window._corporateTestimonialsState = [];
+  window._corporateTestimonialsState.push({ quote: '', author: '', role: '' });
+  renderCorporateTestimonialsEditor();
+}
+
+function removeCorporateTestimonial(index) {
+  const state = window._corporateTestimonialsState;
+  if (!state || !state[index]) return;
+  state.splice(index, 1);
+  renderCorporateTestimonialsEditor();
+}
+
+async function saveCorporateEventsPage() {
+  // Keep only testimonials with at least a quote — empty rows are treated as discarded.
+  const testimonials = (window._corporateTestimonialsState || [])
+    .map(t => ({
+      quote:  String(t.quote  || '').trim(),
+      author: String(t.author || '').trim(),
+      role:   String(t.role   || '').trim(),
+    }))
+    .filter(t => t.quote);
+
+  const data = {
+    corporate_events_hero_title: document.getElementById('ds-corporate_events_hero_title')?.value || '',
+    corporate_events_hero_sub:   document.getElementById('ds-corporate_events_hero_sub')?.value   || '',
+    corporate_events_intro:      document.getElementById('ds-corporate_events_intro')?.value     || '',
+    corporate_events_testimonials: JSON.stringify(testimonials),
+    corporate_events_trusted_by: document.getElementById('ds-corporate_events_trusted_by')?.value || '',
+  };
+
+  try {
+    await apiFetch('/api/design/settings', { method: 'POST', body: JSON.stringify(data) });
+    // Sync state back from sanitised list so empty rows disappear from the UI.
+    window._corporateTestimonialsState = testimonials;
+    renderCorporateTestimonialsEditor();
     toast('Saved!', 'success');
   } catch (err) {
     toast(err.message || 'Failed to save', 'error');
@@ -4366,12 +4506,17 @@ function renderPQRow(q) {
   const ref = `#PQ${String(q.id).padStart(5, '0')}`;
   const fmt = p => p ? `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: 0 })}` : '';
   const est = (q.estimate_low && q.estimate_high) ? ` · ${fmt(q.estimate_low)}–${fmt(q.estimate_high)}` : '';
+  const isCorporate = q.quote_type === 'corporate';
+  const typeBadge = isCorporate
+    ? `<span style="display:inline-block;background:#1E2A3B;color:#fff;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:2px 7px;border-radius:10px;margin-right:6px;vertical-align:middle">Corporate</span>`
+    : `<span style="display:inline-block;background:#F5DDE3;color:#6B2D42;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:2px 7px;border-radius:10px;margin-right:6px;vertical-align:middle">Private</span>`;
+  const companyBit = isCorporate && q.company_name ? ` · ${escHtml(q.company_name)}` : '';
 
   return `<div class="inbox-row ${isUnread ? 'inbox-row-unread' : ''}" id="pq-row-${q.id}" onclick="openPrivateQuote(${q.id})">
     <div class="inbox-row-avatar">${escHtml(q.name.charAt(0).toUpperCase())}</div>
     <div class="inbox-row-sender">${escHtml(q.name)}</div>
     <div class="inbox-row-preview">
-      <span class="inbox-row-subject">${escHtml(ref)} — ${escHtml(q.activity_type)}, ${escHtml(q.group_size)} people${est}</span>
+      <span class="inbox-row-subject">${typeBadge}${escHtml(ref)} — ${escHtml(q.activity_type)}, ${escHtml(q.group_size)} people${companyBit}${est}</span>
       <span class="inbox-row-snippet"> — ${escHtml(q.email)}</span>
     </div>
     <div class="inbox-row-date">${dateStr}</div>
@@ -4443,22 +4588,39 @@ async function openPrivateQuote(id) {
         <button class="modal-close" onclick="closePQModal()"><svg viewBox="0 0 20 20" fill="none"><path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
       </div>
       <div class="msg-modal-body">
-        <div style="background:linear-gradient(135deg,#2C0F18,#6B2D42);border-radius:14px;padding:20px 24px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
-          <div>
-            <div style="font-size:11px;color:rgba(255,255,255,.65);font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px">${escHtml(ref)}</div>
-            <div style="font-size:20px;font-weight:800;color:#fff;">${escHtml(q.activity_type)}</div>
-            <div style="font-size:13px;color:rgba(255,255,255,.75);margin-top:2px;">${escHtml(q.group_size)} people</div>
-          </div>
-          <div style="text-align:right;">
-            <div style="font-size:11px;color:rgba(255,255,255,.65);margin-bottom:4px;">Estimated</div>
-            <div style="font-size:22px;font-weight:900;color:#fff;">${fmt(q.estimate_low)} – ${fmt(q.estimate_high)}</div>
-          </div>
-        </div>
+        ${(() => {
+          const isCorp = q.quote_type === 'corporate';
+          const gradient = isCorp
+            ? 'linear-gradient(135deg,#1E2A3B,#6B2D42)'
+            : 'linear-gradient(135deg,#2C0F18,#6B2D42)';
+          const showEstimate = !isCorp && q.estimate_low && q.estimate_high;
+          const topLabel = isCorp ? 'Corporate enquiry' : escHtml(q.activity_type);
+          const subLine  = isCorp && q.company_name
+            ? `${escHtml(q.company_name)} · ${escHtml(q.group_size)} people`
+            : `${escHtml(q.group_size)} people`;
+          return `
+          <div style="background:${gradient};border-radius:14px;padding:20px 24px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+            <div>
+              <div style="font-size:11px;color:rgba(255,255,255,.65);font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px">${escHtml(ref)}</div>
+              <div style="font-size:20px;font-weight:800;color:#fff;">${topLabel}</div>
+              <div style="font-size:13px;color:rgba(255,255,255,.75);margin-top:2px;">${subLine}</div>
+            </div>
+            ${showEstimate ? `
+            <div style="text-align:right;">
+              <div style="font-size:11px;color:rgba(255,255,255,.65);margin-bottom:4px;">Estimated</div>
+              <div style="font-size:22px;font-weight:900;color:#fff;">${fmt(q.estimate_low)} – ${fmt(q.estimate_high)}</div>
+            </div>` : isCorp ? `
+            <div style="text-align:right;">
+              <div style="font-size:11px;color:rgba(255,255,255,.65);margin-bottom:4px;">Quote</div>
+              <div style="font-size:15px;font-weight:700;color:#fff;">Bespoke — reply within 24h</div>
+            </div>` : ''}
+          </div>`;
+        })()}
 
         <div class="msg-from-block" style="margin-bottom:20px;">
           <div class="message-avatar">${escHtml(q.name.charAt(0).toUpperCase())}</div>
           <div class="msg-from-info">
-            <div class="msg-from-name">${escHtml(q.name)}</div>
+            <div class="msg-from-name">${escHtml(q.name)}${q.job_title ? ` <span style="font-weight:500;color:var(--text-light);font-size:13px">· ${escHtml(q.job_title)}</span>` : ''}</div>
             <div class="msg-from-meta">
               <span>${escHtml(q.email)}</span>
               ${q.phone ? `<span class="msg-meta-sep">·</span><span>${escHtml(q.phone)}</span>` : ''}
@@ -4468,13 +4630,24 @@ async function openPrivateQuote(id) {
         </div>
 
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;">
-          ${[
-            ['Activity',      q.activity_type],
-            ['Group Size',    q.group_size + ' people'],
-            ['Preferred Date', preferredDate],
-            ['Venue',         q.venue_preference || 'Not specified'],
-            ['How Heard',     q.how_heard        || 'Not specified'],
-          ].map(([label, val]) => `
+          ${(q.quote_type === 'corporate'
+            ? [
+                ['Company',       q.company_name      || 'Not specified'],
+                ['Job Title',     q.job_title         || 'Not specified'],
+                ['Team Size',     q.group_size + ' people'],
+                ['Preferred Date', preferredDate],
+                ['Format',        q.venue_preference  || 'Not specified'],
+                ['Budget',        q.budget_range      || 'Not specified'],
+                ['How Heard',     q.how_heard         || 'Not specified'],
+              ]
+            : [
+                ['Activity',      q.activity_type],
+                ['Group Size',    q.group_size + ' people'],
+                ['Preferred Date', preferredDate],
+                ['Venue',         q.venue_preference || 'Not specified'],
+                ['How Heard',     q.how_heard        || 'Not specified'],
+              ]
+          ).map(([label, val]) => `
           <div style="background:#FFF6F8;border-radius:10px;padding:12px 14px;">
             <div style="font-size:11px;font-weight:700;color:#C4748A;margin-bottom:4px;">${escHtml(label)}</div>
             <div style="font-size:13px;font-weight:600;color:#2C2028;">${escHtml(val)}</div>

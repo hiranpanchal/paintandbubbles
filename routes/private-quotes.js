@@ -1,7 +1,12 @@
 const router = require('express').Router();
 const db = require('../database');
 const { requireAdmin } = require('../middleware/auth');
-const { sendPrivateQuoteToAdmin, sendPrivateQuoteConfirmation } = require('../services/email');
+const {
+  sendPrivateQuoteToAdmin,
+  sendPrivateQuoteConfirmation,
+  sendCorporateQuoteToAdmin,
+  sendCorporateQuoteConfirmation,
+} = require('../services/email');
 
 // ─── Config helpers ───────────────────────────────────────────────────────────
 
@@ -59,19 +64,34 @@ router.get('/config', (req, res) => {
 });
 
 // POST /api/private-quotes — public, submit a quote request
+// Supports both the hen-party / private flow and the corporate / team-building
+// flow (distinguished by req.body.quote_type === 'corporate'). Corporate
+// enquiries skip the fixed-menu estimate (quotes are bespoke) and trigger
+// different admin-notification + customer-confirmation emails.
 router.post('/', (req, res) => {
   const {
     name, email, phone,
     group_size, preferred_date, date_flexible,
     activity_type, venue_preference,
     notes, how_heard, custom_answers,
+    // Corporate-only fields
+    quote_type: rawQuoteType,
+    company, job_title, budget_range: reqBudgetRange,
   } = req.body;
+
+  const quoteType = rawQuoteType === 'corporate' ? 'corporate' : 'private';
+  const isCorporate = quoteType === 'corporate';
 
   if (!name || !email || !group_size || !activity_type) {
     return res.status(400).json({ error: 'Name, email, group size and activity type are required' });
   }
+  if (isCorporate && !company) {
+    return res.status(400).json({ error: 'Please tell us which company this is for' });
+  }
 
-  const estimate = calculateEstimate(activity_type, group_size);
+  // Corporate quotes are bespoke — we won't pretend to give a fixed-rate
+  // estimate. Private quotes keep using the configured pricing table.
+  const estimate = isCorporate ? { low: 0, high: 0 } : calculateEstimate(activity_type, group_size);
 
   // Serialise custom answers
   const customAnswersJson = (custom_answers && typeof custom_answers === 'object')
@@ -81,8 +101,9 @@ router.post('/', (req, res) => {
     INSERT INTO private_event_quotes
       (name, email, phone, group_size, preferred_date, date_flexible,
        activity_type, venue_preference, budget_range, notes, how_heard,
-       estimate_low, estimate_high, custom_answers)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       estimate_low, estimate_high, custom_answers,
+       quote_type, company_name, job_title)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     name.trim(),
     email.trim(),
@@ -92,12 +113,15 @@ router.post('/', (req, res) => {
     date_flexible ? 1 : 0,
     activity_type,
     venue_preference || '',
-    '',
+    (reqBudgetRange || '').toString().trim(),
     notes ? notes.trim() : '',
     how_heard ? how_heard.trim() : '',
     estimate.low,
     estimate.high,
     customAnswersJson,
+    quoteType,
+    (company || '').toString().trim(),
+    (job_title || '').toString().trim(),
   );
 
   const quote = db.prepare('SELECT * FROM private_event_quotes WHERE id = ?').get(result.lastInsertRowid);
@@ -113,14 +137,23 @@ router.post('/', (req, res) => {
   const notifSetting = db.prepare("SELECT value FROM site_settings WHERE key = 'notification_email'").get();
   const notificationEmail = notifSetting?.value || process.env.NOTIFICATION_EMAIL || '';
 
-  sendPrivateQuoteToAdmin(quote, notificationEmail, labelledAnswers).catch(err =>
-    console.error('[Email] Private quote admin notif failed:', err.message)
-  );
-  sendPrivateQuoteConfirmation(quote, labelledAnswers).catch(err =>
-    console.error('[Email] Private quote confirmation failed:', err.message)
-  );
+  if (isCorporate) {
+    sendCorporateQuoteToAdmin(quote, notificationEmail).catch(err =>
+      console.error('[Email] Corporate quote admin notif failed:', err.message)
+    );
+    sendCorporateQuoteConfirmation(quote).catch(err =>
+      console.error('[Email] Corporate quote confirmation failed:', err.message)
+    );
+  } else {
+    sendPrivateQuoteToAdmin(quote, notificationEmail, labelledAnswers).catch(err =>
+      console.error('[Email] Private quote admin notif failed:', err.message)
+    );
+    sendPrivateQuoteConfirmation(quote, labelledAnswers).catch(err =>
+      console.error('[Email] Private quote confirmation failed:', err.message)
+    );
+  }
 
-  res.status(201).json({ success: true, quote_ref: quoteRef, estimate });
+  res.status(201).json({ success: true, quote_ref: quoteRef, estimate, quote_type: quoteType });
 });
 
 // ─── Admin routes ─────────────────────────────────────────────────────────────

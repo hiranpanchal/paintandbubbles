@@ -1279,6 +1279,199 @@ function escapeHtml(str) {
     .replace(/"/g, '&quot;');
 }
 
+// ─── Corporate / Team-Building quote emails ──────────────────────────────────
+// Targeted at HR / People Ops. Tone: warm but professional — we lead with
+// logistics (dates, PO, invoicing) rather than emoji-heavy celebration.
+
+async function sendCorporateQuoteToAdmin(quote, notificationEmail) {
+  if (!notificationEmail) {
+    console.log('[Email] No notification_email set — skipping corporate quote admin notification');
+    return;
+  }
+
+  const quoteRef = `#PQ${String(quote.id).padStart(5, '0')}`;
+  const dateStr  = quote.preferred_date
+    ? new Date(quote.preferred_date + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+    : 'Not specified';
+  const flexibility = quote.date_flexible ? ' (flexible)' : '';
+
+  const rows = [
+    ['Company',         quote.company_name || '—'],
+    ['Contact',         `${quote.name}${quote.job_title ? ', ' + quote.job_title : ''}`],
+    ['Email',           quote.email],
+    ...(quote.phone          ? [['Phone',           quote.phone]]          : []),
+    ['Team size',        quote.group_size + ' people'],
+    ['Preferred date',   dateStr + flexibility],
+    ...(quote.venue_preference ? [['Format',         quote.venue_preference]] : []),
+    ...(quote.budget_range     ? [['Budget range',   quote.budget_range]]     : []),
+    ...(quote.how_heard        ? [['How they heard', quote.how_heard]]        : []),
+  ];
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet"></head>
+<body style="margin:0;padding:0;background:#FDF8F9;font-family:'Nunito','Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#FDF8F9;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 8px 40px rgba(160,80,110,0.15);">
+
+        <tr><td style="background:linear-gradient(135deg,#1E2A3B 0%,#6B2D42 100%);padding:36px 44px;">
+          <p style="margin:0 0 6px;color:rgba(255,255,255,0.7);font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;">Corporate / Team Building</p>
+          <h1 style="margin:0;color:#fff;font-size:22px;font-weight:800;">New corporate enquiry from ${escapeHtml(quote.company_name || quote.name)}</h1>
+          <p style="margin:8px 0 0;color:rgba(255,255,255,0.75);font-size:13px;font-weight:600;">${quoteRef} · ${new Date(quote.created_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+        </td></tr>
+
+        <tr><td style="padding:36px 44px;">
+          <table width="100%" cellpadding="0" cellspacing="0" style="background:#FFF6F8;border:1px solid #FFCCD8;border-radius:12px;margin-bottom:24px;">
+            <tr><td style="padding:22px 26px;">
+              <p style="margin:0 0 14px;font-size:11px;font-weight:800;color:#A85D72;text-transform:uppercase;letter-spacing:1px;">Enquiry details</p>
+              <table width="100%" cellpadding="0" cellspacing="0">
+                ${rows.map(([label, val]) => `
+                <tr>
+                  <td style="padding:6px 0;font-size:13px;font-weight:700;color:#9E8E96;width:38%;vertical-align:top;">${label}</td>
+                  <td style="padding:6px 0;font-size:13px;font-weight:700;color:#2C2028;">${escapeHtml(String(val))}</td>
+                </tr>`).join('')}
+              </table>
+            </td></tr>
+          </table>
+
+          ${quote.notes ? `
+          <p style="margin:0 0 8px;font-size:12px;font-weight:800;color:#A85D72;text-transform:uppercase;letter-spacing:1px;">Their message</p>
+          <div style="background:#FAFAFA;border-left:3px solid #A85D72;padding:16px 20px;border-radius:6px;margin-bottom:24px;">
+            <p style="margin:0;font-size:14px;color:#2C2028;line-height:1.6;white-space:pre-wrap;">${escapeHtml(quote.notes)}</p>
+          </div>` : ''}
+
+          <div style="text-align:center;margin-top:8px;">
+            <a href="mailto:${escapeHtml(quote.email)}" style="display:inline-block;background:linear-gradient(135deg,#A85D72,#6B2D42);color:#fff;text-decoration:none;font-size:14px;font-weight:800;padding:12px 28px;border-radius:50px;">
+              Reply to ${escapeHtml(quote.name.split(' ')[0])}
+            </a>
+          </div>
+
+          <p style="margin:22px 0 0;font-size:12px;color:#9E8E96;text-align:center;">HR enquiries tend to move fast — aim to respond within business hours.</p>
+        </td></tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+  await sendEmail({
+    to: notificationEmail,
+    subject: `New corporate enquiry: ${quote.company_name || quote.name} · ${quote.group_size} people`,
+    replyTo: quote.email,
+    html,
+  });
+  console.log(`[Email] Corporate quote admin notification sent to ${notificationEmail}`);
+}
+
+async function sendCorporateQuoteConfirmation(quote) {
+  const quoteRef   = `#PQ${String(quote.id).padStart(5, '0')}`;
+  const siteUrl    = process.env.SITE_URL || 'https://paintandbubbles.co.uk';
+  const firstName  = quote.name.split(' ')[0];
+  const logoHeader = getLogoHeaderHtml();
+  const logoFooter = getLogoFooterHtml();
+  const dateStr    = quote.preferred_date
+    ? new Date(quote.preferred_date + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+    : null;
+
+  const summary = [
+    ['Reference',      quoteRef],
+    ['Company',        quote.company_name || ''],
+    ['Team size',      quote.group_size + ' people'],
+    ...(dateStr                 ? [['Preferred date', dateStr + (quote.date_flexible ? ' (flexible)' : '')]] : []),
+    ...(quote.venue_preference  ? [['Format',         quote.venue_preference]] : []),
+    ...(quote.budget_range      ? [['Budget range',   quote.budget_range]]     : []),
+  ].filter(([, v]) => v);
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet"></head>
+<body style="margin:0;padding:0;background:#FDF8F9;font-family:'Nunito','Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#FDF8F9;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 8px 40px rgba(160,80,110,0.15);">
+
+        <!-- Header -->
+        <tr><td style="background:linear-gradient(135deg,#1E2A3B 0%,#6B2D42 60%,#A85D72 100%);padding:42px 48px;text-align:center;">
+          ${logoHeader}
+          <p style="margin:14px 0 0;color:rgba(255,255,255,0.85);font-size:14px;font-weight:600;">Corporate &amp; team-building enquiry</p>
+        </td></tr>
+
+        <!-- Body -->
+        <tr><td style="padding:40px 48px;">
+          <p style="margin:0 0 6px;color:#9E8E96;font-size:14px;font-weight:600;">Hi ${escapeHtml(firstName)},</p>
+          <p style="margin:0 0 22px;color:#2C2028;font-size:17px;font-weight:800;line-height:1.4;">Thanks for getting in touch — we've got your enquiry.</p>
+
+          <p style="margin:0 0 22px;color:#5C4F57;font-size:14px;line-height:1.7;">
+            One of the team will review the details and come back to you with a tailored proposal <strong>within 24 hours</strong> (business days). In the meantime, here's what you sent us:
+          </p>
+
+          <!-- Summary -->
+          <table width="100%" cellpadding="0" cellspacing="0" style="background:#FFF6F8;border:1px solid #FFCCD8;border-radius:12px;margin-bottom:28px;">
+            <tr><td style="padding:22px 26px;">
+              <p style="margin:0 0 14px;font-size:11px;font-weight:800;color:#A85D72;text-transform:uppercase;letter-spacing:1px;">Your enquiry</p>
+              <table width="100%" cellpadding="0" cellspacing="0">
+                ${summary.map(([label, val]) => `
+                <tr>
+                  <td style="padding:6px 0;font-size:13px;font-weight:700;color:#9E8E96;width:38%;vertical-align:top;">${label}</td>
+                  <td style="padding:6px 0;font-size:13px;font-weight:700;color:#2C2028;">${escapeHtml(String(val))}</td>
+                </tr>`).join('')}
+              </table>
+            </td></tr>
+          </table>
+
+          <!-- Next steps -->
+          <p style="margin:0 0 12px;font-size:13px;font-weight:800;color:#2C2028;">What happens next</p>
+          <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
+            ${[
+              ['📄', 'We\'ll put together a formal proposal with clear pricing, inclusions and a VAT breakdown.'],
+              ['📞', 'We may call or email to clarify a detail or two (dates, dietary, format).'],
+              ['✅', 'Once you\'re happy to proceed, we\'ll confirm in writing and raise an invoice with your PO.'],
+            ].map(([icon, text]) => `
+            <tr><td style="padding:6px 0;vertical-align:top;">
+              <table cellpadding="0" cellspacing="0"><tr>
+                <td style="font-size:16px;padding-right:12px;vertical-align:top;padding-top:1px;">${icon}</td>
+                <td style="font-size:14px;color:#5C4F57;line-height:1.55;">${text}</td>
+              </tr></table>
+            </td></tr>`).join('')}
+          </table>
+
+          <p style="margin:0 0 22px;color:#5C4F57;font-size:14px;line-height:1.7;">
+            If anything else needs adding, just reply directly to this email — it comes straight back to us.
+          </p>
+
+          <div style="text-align:center;">
+            <a href="${siteUrl}/corporate-events" style="display:inline-block;background:linear-gradient(135deg,#A85D72,#6B2D42);color:#fff;text-decoration:none;font-size:14px;font-weight:800;padding:13px 28px;border-radius:50px;box-shadow:0 4px 14px rgba(168,93,114,0.3);">
+              Revisit the corporate page
+            </a>
+          </div>
+        </td></tr>
+
+        <!-- Footer -->
+        <tr><td style="background:#FFF6F8;padding:22px 48px;text-align:center;border-top:1px solid #FFE8EE;">
+          ${logoFooter}
+          <p style="margin:4px 0 0;color:#9E8E96;font-size:12px;font-weight:500;">Creative team-building, done properly  ·  <a href="${siteUrl}" style="color:#A85D72;text-decoration:none;font-weight:700;">${siteUrl.replace(/^https?:\/\//,'')}</a></p>
+        </td></tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+  await sendEmail({
+    to: `${quote.name} <${quote.email}>`,
+    subject: `We've got your enquiry, ${firstName} — proposal coming within 24h (${quoteRef})`,
+    html,
+  });
+  console.log(`[Email] Corporate quote confirmation sent to ${quote.email}`);
+}
+
 // ─── Abandoned-cart nudge ────────────────────────────────────────────────────
 // Sent ~1 hour after a booking goes to 'pending' without being confirmed.
 // Goal: recover the sale. Tone: warm, not pushy — "your seats are still here".
@@ -1394,6 +1587,8 @@ module.exports = {
   sendEnquiryReply,
   sendPrivateQuoteToAdmin,
   sendPrivateQuoteConfirmation,
+  sendCorporateQuoteToAdmin,
+  sendCorporateQuoteConfirmation,
   sendTestEmail,
   sendAbandonedCartEmail,
 };

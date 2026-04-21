@@ -372,6 +372,31 @@ if (settingsCount.count === 0) {
   }
 }
 
+// Ensure Corporate / Team-Building page settings exist
+{
+  const check = db.prepare("SELECT COUNT(*) as count FROM site_settings WHERE key = 'corporate_events_hero_title'").get();
+  if (!check || check.count === 0) {
+    const ins = db.prepare('INSERT OR IGNORE INTO site_settings (key, value) VALUES (?, ?)');
+    ins.run('corporate_events_hero_title', 'Team bonding that actually lands');
+    ins.run('corporate_events_hero_sub',   'Creative workshops your whole team will enjoy — from the quiet newcomer to the loudest exec.');
+    ins.run('corporate_events_intro',      'We run facilitated painting and craft workshops for teams of 4 to 100+. Book once, everything is handled — materials, venue, drinks, photos, and an invoice your finance team will actually enjoy.');
+    // Editable testimonial quotes (JSON array). Start with sensible placeholders —
+    // admins can replace with real quotes via the Content tab.
+    ins.run('corporate_events_testimonials', JSON.stringify([
+      { quote: 'Easily the best team event we\'ve done. Even our most reserved team member ended up holding court by the end of the night.', author: 'Sarah M.', role: 'People Ops Lead, Midlands tech scale-up' },
+      { quote: 'Painless to book, turned up with everything, stayed within budget. Invoiced cleanly with our PO. Will be booking again for Christmas.', author: 'James T.', role: 'HR Business Partner' },
+    ]));
+    // Editable "trusted by" company list (simple comma-separated string)
+    ins.run('corporate_events_trusted_by', '');
+    // SEO
+    ins.run('seo_desc_corporate_events', '');
+    console.log('Seeded corporate events page defaults.');
+  } else {
+    // Make sure the SEO key exists even if the rest was seeded previously
+    db.prepare("INSERT OR IGNORE INTO site_settings (key, value) VALUES ('seo_desc_corporate_events', '')").run();
+  }
+}
+
 // Ensure gallery_images setting exists
 {
   const check = db.prepare("SELECT COUNT(*) as count FROM site_settings WHERE key = 'gallery_images'").get();
@@ -613,6 +638,12 @@ db.exec(`
     console.log('Migrated private_event_quotes: added custom_answers column.');
   }
 }
+
+// Migrate private_event_quotes: add quote_type + company_name columns for
+// the Corporate / Team-Building landing page.
+try { db.exec("ALTER TABLE private_event_quotes ADD COLUMN quote_type TEXT DEFAULT 'private'"); } catch {}
+try { db.exec("ALTER TABLE private_event_quotes ADD COLUMN company_name TEXT DEFAULT ''"); } catch {}
+try { db.exec("ALTER TABLE private_event_quotes ADD COLUMN job_title TEXT DEFAULT ''"); } catch {}
 
 // Seed default quote form config if not already set
 db.prepare("INSERT OR IGNORE INTO site_settings (key, value) VALUES ('pe_quote_config', ?)").run(

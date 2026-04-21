@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Corporate Team Building in Coventry &amp; Midlands | Paint &amp; Bubbles</title>
+  <meta name="description" content="Creative team-building workshops for companies in Coventry, Leamington Spa, Solihull and across the Midlands. Painting, craft and wellbeing sessions for teams of 4 to 100+. PO invoicing available.">
+  <meta property="og:title" content="Corporate Team Building | Paint &amp; Bubbles">
+  <meta property="og:description" content="Creative team-building workshops that HR actually likes. On-site, off-site or virtual. Clean invoicing, PO numbers, flexible dates.">
+  <meta property="og:type" content="website">
+  <link rel="canonical" href="https://paintandbubbles.co.uk/corporate-events">
+  <link rel="stylesheet" href="/api/design/vars.css">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    /* ============================================================
+       CORPORATE / TEAM-BUILDING LANDING PAGE
+       Tone: professional but warm. HR managers skim, so sections
+       are dense with visual anchors and short, scannable copy.
+       ============================================================ */
+
+    :root {
+      --c-navy: #1E2A3B;
+      --c-ink:  #2C2028;
+    }
+
+    /* ── Hero ─────────────────────────────────────────────── */
+    .ce-hero {
+      background:
+        radial-gradient(1200px 400px at 80% -10%, rgba(196,116,138,0.18), transparent 60%),
+        radial-gradient(900px 500px at -10% 110%, rgba(107,45,66,0.12), transparent 60%),
+        linear-gradient(180deg, #FFFBFC 0%, #FDF8F9 100%);
+      padding: 100px 0 90px;
+      border-bottom: 1px solid #F4E4EA;
+      position: relative;
+      overflow: hidden;
+    }
+    .ce-hero-eyebrow {
+      display: inline-block;
+      background: #FFF6F8;
+      border: 1px solid #FFCCD8;
+      color: #A85D72;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      padding: 6px 14px;
+      border-radius: 999px;
+      margin-bottom: 22px;
+    }
+    .ce-hero-inner { max-width: 820px; margin: 0 auto; text-align: center; }
+    .ce-hero-title {
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      font-weight: 900;
+      color: var(--c-ink);
+      line-height: 1.12;
+      margin: 0 0 18px;
+      letter-spacing: -0.5px;
+    }
+    .ce-hero-title em {
+      font-style: normal;
+      background: linear-gradient(135deg, #A85D72, #6B2D42);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .ce-hero-sub {
+      font-size: clamp(1rem, 1.7vw, 1.2rem);
+      color: #5C4F57;
+      font-weight: 500;
+      line-height: 1.55;
+      max-width: 640px;
+      margin: 0 auto 32px;
+    }
+    .ce-hero-ctas {
+      display: flex;
+      gap: 14px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .ce-hero-ctas .btn { padding: 14px 28px; font-size: 15px; font-weight: 800; }
+
+    /* ── Trust strip ──────────────────────────────────────── */
+    .ce-trust {
+      background: var(--c-ink);
+      padding: 22px 0;
+    }
+    .ce-trust-inner {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 24px;
+      text-align: center;
+    }
+    .ce-trust-num {
+      font-size: clamp(1.3rem, 2.4vw, 1.8rem);
+      font-weight: 900;
+      color: #fff;
+      letter-spacing: -0.5px;
+      line-height: 1;
+      margin: 0;
+    }
+    .ce-trust-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: rgba(255,255,255,0.65);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin: 4px 0 0;
+    }
+    @media (max-width: 640px) {
+      .ce-trust-inner { grid-template-columns: repeat(2, 1fr); gap: 18px; }
+    }
+
+    /* ── Section wrapper ─────────────────────────────────── */
+    .ce-section { padding: 80px 0; }
+    .ce-section.alt { background: #FDF8F9; }
+    .ce-section-head {
+      text-align: center;
+      max-width: 680px;
+      margin: 0 auto 48px;
+    }
+    .ce-eyebrow {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      color: #A85D72;
+      margin-bottom: 10px;
+    }
+    .ce-h2 {
+      font-size: clamp(1.6rem, 3vw, 2.2rem);
+      font-weight: 900;
+      color: var(--c-ink);
+      margin: 0 0 12px;
+      letter-spacing: -0.5px;
+    }
+    .ce-lead {
+      font-size: 16px;
+      color: #5C4F57;
+      line-height: 1.6;
+      margin: 0;
+    }
+
+    /* ── Benefits cards ──────────────────────────────────── */
+    .ce-benefits {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+    }
+    @media (max-width: 860px) { .ce-benefits { grid-template-columns: 1fr; } }
+    .ce-benefit-card {
+      background: #fff;
+      border: 1px solid #F4E4EA;
+      border-radius: 16px;
+      padding: 28px;
+      box-shadow: 0 4px 20px rgba(168,93,114,0.06);
+      transition: transform .2s ease, box-shadow .2s ease;
+    }
+    .ce-benefit-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 32px rgba(168,93,114,0.12);
+    }
+    .ce-benefit-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, #FFE3EB, #FFCCD8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      margin-bottom: 18px;
+    }
+    .ce-benefit-h {
+      font-size: 17px;
+      font-weight: 800;
+      color: var(--c-ink);
+      margin: 0 0 8px;
+    }
+    .ce-benefit-p {
+      font-size: 14px;
+      color: #5C4F57;
+      line-height: 1.6;
+      margin: 0;
+    }
+
+    /* ── Formats grid ────────────────────────────────────── */
+    .ce-formats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 18px;
+    }
+    @media (max-width: 900px) { .ce-formats { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 480px) { .ce-formats { grid-template-columns: 1fr; } }
+
+    .ce-format-card {
+      background: #fff;
+      border: 1px solid #F4E4EA;
+      border-radius: 14px;
+      padding: 22px;
+      text-align: left;
+      position: relative;
+    }
+    .ce-format-badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.7px;
+      text-transform: uppercase;
+      color: #A85D72;
+      background: #FFF6F8;
+      border-radius: 6px;
+      padding: 3px 8px;
+      margin-bottom: 10px;
+    }
+    .ce-format-h {
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--c-ink);
+      margin: 0 0 6px;
+    }
+    .ce-format-p {
+      font-size: 13px;
+      color: #5C4F57;
+      line-height: 1.55;
+      margin: 0 0 10px;
+    }
+    .ce-format-cap {
+      font-size: 11px;
+      font-weight: 700;
+      color: #9E8E96;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    /* ── Included checklist ──────────────────────────────── */
+    .ce-included-wrap {
+      background: #fff;
+      border: 1px solid #F4E4EA;
+      border-radius: 20px;
+      padding: 40px;
+      max-width: 760px;
+      margin: 0 auto;
+    }
+    .ce-included-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px 28px;
+    }
+    @media (max-width: 600px) { .ce-included-grid { grid-template-columns: 1fr; } }
+    .ce-inc-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      font-size: 14px;
+      color: var(--c-ink);
+      font-weight: 600;
+    }
+    .ce-inc-check {
+      flex-shrink: 0;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #A85D72, #6B2D42);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 900;
+      margin-top: 1px;
+    }
+
+    /* ── Testimonials ────────────────────────────────────── */
+    .ce-testimonials {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      max-width: 920px;
+      margin: 0 auto;
+    }
+    @media (max-width: 820px) { .ce-testimonials { grid-template-columns: 1fr; } }
+    .ce-testimonial {
+      background: #fff;
+      border: 1px solid #F4E4EA;
+      border-radius: 16px;
+      padding: 28px 30px;
+      position: relative;
+      box-shadow: 0 4px 20px rgba(168,93,114,0.06);
+    }
+    .ce-testimonial::before {
+      content: '"';
+      position: absolute;
+      top: 6px;
+      left: 18px;
+      font-family: 'Dancing Script', cursive;
+      font-size: 72px;
+      color: rgba(168,93,114,0.18);
+      line-height: 1;
+    }
+    .ce-testimonial-q {
+      font-size: 15px;
+      line-height: 1.7;
+      color: #2C2028;
+      margin: 12px 0 18px;
+      font-weight: 500;
+      font-style: italic;
+      position: relative;
+      z-index: 1;
+    }
+    .ce-testimonial-a {
+      font-size: 13px;
+      font-weight: 800;
+      color: #A85D72;
+      margin: 0;
+    }
+    .ce-testimonial-r {
+      font-size: 12px;
+      color: #9E8E96;
+      font-weight: 600;
+      margin: 2px 0 0;
+    }
+
+    /* ── Trusted-by logos strip ──────────────────────────── */
+    .ce-trusted {
+      text-align: center;
+      padding: 34px 0 0;
+    }
+    .ce-trusted-label {
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      color: #9E8E96;
+      margin-bottom: 14px;
+    }
+    .ce-trusted-list {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 8px 22px;
+      font-size: 15px;
+      font-weight: 700;
+      color: #5C4F57;
+    }
+    .ce-trusted-item {
+      padding: 6px 14px;
+      background: #fff;
+      border: 1px solid #F4E4EA;
+      border-radius: 999px;
+    }
+
+    /* ── HR FAQ ───────────────────────────────────────────── */
+    .ce-faq-wrap { max-width: 760px; margin: 0 auto; }
+    .ce-faq-item {
+      background: #fff;
+      border: 1px solid #F4E4EA;
+      border-radius: 12px;
+      margin-bottom: 12px;
+      overflow: hidden;
+    }
+    .ce-faq-q {
+      padding: 18px 22px;
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--c-ink);
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      list-style: none;
+    }
+    .ce-faq-q::-webkit-details-marker { display: none; }
+    .ce-faq-q::after {
+      content: '+';
+      font-size: 22px;
+      font-weight: 400;
+      color: #A85D72;
+      transition: transform .2s;
+    }
+    .ce-faq-item[open] .ce-faq-q::after { transform: rotate(45deg); }
+    .ce-faq-a {
+      padding: 0 22px 18px;
+      font-size: 14px;
+      line-height: 1.7;
+      color: #5C4F57;
+    }
+
+    /* ── Quote form ──────────────────────────────────────── */
+    .ce-form-section {
+      background: linear-gradient(180deg, #FDF8F9 0%, #FFF 100%);
+      padding: 90px 0 100px;
+    }
+    .ce-form-card {
+      max-width: 760px;
+      margin: 0 auto;
+      background: #fff;
+      border: 1px solid #F4E4EA;
+      border-radius: 22px;
+      padding: 44px clamp(24px, 4vw, 48px);
+      box-shadow: 0 12px 48px rgba(168,93,114,0.1);
+    }
+    .ce-form-title {
+      font-size: clamp(1.4rem, 3vw, 1.9rem);
+      font-weight: 900;
+      color: var(--c-ink);
+      margin: 0 0 8px;
+      text-align: center;
+    }
+    .ce-form-sub {
+      font-size: 14px;
+      color: #9E8E96;
+      text-align: center;
+      margin: 0 0 32px;
+    }
+    .ce-form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    @media (max-width: 600px) { .ce-form-row { grid-template-columns: 1fr; } }
+    .ce-group { display: flex; flex-direction: column; margin-bottom: 16px; }
+    .ce-group label {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--c-ink);
+      margin-bottom: 6px;
+    }
+    .ce-group .optional {
+      font-weight: 500;
+      color: #9E8E96;
+      font-size: 11px;
+      margin-left: 6px;
+    }
+    .ce-input, .ce-select, .ce-textarea {
+      padding: 13px 15px;
+      border: 1.5px solid #EEDFE4;
+      border-radius: 10px;
+      font-size: 14px;
+      font-family: inherit;
+      color: var(--c-ink);
+      background: #fff;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .ce-input:focus, .ce-select:focus, .ce-textarea:focus {
+      outline: none;
+      border-color: #A85D72;
+      box-shadow: 0 0 0 3px rgba(168,93,114,0.15);
+    }
+    .ce-textarea { resize: vertical; min-height: 96px; }
+    .ce-checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: #5C4F57;
+      cursor: pointer;
+    }
+    .ce-hint {
+      font-size: 11px;
+      color: #9E8E96;
+      margin-top: 4px;
+    }
+
+    .ce-submit-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      margin-top: 24px;
+      padding-top: 20px;
+      border-top: 1px solid #F4E4EA;
+    }
+    .ce-error {
+      color: #B63E5B;
+      font-size: 13px;
+      font-weight: 600;
+      margin: 0;
+      flex: 1;
+      min-width: 0;
+    }
+    .ce-submit-btn {
+      padding: 14px 30px;
+      font-size: 15px;
+      font-weight: 800;
+      flex-shrink: 0;
+    }
+
+    .ce-success {
+      max-width: 560px;
+      margin: 0 auto;
+      text-align: center;
+      background: #fff;
+      border: 1px solid #F4E4EA;
+      border-radius: 20px;
+      padding: 44px 36px;
+      box-shadow: 0 12px 48px rgba(168,93,114,0.1);
+    }
+    .ce-success-check {
+      width: 72px;
+      height: 72px;
+      background: linear-gradient(135deg, #8CC58E, #5FAE61);
+      border-radius: 50%;
+      margin: 0 auto 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 36px;
+    }
+    .ce-success-ref {
+      background: #FFF6F8;
+      border: 1px solid #FFCCD8;
+      color: #A85D72;
+      display: inline-block;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      margin-bottom: 18px;
+    }
+    .ce-success-title {
+      font-size: 24px;
+      font-weight: 900;
+      color: var(--c-ink);
+      margin: 0 0 10px;
+    }
+    .ce-success-sub {
+      font-size: 15px;
+      color: #5C4F57;
+      line-height: 1.6;
+      margin: 0 0 24px;
+    }
+    .ce-success-next {
+      text-align: left;
+      background: #FDF8F9;
+      border-radius: 12px;
+      padding: 18px 22px;
+      margin-bottom: 24px;
+    }
+    .ce-next-item {
+      display: flex;
+      gap: 10px;
+      font-size: 13px;
+      color: var(--c-ink);
+      padding: 6px 0;
+    }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container header-inner">
+    <a href="/" class="logo">
+      <img src="/logo.png" alt="Paint &amp; Bubbles" class="logo-img"
+           onerror="this.style.display='none';document.getElementById('logo-fallback').style.display='block'">
+      <span class="logo-text" id="logo-fallback" style="display:none">Paint <span class="logo-and">&amp;</span> Bubbles</span>
+    </a>
+    <nav class="main-nav" id="main-nav">
+      <button class="nav-btn" onclick="window.location.href='/'">Home</button>
+      <button class="nav-btn" onclick="window.location.href='/about'">About</button>
+      <button class="nav-btn" onclick="window.location.href='/events'">Events</button>
+      <button class="nav-btn" onclick="window.location.href='/reviews'">Reviews</button>
+      <button class="nav-btn" onclick="window.location.href='/faq'">FAQ</button>
+      <button class="nav-btn" onclick="window.location.href='/gallery'">Gallery</button>
+      <button class="nav-btn" onclick="window.location.href='/gift-vouchers'">Gift Vouchers</button>
+      <button class="nav-btn" onclick="window.location.href='/private-events'">Private Events</button>
+      <button class="nav-btn active" onclick="window.location.href='/corporate-events'">Corporate</button>
+      <a href="/contact" class="btn btn-ghost btn-sm">Contact Us</a>
+    </nav>
+    <button class="nav-burger" onclick="toggleMobileNav()" aria-label="Open menu">
+      <svg class="burger-icon-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      <svg class="burger-icon-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg>
+    </button>
+  </div>
+</header>
+<script>
+function toggleMobileNav(){document.querySelector('.site-header').classList.toggle('nav-open');}
+document.addEventListener('click',function(e){if(!e.target.closest('.site-header'))document.querySelector('.site-header').classList.remove('nav-open');});
+</script>
+
+<!-- HERO -->
+<section class="ce-hero">
+  <div class="container ce-hero-inner">
+    <span class="ce-hero-eyebrow">For HR &amp; People Teams</span>
+    <h1 class="ce-hero-title" id="ce-hero-title">Team bonding that <em>actually lands</em></h1>
+    <p class="ce-hero-sub" id="ce-hero-sub">Creative workshops your whole team will enjoy — from the quiet newcomer to the loudest exec.</p>
+    <div class="ce-hero-ctas">
+      <a href="#ce-form" class="btn btn-primary">Get a quote within 24h</a>
+      <a href="#ce-why" class="btn btn-ghost">Why this works for teams</a>
+    </div>
+  </div>
+</section>
+
+<!-- TRUST STRIP -->
+<section class="ce-trust">
+  <div class="container ce-trust-inner">
+    <div>
+      <p class="ce-trust-num">4–100+</p>
+      <p class="ce-trust-label">People per session</p>
+    </div>
+    <div>
+      <p class="ce-trust-num">On / off-site</p>
+      <p class="ce-trust-label">Or virtual kits</p>
+    </div>
+    <div>
+      <p class="ce-trust-num">24h</p>
+      <p class="ce-trust-label">Quote turnaround</p>
+    </div>
+    <div>
+      <p class="ce-trust-num">PO-friendly</p>
+      <p class="ce-trust-label">VAT invoice, 30-day terms</p>
+    </div>
+  </div>
+</section>
+
+<!-- WHY IT WORKS -->
+<section class="ce-section" id="ce-why">
+  <div class="container">
+    <div class="ce-section-head">
+      <p class="ce-eyebrow">Why teams love this</p>
+      <h2 class="ce-h2">Proper bonding — without the forced fun</h2>
+      <p class="ce-lead" id="ce-intro">We run facilitated painting and craft workshops for teams of 4 to 100+. Book once, everything is handled — materials, venue, drinks, photos, and an invoice your finance team will actually enjoy.</p>
+    </div>
+
+    <div class="ce-benefits">
+      <div class="ce-benefit-card">
+        <div class="ce-benefit-icon">🎨</div>
+        <h3 class="ce-benefit-h">Creativity unlocks conversation</h3>
+        <p class="ce-benefit-p">Painting gives everyone something to do with their hands — so real conversation happens naturally, not at a round-robin icebreaker. Hybrid teams bond in one evening.</p>
+      </div>
+      <div class="ce-benefit-card">
+        <div class="ce-benefit-icon">🫶</div>
+        <h3 class="ce-benefit-h">Inclusive by design</h3>
+        <p class="ce-benefit-p">No skill required. Non-competitive. Alcohol optional. Quieter team members thrive. We can adapt for dietary, accessibility and cultural needs — just ask.</p>
+      </div>
+      <div class="ce-benefit-card">
+        <div class="ce-benefit-icon">📦</div>
+        <h3 class="ce-benefit-h">Zero logistical lift for you</h3>
+        <p class="ce-benefit-p">We bring everything — canvases, paints, aprons, music, a professional facilitator. You show up. Your team leaves with their own painting and a much better group chat.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FORMATS -->
+<section class="ce-section alt">
+  <div class="container">
+    <div class="ce-section-head">
+      <p class="ce-eyebrow">Formats</p>
+      <h2 class="ce-h2">On-site, off-site, or entirely remote</h2>
+      <p class="ce-lead">Whatever your team shape, we'll flex around it. Hybrid teams often use our virtual kits for quarterly get-togethers.</p>
+    </div>
+    <div class="ce-formats">
+      <div class="ce-format-card">
+        <span class="ce-format-badge">Popular</span>
+        <h3 class="ce-format-h">At our studio</h3>
+        <p class="ce-format-p">Head to Coventry, Leamington Spa or Solihull. We handle the vibe — you handle getting everyone there.</p>
+        <p class="ce-format-cap">Up to 30 people</p>
+      </div>
+      <div class="ce-format-card">
+        <h3 class="ce-format-h">At your office</h3>
+        <p class="ce-format-p">We come to you with everything. Ideal for Friday afternoons, onboarding weeks or all-hands wrap-ups.</p>
+        <p class="ce-format-cap">Up to 60 people</p>
+      </div>
+      <div class="ce-format-card">
+        <h3 class="ce-format-h">Off-site away day</h3>
+        <p class="ce-format-p">Tie our session into a broader away day. We'll recommend venues across the Midlands and liaise directly.</p>
+        <p class="ce-format-cap">Up to 100+ people</p>
+      </div>
+      <div class="ce-format-card">
+        <h3 class="ce-format-h">Virtual kits</h3>
+        <p class="ce-format-p">Canvas + paints posted to each team member (including remote hires overseas). Live facilitator on Zoom.</p>
+        <p class="ce-format-cap">No upper limit</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- WHAT'S INCLUDED -->
+<section class="ce-section">
+  <div class="container">
+    <div class="ce-section-head">
+      <p class="ce-eyebrow">What's included</p>
+      <h2 class="ce-h2">One price, everything handled</h2>
+    </div>
+    <div class="ce-included-wrap">
+      <div class="ce-included-grid">
+        <div class="ce-inc-item"><span class="ce-inc-check">✓</span>All materials — canvases, paints, brushes, aprons</div>
+        <div class="ce-inc-item"><span class="ce-inc-check">✓</span>Professional artist to facilitate</div>
+        <div class="ce-inc-item"><span class="ce-inc-check">✓</span>Soft drinks included — prosecco optional</div>
+        <div class="ce-inc-item"><span class="ce-inc-check">✓</span>Themed music playlist</div>
+        <div class="ce-inc-item"><span class="ce-inc-check">✓</span>Photos from the session on request</div>
+        <div class="ce-inc-item"><span class="ce-inc-check">✓</span>Dietary &amp; accessibility adjustments</div>
+        <div class="ce-inc-item"><span class="ce-inc-check">✓</span>Clean VAT invoice with PO number</div>
+        <div class="ce-inc-item"><span class="ce-inc-check">✓</span>Flexible cancellation up to 14 days</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SOCIAL PROOF -->
+<section class="ce-section alt">
+  <div class="container">
+    <div class="ce-section-head">
+      <p class="ce-eyebrow">Social proof</p>
+      <h2 class="ce-h2">HR teams keep coming back</h2>
+    </div>
+
+    <div class="ce-testimonials" id="ce-testimonials-grid">
+      <!-- Populated by JS from site_settings (corporate_events_testimonials) -->
+    </div>
+
+    <!-- Trusted-by row: hidden if empty, populated from site_settings -->
+    <div class="ce-trusted hidden" id="ce-trusted">
+      <p class="ce-trusted-label">Trusted by teams at</p>
+      <div class="ce-trusted-list" id="ce-trusted-list"></div>
+    </div>
+  </div>
+</section>
+
+<!-- HR FAQ -->
+<section class="ce-section">
+  <div class="container">
+    <div class="ce-section-head">
+      <p class="ce-eyebrow">HR-friendly answers</p>
+      <h2 class="ce-h2">The questions we get most often</h2>
+    </div>
+
+    <div class="ce-faq-wrap">
+      <details class="ce-faq-item">
+        <summary class="ce-faq-q">Can you accommodate dietary requirements and allergies?</summary>
+        <div class="ce-faq-a">Yes — always. Tell us about any allergies, dietary requirements or dry/no-alcohol preferences in the enquiry form and we'll adjust. Our drinks packages include non-alcoholic options as standard.</div>
+      </details>
+      <details class="ce-faq-item">
+        <summary class="ce-faq-q">Do you invoice with a PO and offer 30-day terms?</summary>
+        <div class="ce-faq-a">Yes. We invoice your finance team directly with a clean VAT invoice quoting your PO number. Standard terms are net-30. We're VAT-registered.</div>
+      </details>
+      <details class="ce-faq-item">
+        <summary class="ce-faq-q">What if some of our team genuinely can't paint?</summary>
+        <div class="ce-faq-a">Nobody can. That's the point. Our facilitators walk everyone through, step by step, and the atmosphere is firmly non-competitive. The "less artistic" people often end up having the most fun.</div>
+      </details>
+      <details class="ce-faq-item">
+        <summary class="ce-faq-q">Is the venue accessible?</summary>
+        <div class="ce-faq-a">Our Coventry studio is step-free. For off-site events we'll always check accessibility upfront — just flag any specific requirements (wheelchair access, step-free route, quiet space) and we'll build it into the plan.</div>
+      </details>
+      <details class="ce-faq-item">
+        <summary class="ce-faq-q">What's your cancellation policy for teams?</summary>
+        <div class="ce-faq-a">Full refund if cancelled 14+ days before. Partial refund (50%) between 7 and 14 days. Within 7 days we can reschedule free of charge up to once — after that, the full fee applies. Everything is in writing before you commit.</div>
+      </details>
+      <details class="ce-faq-item">
+        <summary class="ce-faq-q">Can you run something for a hybrid team split across offices?</summary>
+        <div class="ce-faq-a">Absolutely. We've done this plenty of times — a live in-person session in one office, and our facilitator on Zoom for the remote folks (with kits posted to their homes beforehand). It genuinely works.</div>
+      </details>
+      <details class="ce-faq-item">
+        <summary class="ce-faq-q">How far in advance should we book?</summary>
+        <div class="ce-faq-a">2–4 weeks ahead is ideal so we can lock in your preferred date. For Christmas-party season (Nov–Dec) get in touch 6–8 weeks early — dates disappear quickly.</div>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- QUOTE FORM -->
+<section class="ce-form-section" id="ce-form">
+  <div class="container">
+
+    <div class="ce-form-card" id="ce-form-card">
+      <h2 class="ce-form-title">Get a quote — no commitment</h2>
+      <p class="ce-form-sub">Fill in what you can. We'll come back within 24h with a tailored proposal.</p>
+
+      <div class="ce-form-row">
+        <div class="ce-group">
+          <label for="ce-name">Your name *</label>
+          <input type="text" class="ce-input" id="ce-name" placeholder="Sarah Matthews" autocomplete="name">
+        </div>
+        <div class="ce-group">
+          <label for="ce-job">Job title <span class="optional">optional</span></label>
+          <input type="text" class="ce-input" id="ce-job" placeholder="Head of People" autocomplete="organization-title">
+        </div>
+      </div>
+
+      <div class="ce-form-row">
+        <div class="ce-group">
+          <label for="ce-email">Work email *</label>
+          <input type="email" class="ce-input" id="ce-email" placeholder="sarah@yourcompany.co.uk" autocomplete="email">
+          <span class="ce-hint">We'll only use this to send your quote.</span>
+        </div>
+        <div class="ce-group">
+          <label for="ce-phone">Phone <span class="optional">optional</span></label>
+          <input type="tel" class="ce-input" id="ce-phone" placeholder="+44 7700 000000" autocomplete="tel">
+        </div>
+      </div>
+
+      <div class="ce-form-row">
+        <div class="ce-group">
+          <label for="ce-company">Company *</label>
+          <input type="text" class="ce-input" id="ce-company" placeholder="Your company" autocomplete="organization">
+        </div>
+        <div class="ce-group">
+          <label for="ce-size">Team size *</label>
+          <select class="ce-select" id="ce-size">
+            <option value="">Select…</option>
+            <option value="6–10">6–10 people</option>
+            <option value="11–15">11–15 people</option>
+            <option value="16–20">16–20 people</option>
+            <option value="21–30">21–30 people</option>
+            <option value="30+">30+ people</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="ce-form-row">
+        <div class="ce-group">
+          <label for="ce-date">Preferred date <span class="optional">optional</span></label>
+          <input type="date" class="ce-input" id="ce-date">
+          <label class="ce-checkbox-row" style="margin-top:8px">
+            <input type="checkbox" id="ce-date-flex">
+            <span>We're flexible on the date</span>
+          </label>
+        </div>
+        <div class="ce-group">
+          <label for="ce-format">Preferred format</label>
+          <select class="ce-select" id="ce-format">
+            <option value="">Not sure yet</option>
+            <option>At our studio</option>
+            <option>At our office</option>
+            <option>Off-site away day</option>
+            <option>Virtual / hybrid</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="ce-form-row">
+        <div class="ce-group">
+          <label for="ce-budget">Budget range <span class="optional">optional</span></label>
+          <select class="ce-select" id="ce-budget">
+            <option value="">Not sure yet</option>
+            <option>Under £500</option>
+            <option>£500 – £1,000</option>
+            <option>£1,000 – £2,500</option>
+            <option>£2,500 – £5,000</option>
+            <option>£5,000+</option>
+          </select>
+        </div>
+        <div class="ce-group">
+          <label for="ce-heard">How did you hear about us?</label>
+          <select class="ce-select" id="ce-heard">
+            <option value="">Choose one…</option>
+            <option>Google search</option>
+            <option>LinkedIn</option>
+            <option>Colleague / recommendation</option>
+            <option>Previous booking</option>
+            <option>Instagram / Facebook</option>
+            <option>Other</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="ce-group">
+        <label for="ce-notes">Anything else we should know? <span class="optional">optional</span></label>
+        <textarea class="ce-textarea" id="ce-notes" placeholder="Dietary requirements, accessibility needs, vibe you're after, key dates, etc."></textarea>
+      </div>
+
+      <div class="ce-submit-row">
+        <p class="ce-error" id="ce-error"></p>
+        <button class="btn btn-primary ce-submit-btn" id="ce-submit-btn" onclick="submitCorporateQuote()">Send enquiry</button>
+      </div>
+    </div>
+
+    <!-- Success screen -->
+    <div class="ce-success hidden" id="ce-success">
+      <div class="ce-success-check">✓</div>
+      <div class="ce-success-ref" id="ce-success-ref"></div>
+      <h2 class="ce-success-title">Enquiry received — thank you!</h2>
+      <p class="ce-success-sub">We'll put together a tailored proposal and get back to you within 24 hours.</p>
+
+      <div class="ce-success-next">
+        <div class="ce-next-item">📨&nbsp; Confirmation email on its way with your enquiry summary</div>
+        <div class="ce-next-item">📞&nbsp; We may call to clarify a detail or two before pricing</div>
+        <div class="ce-next-item">📄&nbsp; You'll receive a formal quote with PO/VAT breakdown</div>
+      </div>
+
+      <a href="/events" class="btn btn-ghost">Browse our public events</a>
+    </div>
+
+  </div>
+</section>
+
+<!-- SOCIAL MEDIA -->
+<section class="social-section" id="social-section" style="display:none">
+  <div class="container social-section-inner">
+    <h2 class="social-section-title" id="social-section-title">Social Media</h2>
+    <div class="social-links-row" id="social-links-row"></div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-main">
+
+      <div class="footer-brand-col">
+        <div class="footer-brand">
+          <img src="" alt="Paint &amp; Bubbles" class="footer-logo-img" style="display:none">
+          <span class="footer-logo-text" id="footer-logo-fallback">Paint &amp; Bubbles</span>
+        </div>
+        <p class="footer-tagline">Creative events for everyone. Paint, sip and create across Coventry, Leamington Spa, Solihull and the Midlands.</p>
+      </div>
+
+      <div class="footer-nav-col">
+        <h4 class="footer-col-heading">Explore</h4>
+        <ul class="footer-col-links">
+          <li><a href="/">Home</a></li>
+          <li><a href="/about">About</a></li>
+          <li><a href="/events">Events</a></li>
+          <li><a href="/gallery">Gallery</a></li>
+          <li><a href="/reviews">Reviews</a></li>
+          <li><a href="/contact">Contact Us</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-nav-col">
+        <h4 class="footer-col-heading">Book</h4>
+        <ul class="footer-col-links">
+          <li><a href="/events">Upcoming Events</a></li>
+          <li><a href="/private-events">Private Events</a></li>
+          <li><a href="/corporate-events">Corporate &amp; Team Building</a></li>
+          <li><a href="/gift-vouchers">Gift Vouchers</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-nav-col">
+        <h4 class="footer-col-heading">Legal</h4>
+        <ul class="footer-col-links">
+          <li><a href="/terms">Terms &amp; Conditions</a></li>
+          <li><a href="/privacy">Privacy Policy</a></li>
+          <li><a href="/refund-policy">Refund Policy</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-nav-col">
+        <h4 class="footer-col-heading">Follow</h4>
+        <ul class="footer-col-links" id="footer-social-links">
+          <!-- Populated by JS from site settings -->
+        </ul>
+      </div>
+
+    </div>
+
+    <div class="footer-bottom">
+      <p class="footer-copyright">&copy; 2026 Paint &amp; Bubbles</p>
+      <div class="footer-cards">
+        <span class="card-badge visa"><svg viewBox="0 0 48 30" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="48" height="30" rx="4" fill="#1A1F71"/><text x="24" y="20" text-anchor="middle" font-family="Arial,sans-serif" font-size="14" font-weight="bold" font-style="italic" fill="white" letter-spacing="1">VISA</text></svg></span>
+        <span class="card-badge mastercard"><svg viewBox="0 0 48 30" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="48" height="30" rx="4" fill="#fff"/><circle cx="19" cy="13" r="7" fill="#EB001B"/><circle cx="29" cy="13" r="7" fill="#F79E1B"/><path d="M24 7a7 7 0 010 12A7 7 0 0124 7z" fill="#FF5F00"/><text x="24" y="27" text-anchor="middle" font-family="Arial,sans-serif" font-size="6.5" font-weight="bold" fill="#333" letter-spacing="0.3">CREDIT</text></svg></span>
+        <span class="card-badge amex"><svg viewBox="0 0 48 30" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="48" height="30" rx="4" fill="#2E77BC"/><text x="24" y="19" text-anchor="middle" font-family="Arial,sans-serif" font-size="11" font-weight="bold" fill="white" letter-spacing="0.5">AMEX</text></svg></span>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script src="/js/corporate-events.js"></script>
+<script src="/js/source-tracker.js"></script>
+<script src="/js/cookie-banner.js"></script>
+</body>
+</html>

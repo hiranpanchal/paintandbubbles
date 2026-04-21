@@ -104,6 +104,7 @@ app.get('/sitemap.xml', (req, res) => {
     { url: '/solihull',        priority: '0.9', changefreq: 'weekly',  lastmod: now },
     { url: '/gift-vouchers',   priority: '0.8', changefreq: 'monthly', lastmod: now },
     { url: '/private-events',  priority: '0.8', changefreq: 'monthly', lastmod: now },
+    { url: '/corporate-events',priority: '0.8', changefreq: 'monthly', lastmod: now },
     { url: '/about',           priority: '0.7', changefreq: 'monthly', lastmod: now },
     { url: '/reviews',         priority: '0.7', changefreq: 'weekly',  lastmod: now },
     { url: '/gallery',         priority: '0.6', changefreq: 'weekly',  lastmod: now },
@@ -458,11 +459,26 @@ app.get('/private-events', (req, res) => {
     serveSeoPage(res, 'private-events.html', {
       title: 'Private Events & Hen Parties — Paint & Bubbles',
       description: s.seo_desc_private_events ||
-        'Book a private painting or craft event for your group. Perfect for hen parties, corporate team building, birthdays and special occasions.',
+        'Book a private painting or craft event for your group. Perfect for hen parties, birthdays and special occasions.',
       canonicalUrl: `${siteUrl}/private-events`,
       ogImage: getOgImage(s, siteUrl),
     });
   } catch (err) { res.sendFile(path.join(__dirname, 'public', 'private-events.html')); }
+});
+
+// CORPORATE / TEAM-BUILDING — targeted at HR / People teams
+app.get('/corporate-events', (req, res) => {
+  try {
+    const s = getSeoSettings();
+    const siteUrl = getSiteUrl(req);
+    serveSeoPage(res, 'corporate-events.html', {
+      title: 'Corporate Team Building — Paint & Bubbles',
+      description: s.seo_desc_corporate_events ||
+        'Creative team-building workshops for companies across Coventry, Leamington Spa, Solihull and the Midlands. On-site, off-site or virtual. PO-friendly invoicing.',
+      canonicalUrl: `${siteUrl}/corporate-events`,
+      ogImage: getOgImage(s, siteUrl),
+    });
+  } catch (err) { res.sendFile(path.join(__dirname, 'public', 'corporate-events.html')); }
 });
 
 // LEAVE A REVIEW page — linked from post-event email
