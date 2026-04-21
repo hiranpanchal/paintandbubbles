@@ -1,7 +1,7 @@
 const router = require('express').Router();
 const db = require('../database');
 const { requireAdmin } = require('../middleware/auth');
-const { sendBookingConfirmation, sendAdminBookingNotification } = require('../services/email');
+const { sendBookingConfirmation, sendAdminBookingNotification, sendCancellationEmail } = require('../services/email');
 const { notifyNextOnWaitlist } = require('./waitlist');
 
 // GET /api/bookings — admin only
@@ -42,7 +42,7 @@ router.get('/:id', requireAdmin, (req, res) => {
 
 // POST /api/bookings — public (creates a pending booking before payment)
 router.post('/', (req, res) => {
-  const { event_id, name, email, phone, quantity, notes } = req.body;
+  const { event_id, name, email, phone, quantity, notes, group_note } = req.body;
 
   if (!event_id || !name || !email || !quantity) {
     return res.status(400).json({ error: 'Missing required fields' });
@@ -75,27 +75,45 @@ router.post('/', (req, res) => {
   const total_pence = event.price_pence * quantity;
 
   const result = db.prepare(`
-    INSERT INTO bookings (event_id, customer_id, quantity, total_pence, status, notes)
-    VALUES (?, ?, ?, ?, 'pending', ?)
-  `).run(event_id, customer.id, quantity, total_pence, notes || null);
+    INSERT INTO bookings (event_id, customer_id, quantity, total_pence, status, notes, group_note)
+    VALUES (?, ?, ?, ?, 'pending', ?, ?)
+  `).run(event_id, customer.id, quantity, total_pence, notes || null, group_note || null);
 
   const booking = db.prepare('SELECT * FROM bookings WHERE id = ?').get(result.lastInsertRowid);
   res.status(201).json({ booking, customer, event });
 });
 
 // PATCH /api/bookings/:id/status — admin only
-router.patch('/:id/status', requireAdmin, (req, res) => {
+router.patch('/:id/status', requireAdmin, async (req, res) => {
   const { status } = req.body;
   const allowed = ['pending', 'confirmed', 'cancelled', 'refunded'];
   if (!allowed.includes(status)) {
     return res.status(400).json({ error: 'Invalid status' });
   }
-  const booking = db.prepare('SELECT event_id FROM bookings WHERE id = ?').get(req.params.id);
+
+  const booking = db.prepare(`
+    SELECT b.*, c.name as customer_name, c.email as customer_email,
+           e.title as event_title, e.date as event_date, e.time as event_time,
+           e.location as event_location
+    FROM bookings b
+    JOIN customers c ON b.customer_id = c.id
+    JOIN events e ON b.event_id = e.id
+    WHERE b.id = ?
+  `).get(req.params.id);
+
+  if (!booking) return res.status(404).json({ error: 'Booking not found' });
+
   db.prepare('UPDATE bookings SET status = ? WHERE id = ?').run(status, req.params.id);
-  // If cancelling, notify next person on the waitlist
-  if ((status === 'cancelled' || status === 'refunded') && booking) {
+
+  if (status === 'cancelled' || status === 'refunded') {
+    // Notify next person on the waitlist (non-blocking)
     notifyNextOnWaitlist(booking.event_id);
+    // Send cancellation email to customer (non-blocking)
+    sendCancellationEmail(booking, status === 'refunded').catch(err =>
+      console.error('[Email] Failed to send cancellation email:', err)
+    );
   }
+
   res.json({ success: true });
 });
 

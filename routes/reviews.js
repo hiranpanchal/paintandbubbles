@@ -2,17 +2,28 @@ const router = require('express').Router();
 const db = require('../database');
 const { requireAdmin } = require('../middleware/auth');
 
-// GET /api/reviews — public, returns only published reviews
+// GET /api/reviews — public, returns only published reviews, newest first
 router.get('/', (req, res) => {
-  const reviews = db.prepare(
-    'SELECT * FROM reviews WHERE is_published = 1 ORDER BY sort_order ASC, id ASC'
-  ).all();
+  const reviews = db.prepare(`
+    SELECT * FROM reviews
+    WHERE is_published = 1
+    ORDER BY
+      CASE WHEN review_date IS NULL OR review_date = '' THEN 1 ELSE 0 END ASC,
+      review_date DESC,
+      id DESC
+  `).all();
   res.json(reviews);
 });
 
-// GET /api/reviews/all — admin (includes unpublished)
+// GET /api/reviews/all — admin (includes unpublished), newest first
 router.get('/all', requireAdmin, (req, res) => {
-  const reviews = db.prepare('SELECT * FROM reviews ORDER BY sort_order ASC, id ASC').all();
+  const reviews = db.prepare(`
+    SELECT * FROM reviews
+    ORDER BY
+      CASE WHEN review_date IS NULL OR review_date = '' THEN 1 ELSE 0 END ASC,
+      review_date DESC,
+      id DESC
+  `).all();
   res.json(reviews);
 });
 
@@ -42,9 +53,10 @@ router.post('/submit', (req, res) => {
   const safeRating = Math.min(5, Math.max(1, parseInt(rating) || 5));
   const maxOrder = db.prepare('SELECT MAX(sort_order) as m FROM reviews').get();
   const sort_order = (maxOrder.m ?? -1) + 1;
+  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
   const result = db.prepare(
-    'INSERT INTO reviews (author_name, class_attended, rating, body, is_published, sort_order) VALUES (?, ?, ?, ?, 0, ?)'
-  ).run(author_name.trim(), (class_attended || '').trim(), safeRating, body.trim(), sort_order);
+    'INSERT INTO reviews (author_name, class_attended, rating, body, is_published, sort_order, review_date) VALUES (?, ?, ?, ?, 0, ?, ?)'
+  ).run(author_name.trim(), (class_attended || '').trim(), safeRating, body.trim(), sort_order, today);
   res.status(201).json({ success: true, id: result.lastInsertRowid });
 });
 

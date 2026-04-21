@@ -5,6 +5,7 @@
  */
 
 const RESEND_API = 'https://api.resend.com/emails';
+const db = require('../database');
 
 function getFrom() {
   return process.env.EMAIL_FROM || 'Paint & Bubbles <noreply@paintandbubbles.co.uk>';
@@ -12,6 +13,37 @@ function getFrom() {
 
 function isConfigured() {
   return !!process.env.RESEND_API_KEY;
+}
+
+// Returns the logo URL from site_settings, or null if not set
+function getSiteLogo() {
+  try {
+    const row = db.prepare("SELECT value FROM site_settings WHERE key = 'logo_url'").get();
+    return (row && row.value) ? row.value : null;
+  } catch { return null; }
+}
+
+// Header logo block — shows logo on white pill, or falls back to decorative dots + text
+function getLogoHeaderHtml() {
+  const logo = getSiteLogo();
+  if (logo) {
+    return `<div style="margin-bottom:14px;"><img src="${logo}" alt="Paint &amp; Bubbles" style="height:72px;max-width:240px;object-fit:contain;background:#ffffff;border-radius:12px;padding:10px 18px;display:inline-block;"></div>`;
+  }
+  return `<div style="margin-bottom:16px;">
+      <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,0.3);margin:0 3px;"></span>
+      <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:rgba(255,212,222,0.4);margin:0 3px;"></span>
+      <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:rgba(143,168,181,0.4);margin:0 3px;"></span>
+    </div>
+    <h1 style="margin:0 0 4px;color:#ffffff;font-size:32px;font-weight:700;font-family:'Dancing Script',cursive;letter-spacing:0.5px;">Paint &amp; Bubbles</h1>`;
+}
+
+// Footer logo block — shows logo or Dancing Script text fallback
+function getLogoFooterHtml() {
+  const logo = getSiteLogo();
+  if (logo) {
+    return `<img src="${logo}" alt="Paint &amp; Bubbles" style="height:48px;max-width:180px;object-fit:contain;margin-bottom:4px;display:inline-block;">`;
+  }
+  return `<p style="margin:0 0 6px;color:#2C2028;font-size:18px;font-weight:700;font-family:'Dancing Script',cursive;">Paint &amp; Bubbles</p>`;
 }
 
 /**
@@ -64,6 +96,8 @@ function formatPrice(pence) {
 async function sendBookingConfirmation(booking) {
   const siteUrl = process.env.SITE_URL || 'http://localhost:3000';
   const bookingRef = `#PB${String(booking.id).padStart(5, '0')}`;
+  const logoHeader = getLogoHeaderHtml();
+  const logoFooter = getLogoFooterHtml();
 
   const html = `
 <!DOCTYPE html>
@@ -82,12 +116,7 @@ async function sendBookingConfirmation(booking) {
           <!-- Header / Hero -->
           <tr>
             <td style="background:linear-gradient(135deg,#2C0F18 0%,#6B2D42 50%,#C4748A 100%);padding:44px 48px;text-align:center;">
-              <div style="margin-bottom:16px;">
-                <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,0.3);margin:0 3px;"></span>
-                <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:rgba(255,212,222,0.4);margin:0 3px;"></span>
-                <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:rgba(143,168,181,0.4);margin:0 3px;"></span>
-              </div>
-              <h1 style="margin:0 0 4px;color:#ffffff;font-size:32px;font-weight:700;font-family:'Dancing Script',cursive;letter-spacing:0.5px;">Paint &amp; Bubbles</h1>
+              ${logoHeader}
               <p style="margin:10px 0 0;color:rgba(255,255,255,0.85);font-size:14px;font-weight:600;letter-spacing:0.3px;">🎉 Booking Confirmed!</p>
             </td>
           </tr>
@@ -145,7 +174,7 @@ async function sendBookingConfirmation(booking) {
                 <tr>
                   <td style="padding:20px 24px;">
                     <p style="margin:0 0 8px;color:#2C2028;font-size:14px;font-weight:800;">What to expect 🖌</p>
-                    <p style="margin:0;color:#5C4F57;font-size:13px;font-weight:500;line-height:1.7;">All materials are provided — just arrive on time, ready to have fun! Drinks will be available. Please save this email as your proof of booking.</p>
+                    <p style="margin:0;color:#5C4F57;font-size:13px;font-weight:500;line-height:1.7;">All materials are provided — just arrive on time, ready to have fun! Please save this email as your proof of booking.</p>
                   </td>
                 </tr>
               </table>
@@ -158,8 +187,8 @@ async function sendBookingConfirmation(booking) {
           <!-- Footer -->
           <tr>
             <td style="background:#FFF6F8;padding:24px 48px;text-align:center;border-top:1px solid #FFE8EE;">
-              <p style="margin:0 0 6px;color:#2C2028;font-size:18px;font-weight:700;font-family:'Dancing Script',cursive;">Paint &amp; Bubbles</p>
-              <p style="margin:0;color:#9E8E96;font-size:12px;font-weight:500;">Questions? Reply to this email  •  <a href="${siteUrl}" style="color:#C4748A;text-decoration:none;font-weight:700;">${siteUrl}</a></p>
+              ${logoFooter}
+              <p style="margin:4px 0 0;color:#9E8E96;font-size:12px;font-weight:500;">Questions? Reply to this email  •  <a href="${siteUrl}" style="color:#C4748A;text-decoration:none;font-weight:700;">${siteUrl}</a></p>
             </td>
           </tr>
 
@@ -269,6 +298,8 @@ async function sendEnquiryNotification(submission, notificationEmail) {
 
 async function sendGiftVoucher(voucher) {
   const siteUrl = process.env.SITE_URL || 'http://localhost:3000';
+  const logoHeader = getLogoHeaderHtml();
+  const logoFooter = getLogoFooterHtml();
   const amount = formatPrice(voucher.amount_pence);
   const recipientLine = voucher.recipient_name ? `<p style="margin:0 0 16px;color:#5C4F57;font-size:14px;font-weight:500;">This voucher is for <strong>${voucher.recipient_name}</strong>.</p>` : '';
   const messageLine = voucher.message ? `
@@ -296,12 +327,7 @@ async function sendGiftVoucher(voucher) {
           <!-- Header / Hero -->
           <tr>
             <td style="background:linear-gradient(135deg,#2C0F18 0%,#6B2D42 50%,#C4748A 100%);padding:44px 48px;text-align:center;">
-              <div style="margin-bottom:16px;">
-                <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,0.3);margin:0 3px;"></span>
-                <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:rgba(255,212,222,0.4);margin:0 3px;"></span>
-                <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:rgba(143,168,181,0.4);margin:0 3px;"></span>
-              </div>
-              <h1 style="margin:0 0 4px;color:#ffffff;font-size:32px;font-weight:700;font-family:'Dancing Script',cursive;letter-spacing:0.5px;">Paint &amp; Bubbles</h1>
+              ${logoHeader}
               <p style="margin:10px 0 0;color:rgba(255,255,255,0.85);font-size:14px;font-weight:600;letter-spacing:0.3px;">🎁 You've received a Gift Voucher!</p>
             </td>
           </tr>
@@ -348,8 +374,8 @@ async function sendGiftVoucher(voucher) {
           <!-- Footer -->
           <tr>
             <td style="background:#FFF6F8;padding:24px 48px;text-align:center;border-top:1px solid #FFE8EE;">
-              <p style="margin:0 0 6px;color:#2C2028;font-size:18px;font-weight:700;font-family:'Dancing Script',cursive;">Paint &amp; Bubbles</p>
-              <p style="margin:0;color:#9E8E96;font-size:12px;font-weight:500;">Questions? Reply to this email  •  <a href="${siteUrl}" style="color:#C4748A;text-decoration:none;font-weight:700;">${siteUrl}</a></p>
+              ${logoFooter}
+              <p style="margin:4px 0 0;color:#9E8E96;font-size:12px;font-weight:500;">Questions? Reply to this email  •  <a href="${siteUrl}" style="color:#C4748A;text-decoration:none;font-weight:700;">${siteUrl}</a></p>
             </td>
           </tr>
 
@@ -547,6 +573,7 @@ async function sendReminderEmail(booking) {
   const siteUrl = process.env.SITE_URL || 'https://paintandbubbles.co.uk';
   const bookingRef = `#PB${String(booking.id).padStart(5, '0')}`;
   const firstName = booking.customer_name.split(' ')[0];
+  const logoFooter = getLogoFooterHtml();
 
   const html = `
 <!DOCTYPE html>
@@ -581,15 +608,15 @@ async function sendReminderEmail(booking) {
           <table width="100%" cellpadding="0" cellspacing="0" style="background:#F0F5F7;border-radius:12px;margin-bottom:28px;">
             <tr><td style="padding:20px 24px;">
               <p style="margin:0 0 8px;color:#2C2028;font-size:14px;font-weight:800;">What to bring 🖌</p>
-              <p style="margin:0;color:#5C4F57;font-size:13px;font-weight:500;line-height:1.7;">All materials are provided — just bring yourself and your enthusiasm! Drinks will be available. Please arrive a few minutes early so we can get started on time.</p>
+              <p style="margin:0;color:#5C4F57;font-size:13px;font-weight:500;line-height:1.7;">All materials are provided — just bring yourself and your enthusiasm! Please arrive a few minutes early so we can get started on time.</p>
             </td></tr>
           </table>
           <p style="margin:0;color:#9E8E96;font-size:13px;line-height:1.7;">Got a question? Reply to this email and we'll get back to you.</p>
           <p style="margin:16px 0 0;color:#C4748A;font-size:16px;font-weight:700;">Can't wait to see you! 🥂✨</p>
         </td></tr>
         <tr><td style="background:#FFF6F8;padding:24px 48px;text-align:center;border-top:1px solid #FFE8EE;">
-          <p style="margin:0 0 4px;color:#2C2028;font-size:18px;font-weight:700;font-family:'Dancing Script',cursive;">Paint &amp; Bubbles</p>
-          <p style="margin:0;color:#9E8E96;font-size:12px;"><a href="${siteUrl}" style="color:#C4748A;text-decoration:none;">${siteUrl}</a></p>
+          ${logoFooter}
+          <p style="margin:4px 0 0;color:#9E8E96;font-size:12px;"><a href="${siteUrl}" style="color:#C4748A;text-decoration:none;">${siteUrl}</a></p>
         </td></tr>
       </table>
     </td></tr>
@@ -602,6 +629,7 @@ async function sendReminderEmail(booking) {
 
 async function sendReviewRequest(booking, reviewUrl) {
   const firstName = booking.customer_name.split(' ')[0];
+  const logoFooter = getLogoFooterHtml();
 
   const html = `
 <!DOCTYPE html>
@@ -627,7 +655,7 @@ async function sendReviewRequest(booking, reviewUrl) {
           <p style="margin:0;color:#9E8E96;font-size:13px;line-height:1.7;text-align:center;">It only takes 30 seconds — and it really does make a difference. Thank you! 🙏</p>
         </td></tr>
         <tr><td style="background:#FFF6F8;padding:24px 48px;text-align:center;border-top:1px solid #FFE8EE;">
-          <p style="margin:0 0 4px;color:#2C2028;font-size:18px;font-weight:700;font-family:'Dancing Script',cursive;">Paint &amp; Bubbles</p>
+          ${logoFooter}
         </td></tr>
       </table>
     </td></tr>
@@ -641,6 +669,8 @@ async function sendReviewRequest(booking, reviewUrl) {
 async function sendWaitlistConfirmation(entry, event) {
   const siteUrl = process.env.SITE_URL || 'https://paintandbubbles.co.uk';
   const firstName = entry.name.split(' ')[0];
+  const logoHeader = getLogoHeaderHtml();
+  const logoFooter = getLogoFooterHtml();
 
   const html = `
 <!DOCTYPE html>
@@ -651,8 +681,8 @@ async function sendWaitlistConfirmation(entry, event) {
     <tr><td align="center">
       <table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 8px 40px rgba(160,80,110,0.15);">
         <tr><td style="background:linear-gradient(135deg,#2C0F18 0%,#6B2D42 50%,#C4748A 100%);padding:36px 48px;text-align:center;">
-          <h1 style="margin:0 0 6px;color:#fff;font-size:24px;font-weight:700;">You're on the waitlist! 🎉</h1>
-          <p style="margin:0;color:rgba(255,255,255,0.8);font-size:14px;">Paint &amp; Bubbles</p>
+          ${logoHeader}
+          <h1 style="margin:8px 0 6px;color:#fff;font-size:24px;font-weight:700;">You're on the waitlist! 🎉</h1>
         </td></tr>
         <tr><td style="padding:36px 48px;">
           <p style="margin:0 0 8px;color:#9E8E96;font-size:14px;font-weight:600;">Hi ${firstName},</p>
@@ -673,7 +703,8 @@ async function sendWaitlistConfirmation(entry, event) {
           </div>
         </td></tr>
         <tr><td style="background:#FFF6F8;padding:20px 48px;text-align:center;border-top:1px solid #FFE8EE;">
-          <p style="margin:0;color:#9E8E96;font-size:12px;">Paint &amp; Bubbles — paintandbubbles.co.uk</p>
+          ${logoFooter}
+          <p style="margin:4px 0 0;color:#9E8E96;font-size:12px;">paintandbubbles.co.uk</p>
         </td></tr>
       </table>
     </td></tr>
@@ -688,6 +719,7 @@ async function sendWaitlistSpotAvailable(entry, event) {
   const siteUrl = process.env.SITE_URL || 'https://paintandbubbles.co.uk';
   const firstName = entry.name.split(' ')[0];
   const bookingUrl = `${siteUrl}/events/${event.id}`;
+  const logoFooter = getLogoFooterHtml();
 
   const html = `
 <!DOCTYPE html>
@@ -721,7 +753,8 @@ async function sendWaitlistSpotAvailable(entry, event) {
           </div>
         </td></tr>
         <tr><td style="background:#FFF6F8;padding:20px 48px;text-align:center;border-top:1px solid #FFE8EE;">
-          <p style="margin:0;color:#9E8E96;font-size:12px;">Paint &amp; Bubbles — paintandbubbles.co.uk</p>
+          ${logoFooter}
+          <p style="margin:4px 0 0;color:#9E8E96;font-size:12px;">paintandbubbles.co.uk</p>
         </td></tr>
       </table>
     </td></tr>
@@ -738,6 +771,8 @@ async function sendEnquiryConfirmation(submission) {
   const receivedAt = new Date(submission.created_at || new Date()).toLocaleString('en-GB', {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
   });
+  const logoHeader = getLogoHeaderHtml();
+  const logoFooter = getLogoFooterHtml();
 
   const html = `
 <!DOCTYPE html>
@@ -756,13 +791,8 @@ async function sendEnquiryConfirmation(submission) {
           <!-- Header -->
           <tr>
             <td style="background:linear-gradient(135deg,#2C0F18 0%,#6B2D42 50%,#C4748A 100%);padding:44px 48px;text-align:center;">
-              <div style="margin-bottom:16px;">
-                <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,0.3);margin:0 3px;"></span>
-                <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:rgba(255,212,222,0.4);margin:0 3px;"></span>
-                <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:rgba(143,168,181,0.4);margin:0 3px;"></span>
-              </div>
-              <h1 style="margin:0 0 6px;color:#ffffff;font-size:32px;font-weight:700;font-family:'Dancing Script',cursive;">Paint &amp; Bubbles</h1>
-              <p style="margin:0;color:rgba(255,255,255,0.85);font-size:14px;font-weight:600;">We've received your message 💌</p>
+              ${logoHeader}
+              <p style="margin:10px 0 0;color:rgba(255,255,255,0.85);font-size:14px;font-weight:600;">We've received your message 💌</p>
             </td>
           </tr>
 
@@ -794,8 +824,8 @@ async function sendEnquiryConfirmation(submission) {
           <!-- Footer -->
           <tr>
             <td style="background:#FFF6F8;padding:24px 48px;text-align:center;border-top:1px solid #FFE8EE;">
-              <p style="margin:0 0 6px;color:#2C2028;font-size:18px;font-weight:700;font-family:'Dancing Script',cursive;">Paint &amp; Bubbles</p>
-              <p style="margin:0;color:#9E8E96;font-size:12px;font-weight:500;">paintandbubbles.co.uk</p>
+              ${logoFooter}
+              <p style="margin:4px 0 0;color:#9E8E96;font-size:12px;font-weight:500;">paintandbubbles.co.uk</p>
             </td>
           </tr>
 
@@ -812,6 +842,126 @@ async function sendEnquiryConfirmation(submission) {
     html,
   });
   console.log(`[Email] Enquiry confirmation sent to ${submission.email}`);
+}
+
+async function sendCancellationEmail(booking, isRefund = false) {
+  const siteUrl = process.env.SITE_URL || 'http://localhost:3000';
+  const bookingRef = `#PB${String(booking.id).padStart(5, '0')}`;
+  const logoHeader = getLogoHeaderHtml();
+  const logoFooter = getLogoFooterHtml();
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body style="margin:0;padding:0;background:#FDF8F9;font-family:'Nunito','Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#FDF8F9;padding:40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 8px 40px rgba(160,80,110,0.15);">
+
+          <!-- Header -->
+          <tr>
+            <td style="background:linear-gradient(135deg,#2C0F18 0%,#6B2D42 50%,#C4748A 100%);padding:44px 48px;text-align:center;">
+              ${logoHeader}
+              <p style="margin:10px 0 0;color:rgba(255,255,255,0.85);font-size:14px;font-weight:600;letter-spacing:0.3px;">Booking Cancellation</p>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding:40px 48px;">
+              <p style="margin:0 0 6px;color:#9E8E96;font-size:14px;font-weight:600;">Hi ${escHtml(booking.customer_name)},</p>
+              <p style="margin:0 0 32px;color:#2C2028;font-size:18px;font-weight:800;">Your booking has been cancelled.</p>
+
+              <!-- Event Card -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="background:#FFF6F8;border:1px solid #FFCCD8;border-radius:14px;margin-bottom:28px;">
+                <tr>
+                  <td style="padding:24px 28px;">
+                    <p style="margin:0 0 4px;color:#A85D72;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.8px;">Cancelled Booking</p>
+                    <h2 style="margin:0 0 18px;color:#2C2028;font-size:20px;font-weight:900;">${escHtml(booking.event_title)}</h2>
+                    <table width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td style="padding:7px 0;color:#9E8E96;font-size:13px;font-weight:600;width:30%;vertical-align:top;">📅 Date</td>
+                        <td style="padding:7px 0;color:#2C2028;font-size:13px;font-weight:700;">${formatDate(booking.event_date)}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:7px 0;color:#9E8E96;font-size:13px;font-weight:600;vertical-align:top;">🕐 Time</td>
+                        <td style="padding:7px 0;color:#2C2028;font-size:13px;font-weight:700;">${escHtml(booking.event_time || '')}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:7px 0;color:#9E8E96;font-size:13px;font-weight:600;vertical-align:top;">📍 Location</td>
+                        <td style="padding:7px 0;color:#2C2028;font-size:13px;font-weight:700;">${escHtml(booking.event_location || '')}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:7px 0;color:#9E8E96;font-size:13px;font-weight:600;vertical-align:top;">🎟 Tickets</td>
+                        <td style="padding:7px 0;color:#2C2028;font-size:13px;font-weight:700;">${booking.quantity} ticket${booking.quantity > 1 ? 's' : ''}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Booking Reference -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
+                <tr>
+                  <td style="background:#F0F5F7;border-radius:12px;padding:18px 24px;text-align:center;">
+                    <p style="margin:0 0 4px;color:#9E8E96;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;">Booking Reference</p>
+                    <p style="margin:0;color:#2C2028;font-size:24px;font-weight:700;font-family:monospace;letter-spacing:3px;">${bookingRef}</p>
+                  </td>
+                </tr>
+              </table>
+
+              ${isRefund ? `
+              <!-- Refund Notice -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="background:#F0FDF4;border:1px solid #86EFAC;border-radius:12px;margin-bottom:28px;">
+                <tr>
+                  <td style="padding:20px 24px;">
+                    <p style="margin:0 0 6px;color:#166534;font-size:14px;font-weight:800;">💳 Refund on its way</p>
+                    <p style="margin:0;color:#15803D;font-size:13px;font-weight:500;line-height:1.7;">A refund has been issued to your original payment method. Please allow 5–10 business days for it to appear on your statement.</p>
+                  </td>
+                </tr>
+              </table>` : ''}
+
+              <!-- Browse Events CTA -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
+                <tr>
+                  <td align="center">
+                    <a href="${siteUrl}/events" style="display:inline-block;background:linear-gradient(135deg,#6B2D42,#C4748A);color:#ffffff;font-size:15px;font-weight:800;text-decoration:none;padding:14px 32px;border-radius:50px;letter-spacing:0.3px;">Browse Upcoming Events →</a>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:0;color:#9E8E96;font-size:13px;font-weight:500;line-height:1.7;">Got a question about your cancellation? Simply reply to this email and we'll get back to you as soon as possible.</p>
+              <p style="margin:16px 0 0;color:#C4748A;font-size:16px;font-weight:700;">We hope to see you at a future event! 🎨</p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background:#FFF6F8;padding:24px 48px;text-align:center;border-top:1px solid #FFE8EE;">
+              ${logoFooter}
+              <p style="margin:4px 0 0;color:#9E8E96;font-size:12px;font-weight:500;">Questions? Reply to this email  •  <a href="${siteUrl}" style="color:#C4748A;text-decoration:none;font-weight:700;">${siteUrl}</a></p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`.trim();
+
+  await sendEmail({
+    to: booking.customer_email,
+    subject: `Booking Cancelled: ${booking.event_title} — ${bookingRef}`,
+    html,
+  });
+  console.log(`[Email] Cancellation email sent to ${booking.customer_email}`);
 }
 
 async function sendTestEmail(to) {
@@ -960,6 +1110,7 @@ async function sendPrivateQuoteConfirmation(quote, labelledAnswers = []) {
   const quoteRef   = `#PQ${String(quote.id).padStart(5, '0')}`;
   const siteUrl    = process.env.SITE_URL || 'https://paintandbubbles.co.uk';
   const firstName  = quote.name.split(' ')[0];
+  const logoFooter = getLogoFooterHtml();
   const dateStr    = quote.preferred_date
     ? new Date(quote.preferred_date + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
     : null;
@@ -1060,8 +1211,8 @@ async function sendPrivateQuoteConfirmation(quote, labelledAnswers = []) {
 
         <!-- Footer -->
         <tr><td style="padding:24px 48px;text-align:center;border-top:1px solid #F5DDE3;">
-          <p style="margin:0 0 6px;font-family:'Dancing Script',cursive;font-size:22px;color:#C4748A;font-weight:700;">Paint &amp; Bubbles</p>
-          <p style="margin:0;font-size:12px;color:#C8B8BC;">Creative experiences for unforgettable moments</p>
+          ${logoFooter}
+          <p style="margin:4px 0 0;font-size:12px;color:#C8B8BC;">Creative experiences for unforgettable moments</p>
         </td></tr>
 
       </table>
@@ -1089,6 +1240,7 @@ function escapeHtml(str) {
 
 module.exports = {
   sendBookingConfirmation,
+  sendCancellationEmail,
   sendReminderEmail,
   sendReviewRequest,
   sendWaitlistConfirmation,

@@ -133,6 +133,9 @@ try { db.exec("ALTER TABLE reviews ADD COLUMN class_attended TEXT DEFAULT ''"); 
 try { db.exec("ALTER TABLE reviews ADD COLUMN review_date TEXT DEFAULT ''"); } catch {}
 try { db.exec("ALTER TABLE reviews ADD COLUMN image_url TEXT DEFAULT ''"); } catch {}
 
+// Migrate: add group_note to bookings if not present
+try { db.exec("ALTER TABLE bookings ADD COLUMN group_note TEXT DEFAULT ''"); } catch {}
+
 // Seed admin user if not exists
 const adminUsername = process.env.ADMIN_USERNAME || 'admin';
 const adminPassword = process.env.ADMIN_PASSWORD || 'changeme123';

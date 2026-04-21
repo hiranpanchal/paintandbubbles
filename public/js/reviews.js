@@ -154,6 +154,7 @@ async function loadReviews() {
             <div class="review-card-author">
               <span class="review-author-name">${escHtml(r.author_name)}</span>
               ${r.class_attended ? `<span class="review-author-location">${escHtml(r.class_attended)}</span>` : ''}
+              ${r.review_date ? `<span class="review-card-date">${new Date(r.review_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</span>` : ''}
             </div>
           </div>
         `).join('')}

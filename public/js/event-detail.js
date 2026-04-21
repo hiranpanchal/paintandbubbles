@@ -514,6 +514,11 @@ function showBookingStep1() {
           <label>Special requirements (optional)</label>
           <textarea id="b-notes" rows="2" placeholder="Dietary requirements, accessibility needs, etc.">${escHtml(currentBookingState.notes || '')}</textarea>
         </div>
+        <div class="form-group" style="margin-top:14px;">
+          <label style="font-weight:700;font-size:15px;">Are you booking as part of a group?</label>
+          <p style="font-size:13px;color:var(--text-light);margin:4px 0 8px;">Let us know who you're booking with so we can ensure you're sat together. Or are there any other details about your booking you'd like to tell us?</p>
+          <textarea id="b-group-note" rows="3" placeholder="e.g. We're a group of 6 — we've also got Sarah, Tom and Priya booking separately.">${escHtml(currentBookingState.groupNote || '')}</textarea>
+        </div>
         <div class="voucher-apply-section">
           <button type="button" class="voucher-toggle" onclick="toggleDiscountInput()">🏷️ Have a discount code?</button>
           <div id="discount-input-wrap" style="display:none">
@@ -583,15 +588,16 @@ function renderBookingSummary(event, qty) {
 }
 
 async function proceedToPayment() {
-  const name  = document.getElementById('b-name').value.trim();
-  const email = document.getElementById('b-email').value.trim();
-  const phone = document.getElementById('b-phone').value.trim();
-  const notes = document.getElementById('b-notes').value.trim();
+  const name      = document.getElementById('b-name').value.trim();
+  const email     = document.getElementById('b-email').value.trim();
+  const phone     = document.getElementById('b-phone').value.trim();
+  const notes     = document.getElementById('b-notes').value.trim();
+  const groupNote = document.getElementById('b-group-note').value.trim();
 
   if (!name || !email || !phone) { highlightError(!name ? 'b-name' : !email ? 'b-email' : 'b-phone'); return; }
   if (!isValidEmail(email)) { highlightError('b-email'); return; }
 
-  Object.assign(currentBookingState, { name, email, phone, notes });
+  Object.assign(currentBookingState, { name, email, phone, notes, groupNote });
 
   if (currentBookingState.event.price_pence === 0) { await confirmFreeBooking(); return; }
 
@@ -609,7 +615,7 @@ async function proceedToPayment() {
   try {
     const data = await apiFetch('/api/bookings', {
       method: 'POST',
-      body: JSON.stringify({ event_id: currentBookingState.event.id, name, email, phone, notes, quantity: currentBookingState.quantity })
+      body: JSON.stringify({ event_id: currentBookingState.event.id, name, email, phone, notes, group_note: groupNote, quantity: currentBookingState.quantity })
     });
     currentBookingState.booking  = data.booking;
     currentBookingState.customer = data.customer;
@@ -623,8 +629,8 @@ async function proceedToPayment() {
 async function confirmFreeBooking() {
   setLoadingBtn(true, 'Confirming…');
   try {
-    const { event, name, email, phone, notes, quantity } = currentBookingState;
-    const data = await apiFetch('/api/bookings', { method: 'POST', body: JSON.stringify({ event_id: event.id, name, email, phone, notes, quantity }) });
+    const { event, name, email, phone, notes, groupNote, quantity } = currentBookingState;
+    const data = await apiFetch('/api/bookings', { method: 'POST', body: JSON.stringify({ event_id: event.id, name, email, phone, notes, group_note: groupNote, quantity }) });
     await apiFetch(`/api/bookings/${data.booking.id}/confirm`, { method: 'POST', body: JSON.stringify({ payment_reference: null }) });
     currentBookingState.booking = data.booking;
     closeModal('booking-modal');
@@ -638,8 +644,8 @@ async function confirmFreeBooking() {
 async function confirmVoucherCoveredBooking() {
   setLoadingBtn(true, 'Confirming…');
   try {
-    const { event, name, email, phone, notes, quantity, voucherCode } = currentBookingState;
-    const data = await apiFetch('/api/bookings', { method: 'POST', body: JSON.stringify({ event_id: event.id, name, email, phone, notes, quantity }) });
+    const { event, name, email, phone, notes, groupNote, quantity, voucherCode } = currentBookingState;
+    const data = await apiFetch('/api/bookings', { method: 'POST', body: JSON.stringify({ event_id: event.id, name, email, phone, notes, group_note: groupNote, quantity }) });
     await apiFetch(`/api/bookings/${data.booking.id}/confirm`, { method: 'POST', body: JSON.stringify({ payment_reference: 'voucher:' + voucherCode }) });
     currentBookingState.booking = data.booking;
     // Redeem voucher (non-blocking)

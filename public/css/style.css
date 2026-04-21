@@ -2022,6 +2022,13 @@ h4 { font-family: var(--font-h4); }
   color: var(--text-light);
 }
 
+.review-card-date {
+  font-size: 11px;
+  color: var(--text-light);
+  opacity: 0.75;
+  margin-top: 1px;
+}
+
 @media (max-width: 640px) {
   .reviews-section { padding: 48px 0; }
   .review-card { width: 280px; padding: 20px; }

@@ -232,8 +232,13 @@ async function viewBookingDetail(id) {
         </div>
 
         ${b.notes ? `<div class="booking-detail-section">
-          <div class="booking-detail-label">Notes</div>
+          <div class="booking-detail-label">Special Requirements</div>
           <div class="booking-detail-value" style="font-weight:400;font-size:13px;color:var(--text-mid)">${escHtml(b.notes)}</div>
+        </div>` : ''}
+
+        ${b.group_note ? `<div class="booking-detail-section">
+          <div class="booking-detail-label">👥 Group Note</div>
+          <div class="booking-detail-value" style="font-weight:400;font-size:13px;color:var(--text-mid)">${escHtml(b.group_note)}</div>
         </div>` : ''}
 
         ${b.payment_reference ? `<div class="booking-detail-section">
