@@ -1195,6 +1195,19 @@ h4 { font-family: var(--font-h4); }
   box-shadow: 0 4px 14px rgba(168,93,114,0.35);
 }
 
+.confirm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+.confirm-actions .btn { flex: 0 1 auto; }
+@media (max-width: 480px) {
+  .confirm-actions { flex-direction: column; align-items: stretch; }
+  .confirm-actions .btn { width: 100%; }
+}
+
 /* ---- STATES ---- */
 .loading-state, .empty-state {
   grid-column: 1 / -1;

@@ -125,7 +125,8 @@ router.post('/:id/confirm', async (req, res) => {
   const booking = db.prepare(`
     SELECT b.*, c.name as customer_name, c.email as customer_email,
            e.title as event_title, e.date as event_date, e.time as event_time,
-           e.location as event_location, e.price_pence
+           e.location as event_location, e.price_pence,
+           e.duration_minutes as event_duration_minutes
     FROM bookings b
     JOIN customers c ON b.customer_id = c.id
     JOIN events e ON b.event_id = e.id

@@ -6,6 +6,7 @@
 
 const RESEND_API = 'https://api.resend.com/emails';
 const db = require('../database');
+const { buildBookingIcs } = require('./ics');
 
 function getFrom() {
   return process.env.EMAIL_FROM || 'Paint & Bubbles <noreply@paintandbubbles.co.uk>';
@@ -48,9 +49,13 @@ function getLogoFooterHtml() {
 
 /**
  * Core send function — all other functions call this.
- * @param {{ to: string|string[], subject: string, html: string, replyTo?: string }} opts
+ * @param {{ to: string|string[], subject: string, html: string, replyTo?: string,
+ *          attachments?: Array<{ filename: string, content: string|Buffer, contentType?: string }> }} opts
+ *
+ * Attachments: `content` may be a Buffer or a raw string — we base64-encode it before
+ * sending to Resend, which expects base64 in its `content` field.
  */
-async function sendEmail({ to, subject, html, replyTo }) {
+async function sendEmail({ to, subject, html, replyTo, attachments }) {
   if (!isConfigured()) {
     console.log('[Email] RESEND_API_KEY not set — skipping email to', to);
     return;
@@ -63,6 +68,16 @@ async function sendEmail({ to, subject, html, replyTo }) {
     html,
   };
   if (replyTo) payload.reply_to = replyTo;
+
+  if (Array.isArray(attachments) && attachments.length) {
+    payload.attachments = attachments.map(a => ({
+      filename: a.filename,
+      content: Buffer.isBuffer(a.content)
+        ? a.content.toString('base64')
+        : Buffer.from(String(a.content), 'utf8').toString('base64'),
+      content_type: a.contentType || 'application/octet-stream',
+    }));
+  }
 
   const response = await fetch(RESEND_API, {
     method: 'POST',
@@ -96,8 +111,23 @@ function formatPrice(pence) {
 async function sendBookingConfirmation(booking) {
   const siteUrl = process.env.SITE_URL || 'http://localhost:3000';
   const bookingRef = `#PB${String(booking.id).padStart(5, '0')}`;
+  const bookingRefPlain = `PB${String(booking.id).padStart(5, '0')}`;
   const logoHeader = getLogoHeaderHtml();
   const logoFooter = getLogoFooterHtml();
+
+  // Build the .ics attachment. If anything goes wrong we still send the email
+  // without the attachment — the confirmation is the priority.
+  let icsFile = null;
+  try {
+    const icsBody = buildBookingIcs(booking, siteUrl);
+    icsFile = {
+      filename: `paint-and-bubbles-${bookingRefPlain}.ics`,
+      content: icsBody,
+      contentType: 'text/calendar; charset=utf-8; method=PUBLISH',
+    };
+  } catch (err) {
+    console.error('[Email] Failed to build .ics for booking', booking.id, err);
+  }
 
   const html = `
 <!DOCTYPE html>
@@ -169,6 +199,16 @@ async function sendBookingConfirmation(booking) {
                 </tr>
               </table>
 
+              <!-- Add to Calendar -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="background:#FFF6F8;border:1px dashed #FFCCD8;border-radius:12px;margin-bottom:20px;">
+                <tr>
+                  <td style="padding:18px 24px;text-align:center;">
+                    <p style="margin:0 0 4px;color:#2C2028;font-size:14px;font-weight:800;">📅 Add this to your calendar</p>
+                    <p style="margin:0 0 10px;color:#9E8E96;font-size:12px;font-weight:500;line-height:1.6;">The <strong>.ics file</strong> attached to this email opens in Google Calendar, Apple Calendar and Outlook. You'll get a reminder 1 day and 1 hour before the event.</p>
+                  </td>
+                </tr>
+              </table>
+
               <!-- What to bring -->
               <table width="100%" cellpadding="0" cellspacing="0" style="background:#F0F5F7;border-radius:12px;margin-bottom:28px;">
                 <tr>
@@ -203,8 +243,9 @@ async function sendBookingConfirmation(booking) {
     to: booking.customer_email,
     subject: `Booking Confirmed: ${booking.event_title} — ${bookingRef}`,
     html,
+    attachments: icsFile ? [icsFile] : undefined,
   });
-  console.log(`[Email] Booking confirmation sent to ${booking.customer_email}`);
+  console.log(`[Email] Booking confirmation sent to ${booking.customer_email}${icsFile ? ' (with .ics attached)' : ''}`);
 }
 
 async function sendEnquiryNotification(submission, notificationEmail) {

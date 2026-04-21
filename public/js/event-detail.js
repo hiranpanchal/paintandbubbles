@@ -977,6 +977,7 @@ function showConfirmation(booking, customer, event) {
   const charged = Math.max(0, booking.total_pence - discountPence - voucherDiscount);
   const total = event.price_pence === 0 ? 'Free' : charged === 0 ? 'Free (fully discounted)' : `£${(charged / 100).toFixed(2)}`;
   const ref   = `#PB${String(booking.id).padStart(5, '0')}`;
+  const refPlain = `PB${String(booking.id).padStart(5, '0')}`;
 
   document.getElementById('confirm-modal-body').innerHTML = `
     <div class="confirmation-body">
@@ -990,10 +991,124 @@ function showConfirmation(booking, customer, event) {
         <div class="confirm-detail-row"><span>Tickets</span><span>${booking.quantity}</span></div>
         <div class="confirm-detail-row"><span>Total Paid</span><span style="color:var(--green);font-weight:700;">${total}</span></div>
       </div>
-      <a href="/events" class="btn btn-primary">Browse More Events</a>
+      <div class="confirm-actions">
+        <button type="button" class="btn btn-ghost" id="confirm-add-to-calendar">📅 Add to Calendar</button>
+        <a href="/events" class="btn btn-primary">Browse More Events</a>
+      </div>
     </div>`;
 
+  const calBtn = document.getElementById('confirm-add-to-calendar');
+  if (calBtn) {
+    calBtn.addEventListener('click', () => downloadEventIcs(event, refPlain));
+  }
+
   openModal('confirm-modal');
+}
+
+// ─── Add to Calendar (.ics download) ─────────────────────────────────────────
+// Builds an RFC 5545 .ics file in the browser and triggers a download. Mirrors
+// services/ics.js on the server so the file is identical whichever path the
+// user takes (email attachment or modal button).
+
+function icsEscapeText(s) {
+  return String(s || '')
+    .replace(/\\/g, '\\\\')
+    .replace(/\n/g, '\\n')
+    .replace(/\r/g, '')
+    .replace(/,/g, '\\,')
+    .replace(/;/g, '\\;');
+}
+
+function icsFoldLine(line) {
+  if (line.length <= 75) return line;
+  const parts = [line.slice(0, 75)];
+  let i = 75;
+  while (i < line.length) { parts.push(' ' + line.slice(i, i + 74)); i += 74; }
+  return parts.join('\r\n');
+}
+
+function icsLocalDateTime(dateStr, timeStr) {
+  const d = String(dateStr || '').replace(/-/g, '');
+  const t = String(timeStr || '00:00').replace(/:/g, '').padEnd(4, '0').slice(0, 4) + '00';
+  return `${d}T${t}`;
+}
+
+function icsAddMinutes(dateStr, timeStr, minutes) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const [hh, mm] = (timeStr || '00:00').split(':').map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d, hh || 0, mm || 0, 0));
+  dt.setUTCMinutes(dt.getUTCMinutes() + (minutes || 0));
+  const p = n => String(n).padStart(2, '0');
+  return `${dt.getUTCFullYear()}${p(dt.getUTCMonth() + 1)}${p(dt.getUTCDate())}T${p(dt.getUTCHours())}${p(dt.getUTCMinutes())}00`;
+}
+
+function icsUtcStamp() {
+  const d = new Date(), p = n => String(n).padStart(2, '0');
+  return `${d.getUTCFullYear()}${p(d.getUTCMonth() + 1)}${p(d.getUTCDate())}T${p(d.getUTCHours())}${p(d.getUTCMinutes())}${p(d.getUTCSeconds())}Z`;
+}
+
+function buildEventIcs(event, refPlain) {
+  const duration = event.duration_minutes || 120;
+  const dtStart = icsLocalDateTime(event.date, event.time);
+  const dtEnd   = icsAddMinutes(event.date, event.time, duration);
+  const host = (location.hostname || 'paintandbubbles.co.uk');
+  const uid = `booking-${refPlain}@${host}`;
+
+  const lines = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Paint and Bubbles//Booking//EN',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
+    'BEGIN:VTIMEZONE',
+    'TZID:Europe/London',
+    'X-LIC-LOCATION:Europe/London',
+    'BEGIN:DAYLIGHT',
+    'TZOFFSETFROM:+0000', 'TZOFFSETTO:+0100', 'TZNAME:BST',
+    'DTSTART:19700329T010000',
+    'RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=-1SU',
+    'END:DAYLIGHT',
+    'BEGIN:STANDARD',
+    'TZOFFSETFROM:+0100', 'TZOFFSETTO:+0000', 'TZNAME:GMT',
+    'DTSTART:19701025T020000',
+    'RRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=-1SU',
+    'END:STANDARD',
+    'END:VTIMEZONE',
+    'BEGIN:VEVENT',
+    `UID:${uid}`,
+    `DTSTAMP:${icsUtcStamp()}`,
+    `DTSTART;TZID=Europe/London:${dtStart}`,
+    `DTEND;TZID=Europe/London:${dtEnd}`,
+    `SUMMARY:${icsEscapeText(event.title)}`,
+    `LOCATION:${icsEscapeText(event.location || '')}`,
+    `DESCRIPTION:${icsEscapeText(`Your Paint & Bubbles booking (${refPlain}). We can't wait to see you!`)}`,
+    `URL:${icsEscapeText(location.origin + location.pathname)}`,
+    'STATUS:CONFIRMED',
+    'TRANSP:OPAQUE',
+    'BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:Reminder', 'TRIGGER:-P1D', 'END:VALARM',
+    'BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:Reminder', 'TRIGGER:-PT1H', 'END:VALARM',
+    'END:VEVENT',
+    'END:VCALENDAR',
+  ];
+  return lines.map(icsFoldLine).join('\r\n') + '\r\n';
+}
+
+function downloadEventIcs(event, refPlain) {
+  try {
+    const ics = buildEventIcs(event, refPlain);
+    const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `paint-and-bubbles-${refPlain}.ics`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  } catch (err) {
+    console.error('Failed to build calendar file:', err);
+    alert('Sorry — we couldn\'t generate the calendar file. The event details are still in your confirmation email.');
+  }
 }
 
 // ---- WAITLIST ----
