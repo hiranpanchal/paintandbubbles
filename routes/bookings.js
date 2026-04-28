@@ -188,7 +188,22 @@ router.post('/:id/confirm', async (req, res) => {
 router.delete('/:id', requireAdmin, (req, res) => {
   const booking = db.prepare('SELECT id, event_id, status FROM bookings WHERE id = ?').get(req.params.id);
   if (!booking) return res.status(404).json({ error: 'Booking not found' });
-  db.prepare('DELETE FROM bookings WHERE id = ?').run(req.params.id);
+
+  // Bookings have child rows in `payments` (FK NOT NULL — blocks delete) and may
+  // be referenced by `gift_vouchers.used_booking_id` (no FK, but would dangle).
+  // Clean both up in a single transaction so a hard-delete is atomic.
+  try {
+    db.exec('BEGIN');
+    db.prepare('DELETE FROM payments WHERE booking_id = ?').run(req.params.id);
+    db.prepare('UPDATE gift_vouchers SET used_booking_id = NULL WHERE used_booking_id = ?').run(req.params.id);
+    db.prepare('DELETE FROM bookings WHERE id = ?').run(req.params.id);
+    db.exec('COMMIT');
+  } catch (err) {
+    try { db.exec('ROLLBACK'); } catch {}
+    console.error('[DELETE /api/bookings/:id] failed:', err);
+    return res.status(500).json({ error: 'Failed to delete booking' });
+  }
+
   // Notify next waitlist person if this was a confirmed booking
   if (booking.status === 'confirmed') notifyNextOnWaitlist(booking.event_id);
   res.json({ success: true });
