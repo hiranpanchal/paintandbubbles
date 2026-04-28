@@ -5465,7 +5465,10 @@ async function loadAdminVouchers() {
             <td>${voucherStatusBadge(v.status)}</td>
             <td class="hide-mobile">${formatDate(v.created_at ? v.created_at.split('T')[0] : '')}</td>
             <td>
-              ${v.status === 'active' ? `<button class="btn btn-ghost btn-sm" onclick="cancelVoucher(${v.id})">Cancel</button>` : ''}
+              <div style="display:flex;gap:6px;flex-wrap:wrap">
+                <button class="btn btn-ghost btn-sm" onclick='openVoucherModal(${JSON.stringify(v).replace(/'/g, "&#39;")})'>Edit</button>
+                <button class="btn btn-ghost btn-sm" style="color:var(--rose)" onclick="deleteVoucher(${v.id})">Delete</button>
+              </div>
             </td>
           </tr>`).join('')}
         </tbody>
@@ -5486,14 +5489,119 @@ function voucherStatusBadge(status) {
   return `<span style="background:${s.bg};color:${s.color};padding:3px 10px;border-radius:50px;font-size:11px;font-weight:700;">${s.label}</span>`;
 }
 
-async function cancelVoucher(id) {
-  if (!confirm('Cancel this gift voucher? The code will no longer be usable.')) return;
+// Open the voucher form. Pass a voucher object to edit; omit to create.
+function openVoucherModal(voucher) {
+  const isEdit = !!voucher;
+  const v = voucher || {};
+  const amountPounds = v.amount_pence ? (v.amount_pence / 100).toFixed(2) : '';
+
+  const body = document.getElementById('generic-modal-body');
+  body.innerHTML = `
+    <div class="modal-header">
+      <h2>${isEdit ? 'Edit Voucher' : 'Issue Voucher'}</h2>
+      <button class="modal-close" onclick="closeAdminModal('generic-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      ${isEdit ? `
+      <div class="form-group">
+        <label>Code</label>
+        <input type="text" value="${escHtml(v.code || '')}" readonly style="background:var(--cream);font-family:monospace;font-weight:700;letter-spacing:1px">
+      </div>` : ''}
+      <div class="form-group">
+        <label>Amount (£)</label>
+        <input type="number" id="vc-amount" min="1" max="1000" step="0.01" value="${amountPounds}" placeholder="e.g. 25.00" style="max-width:160px">
+      </div>
+      <div class="form-group">
+        <label>Status</label>
+        <select id="vc-status">
+          <option value="active"    ${(v.status || 'active') === 'active'    ? 'selected' : ''}>Active</option>
+          <option value="pending"   ${v.status === 'pending'   ? 'selected' : ''}>Pending</option>
+          <option value="used"      ${v.status === 'used'      ? 'selected' : ''}>Used</option>
+          <option value="cancelled" ${v.status === 'cancelled' ? 'selected' : ''}>Cancelled</option>
+        </select>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div class="form-group">
+          <label>Recipient name <span style="color:var(--text-light);font-size:12px">Optional</span></label>
+          <input type="text" id="vc-recipient-name" value="${escHtml(v.recipient_name || '')}" placeholder="e.g. Hiran Panchal">
+        </div>
+        <div class="form-group">
+          <label>Recipient email <span style="color:var(--text-light);font-size:12px">Optional</span></label>
+          <input type="email" id="vc-recipient-email" value="${escHtml(v.recipient_email || '')}" placeholder="recipient@example.com">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Message <span style="color:var(--text-light);font-size:12px">Optional — included in the gift email</span></label>
+        <textarea id="vc-message" rows="3" placeholder="Happy birthday!">${escHtml(v.message || '')}</textarea>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div class="form-group">
+          <label>Purchaser name <span style="color:var(--text-light);font-size:12px">Shown on the gift email</span></label>
+          <input type="text" id="vc-purchaser-name" value="${escHtml(v.purchaser_name || '')}" placeholder="e.g. Paint &amp; Bubbles">
+        </div>
+        <div class="form-group">
+          <label>Purchaser email</label>
+          <input type="email" id="vc-purchaser-email" value="${escHtml(v.purchaser_email || '')}" placeholder="optional">
+        </div>
+      </div>
+      ${!isEdit ? `
+      <div class="form-group" style="background:var(--cream);padding:12px;border-radius:8px;margin-top:4px">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin:0">
+          <input type="checkbox" id="vc-send-email" checked style="width:auto;margin:0">
+          <span>Email the voucher to the recipient now</span>
+        </label>
+        <div style="color:var(--text-light);font-size:12px;margin-top:4px;margin-left:24px">Only sends if status is "Active" and a recipient email is set.</div>
+      </div>` : ''}
+      <div style="display:flex;gap:12px;margin-top:8px">
+        <button class="btn btn-ghost btn-full" onclick="closeAdminModal('generic-modal')">Cancel</button>
+        <button class="btn btn-primary btn-full" onclick="saveVoucher(${isEdit ? v.id : 'null'})">${isEdit ? 'Save Changes' : 'Issue Voucher'}</button>
+      </div>
+    </div>`;
+  document.getElementById('generic-modal').classList.remove('hidden');
+}
+
+async function saveVoucher(id) {
+  const isEdit = id !== null && id !== undefined;
+  const amount = parseFloat(document.getElementById('vc-amount').value);
+  if (!amount || amount <= 0) { toast('Enter a valid amount.', 'error'); return; }
+
+  const payload = {
+    amount_pence: Math.round(amount * 100),
+    status: document.getElementById('vc-status').value,
+    purchaser_name:  document.getElementById('vc-purchaser-name').value,
+    purchaser_email: document.getElementById('vc-purchaser-email').value,
+    recipient_name:  document.getElementById('vc-recipient-name').value,
+    recipient_email: document.getElementById('vc-recipient-email').value,
+    message:         document.getElementById('vc-message').value,
+  };
+
+  if (!isEdit) {
+    payload.send_email = !!document.getElementById('vc-send-email')?.checked;
+  }
+
   try {
-    await apiFetch(`/api/vouchers/${id}`, { method: 'DELETE' });
-    toast('Voucher cancelled.');
+    if (isEdit) {
+      await apiFetch(`/api/vouchers/${id}`, { method: 'PATCH', body: JSON.stringify(payload) });
+      toast('Voucher updated.');
+    } else {
+      await apiFetch('/api/vouchers', { method: 'POST', body: JSON.stringify(payload) });
+      toast('Voucher issued.');
+    }
+    closeAdminModal('generic-modal');
     loadAdminVouchers();
   } catch (err) {
-    toast(err.message || 'Failed to cancel voucher.', 'error');
+    toast(err.message || 'Failed to save voucher.', 'error');
+  }
+}
+
+async function deleteVoucher(id) {
+  if (!confirm('Delete this voucher permanently? This cannot be undone.')) return;
+  try {
+    await apiFetch(`/api/vouchers/${id}`, { method: 'DELETE' });
+    toast('Voucher deleted.');
+    loadAdminVouchers();
+  } catch (err) {
+    toast(err.message || 'Failed to delete voucher.', 'error');
   }
 }
 

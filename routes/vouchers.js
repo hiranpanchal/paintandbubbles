@@ -214,13 +214,99 @@ router.get('/', requireAdmin, (req, res) => {
   res.json(vouchers);
 });
 
-// DELETE /api/vouchers/:id — admin only
+// POST /api/vouchers — admin only (manually issue a voucher, e.g. comp / staff giveaway)
+// Skips the payment flow entirely. Defaults to status='active' so the code is
+// usable immediately. Optionally emails the recipient.
+router.post('/', requireAdmin, async (req, res) => {
+  const {
+    amount_pence,
+    purchaser_name, purchaser_email,
+    recipient_name, recipient_email, message,
+    status, send_email
+  } = req.body;
+
+  if (!amount_pence || typeof amount_pence !== 'number') return res.status(400).json({ error: 'amount_pence must be a number' });
+  if (amount_pence < 100) return res.status(400).json({ error: 'Minimum voucher amount is £1.00' });
+  if (amount_pence > 100000) return res.status(400).json({ error: 'Maximum voucher amount is £1000.00' });
+
+  const allowedStatuses = ['pending', 'active', 'used', 'cancelled'];
+  const finalStatus = allowedStatuses.includes(status) ? status : 'active';
+
+  // Sensible defaults for the manual case — purchaser metadata isn't meaningful
+  // when an admin issues the voucher, but the columns are NOT NULL so we fill them.
+  const pName  = (purchaser_name && purchaser_name.trim()) || 'Manual issue';
+  const pEmail = (purchaser_email && purchaser_email.trim()) ||
+                 getSetting('notification_email', 'NOTIFICATION_EMAIL') ||
+                 'admin@paintandbubbles.co.uk';
+
+  const code = generateVoucherCode();
+
+  const result = db.prepare(`
+    INSERT INTO gift_vouchers (code, amount_pence, purchaser_name, purchaser_email, recipient_name, recipient_email, message, status, payment_reference)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'manual')
+  `).run(code, amount_pence, pName, pEmail,
+         recipient_name ? recipient_name.trim() : null,
+         recipient_email ? recipient_email.trim() : null,
+         message ? message.trim() : null,
+         finalStatus);
+
+  const voucher = db.prepare('SELECT * FROM gift_vouchers WHERE id = ?').get(result.lastInsertRowid);
+
+  // If asked, email the recipient now (active vouchers only — pending shouldn't ship yet).
+  if (send_email && finalStatus === 'active' && voucher.recipient_email) {
+    try {
+      const { sendGiftVoucher } = require('../services/email');
+      sendGiftVoucher(voucher).catch(err => console.error('[Email] Manual voucher send failed:', err));
+    } catch (err) {
+      console.error('[Email] Manual voucher dispatch error:', err);
+    }
+  }
+
+  res.status(201).json(voucher);
+});
+
+// PATCH /api/vouchers/:id — admin only (edit mutable fields)
+router.patch('/:id', requireAdmin, (req, res) => {
+  const { id } = req.params;
+  const voucher = db.prepare('SELECT * FROM gift_vouchers WHERE id = ?').get(id);
+  if (!voucher) return res.status(404).json({ error: 'Voucher not found' });
+
+  const allowedStatuses = ['pending', 'active', 'used', 'cancelled'];
+  const updates = [];
+  const params  = [];
+
+  const { amount_pence, purchaser_name, purchaser_email, recipient_name, recipient_email, message, status } = req.body;
+
+  if (typeof amount_pence === 'number') {
+    if (amount_pence < 100 || amount_pence > 100000) return res.status(400).json({ error: 'amount must be between £1 and £1000' });
+    updates.push('amount_pence = ?'); params.push(amount_pence);
+  }
+  if (typeof purchaser_name === 'string')  { updates.push('purchaser_name = ?');  params.push(purchaser_name.trim()  || voucher.purchaser_name); }
+  if (typeof purchaser_email === 'string') { updates.push('purchaser_email = ?'); params.push(purchaser_email.trim() || voucher.purchaser_email); }
+  if (typeof recipient_name === 'string')  { updates.push('recipient_name = ?');  params.push(recipient_name.trim()  || null); }
+  if (typeof recipient_email === 'string') { updates.push('recipient_email = ?'); params.push(recipient_email.trim() || null); }
+  if (typeof message === 'string')         { updates.push('message = ?');         params.push(message.trim()         || null); }
+  if (status !== undefined) {
+    if (!allowedStatuses.includes(status)) return res.status(400).json({ error: 'Invalid status' });
+    updates.push('status = ?'); params.push(status);
+  }
+
+  if (!updates.length) return res.json(voucher);
+
+  params.push(id);
+  db.prepare(`UPDATE gift_vouchers SET ${updates.join(', ')} WHERE id = ?`).run(...params);
+
+  const updated = db.prepare('SELECT * FROM gift_vouchers WHERE id = ?').get(id);
+  res.json(updated);
+});
+
+// DELETE /api/vouchers/:id — admin only (hard delete)
 router.delete('/:id', requireAdmin, (req, res) => {
   const { id } = req.params;
   const voucher = db.prepare('SELECT id FROM gift_vouchers WHERE id = ?').get(id);
   if (!voucher) return res.status(404).json({ error: 'Voucher not found' });
 
-  db.prepare("UPDATE gift_vouchers SET status='cancelled' WHERE id=?").run(id);
+  db.prepare('DELETE FROM gift_vouchers WHERE id = ?').run(id);
   res.json({ success: true });
 });
 
