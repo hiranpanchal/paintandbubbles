@@ -83,6 +83,26 @@ router.post('/', (req, res) => {
 
   const total_pence = event.price_pence * quantity;
 
+  // Idempotency: a customer who taps "Pay" twice, hits back-then-resubmit, or
+  // whose checkout flow retries a network call shouldn't end up with duplicate
+  // pending rows. If we already have a pending booking for the same
+  // (event, customer, quantity) within the last 30 minutes, treat the new POST
+  // as a retry and hand back the existing booking instead of inserting again.
+  const existing = db.prepare(`
+    SELECT * FROM bookings
+    WHERE event_id = ?
+      AND customer_id = ?
+      AND quantity = ?
+      AND status = 'pending'
+      AND created_at > datetime('now', '-30 minutes')
+    ORDER BY created_at DESC
+    LIMIT 1
+  `).get(event_id, customer.id, quantity);
+
+  if (existing) {
+    return res.status(200).json({ booking: existing, customer, event, deduped: true });
+  }
+
   const result = db.prepare(`
     INSERT INTO bookings (event_id, customer_id, quantity, total_pence, status, notes, group_note, source, referrer)
     VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?)
