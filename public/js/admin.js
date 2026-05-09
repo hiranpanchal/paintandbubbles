@@ -4190,9 +4190,22 @@ function renderContactFormFieldsAdmin() {
         <div class="form-field-item-label">${escHtml(f.label)}</div>
         <div class="form-field-item-meta">${escHtml(TYPE_LABELS[f.type] || f.type)}${f.type === 'select' && f.options ? ` (${f.options.length} options)` : ''} &bull; ${f.required ? '<span style="color:var(--coral)">Required</span>' : 'Optional'}</div>
       </div>
-      <button class="form-field-item-del" onclick="deleteContactFormField(${i})">Delete</button>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn btn-ghost btn-sm" onclick="toggleContactFormFieldRequired(${i})">
+          Make ${f.required ? 'optional' : 'required'}
+        </button>
+        <button class="form-field-item-del" onclick="deleteContactFormField(${i})">Delete</button>
+      </div>
     </div>
   `).join('');
+}
+
+async function toggleContactFormFieldRequired(index) {
+  const f = _contactFormFields[index];
+  if (!f) return;
+  f.required = !f.required;
+  await persistContactFormFields();
+  renderContactFormFieldsAdmin();
 }
 
 function onAcfTypeChange() {
