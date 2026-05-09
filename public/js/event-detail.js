@@ -229,22 +229,13 @@ async function fetchPaymentConfig() {
 
 // ---- RENDER EVENT DETAIL ----
 function renderEventDetail(event) {
-  const spotsLeft = event.spots_remaining;
-  const isSoldOut = spotsLeft <= 0;
-  const isLowStock = spotsLeft > 0 && spotsLeft <= 5;
+  const isSoldOut = event.spots_remaining <= 0;
   const price = event.price_pence === 0 ? 'Free' : `£${(event.price_pence / 100).toFixed(2)}`;
   const duration = formatDuration(event.duration_minutes);
 
   const heroBg = event.image_url
     ? `style="background: linear-gradient(to bottom, rgba(28,10,18,0.65) 0%, rgba(28,10,18,0.45) 60%, rgba(28,10,18,0.75) 100%), url(${escHtml(event.image_url)}) center/cover no-repeat;"`
     : `style="background: linear-gradient(135deg, var(--banner-start) 0%, var(--banner-mid) 50%, var(--banner-end) 100%);"`;
-
-  const spotsColor = isSoldOut ? 'var(--coral)' : isLowStock ? 'var(--amber)' : 'var(--green)';
-  const spotsText  = isSoldOut
-    ? 'Sold out'
-    : isLowStock
-    ? `Only ${spotsLeft} spot${spotsLeft > 1 ? 's' : ''} left!`
-    : `${spotsLeft} spots available`;
 
   document.getElementById('event-detail-root').innerHTML = `
 
@@ -397,10 +388,11 @@ function renderEventDetail(event) {
               </div>
             </div>
 
-            <div class="ed-availability" style="color:${spotsColor}">
+            ${isSoldOut ? `
+            <div class="ed-availability" style="color:var(--coral)">
               <svg viewBox="0 0 20 20" fill="none"><path d="M13 7a3 3 0 11-6 0 3 3 0 016 0zM4 17a8 8 0 0112 0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-              ${spotsText}
-            </div>
+              Sold out
+            </div>` : ''}
 
             ${isSoldOut
               ? `<button class="btn btn-full" style="background:transparent;color:var(--rose);border:2px solid var(--rose);padding:15px;border-radius:var(--radius);font-weight:700;font-size:16px;cursor:pointer;" onclick="openWaitlist(${event.id}, '${event.title.replace(/'/g,"\\'")}')">Join Waitlist</button>`
@@ -526,7 +518,7 @@ function showBookingStep1() {
             <div class="qty-display" id="qty-display">1</div>
             <button class="qty-btn" onclick="changeQty(1)">+</button>
           </div>
-          <span style="font-size:14px;color:var(--text-light);">${price} per person · ${event.spots_remaining} available</span>
+          <span style="font-size:14px;color:var(--text-light);">${price} per person</span>
         </div>
         <div class="form-group" style="margin-top:14px;">
           <label>Special requirements (optional)</label>
