@@ -289,7 +289,7 @@ async function loadAdminEvents() {
   el.innerHTML = '<div class="loading-state"><div class="spinner"></div></div>';
   try {
     const [events, waitlistCounts] = await Promise.all([
-      apiFetch('/api/events?include_inactive=true', { headers: authHeaders() }),
+      apiFetch('/api/events?include_inactive=true&include_past=true', { headers: authHeaders() }),
       apiFetch('/api/waitlist/counts', { headers: authHeaders() }).catch(() => ({})),
     ]);
     renderEventsTable(events, waitlistCounts);

@@ -21,7 +21,7 @@ function uniqueSlug(title, excludeId = null) {
 
 // GET /api/events — public, with optional search/filter
 router.get('/', (req, res) => {
-  const { search, category, from, to } = req.query;
+  const { search, category, from, to, include_past } = req.query;
   let query = `
     SELECT e.*,
       (e.capacity - COALESCE(
@@ -32,6 +32,13 @@ router.get('/', (req, res) => {
     WHERE e.is_active = 1
   `;
   const params = [];
+
+  // Hide past events from public listings by default. An event is considered
+  // "today" until midnight, so a 10am session still appears in the listing
+  // throughout that day. Admin passes include_past=true to bypass this filter.
+  if (include_past !== 'true') {
+    query += " AND e.date >= date('now')";
+  }
 
   if (search) {
     query += ' AND (e.title LIKE ? OR e.description LIKE ? OR e.location LIKE ?)';
