@@ -19,9 +19,11 @@ const storage = multer.diskStorage({
   }
 });
 
+const MAX_UPLOAD_BYTES = 25 * 1024 * 1024; // 25 MB — generous enough for modern phone photos
+
 const upload = multer({
   storage,
-  limits: { fileSize: 5 * 1024 * 1024 },
+  limits: { fileSize: MAX_UPLOAD_BYTES },
   fileFilter: (req, file, cb) => {
     if (!/\.(jpe?g|png|gif|webp|svg)$/i.test(path.extname(file.originalname))) {
       return cb(new Error('Only image files are allowed'));
@@ -29,6 +31,20 @@ const upload = multer({
     cb(null, true);
   }
 });
+
+// Wrap multer.single() so any error (size, mime, disk) comes back as a clean
+// JSON 4xx instead of falling through to Express's default HTML error page —
+// the gallery uploader on the client expects JSON and silently fails otherwise.
+function uploadSingleImage(req, res, next) {
+  upload.single('image')(req, res, (err) => {
+    if (!err) return next();
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      const mb = Math.round(MAX_UPLOAD_BYTES / (1024 * 1024));
+      return res.status(413).json({ error: `Image is too large — the limit is ${mb} MB. Resize and try again.` });
+    }
+    return res.status(400).json({ error: err.message || 'Upload failed' });
+  });
+}
 
 // GET /api/design/settings — public (used by frontend pages to apply branding)
 router.get('/settings', (req, res) => {
@@ -125,7 +141,7 @@ router.post('/settings', requireAdmin, (req, res) => {
 });
 
 // POST /api/design/upload — admin only
-router.post('/upload', requireAdmin, upload.single('image'), (req, res) => {
+router.post('/upload', requireAdmin, uploadSingleImage, (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
   res.json({ url: `/uploads/${req.file.filename}` });
 });

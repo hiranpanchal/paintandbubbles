@@ -2357,8 +2357,13 @@ async function uploadGalleryImage(file) {
     headers: { Authorization: `Bearer ${authToken}` },
     body: fd
   });
-  const data = await res.json();
-  if (!data.url) throw new Error('Upload failed');
+  // Read the response defensively — multer rejections used to come back as HTML
+  // and `res.json()` would throw, swallowing the real reason.
+  let data = {};
+  try { data = await res.json(); } catch {}
+  if (!res.ok || !data.url) {
+    throw new Error(data.error || `Upload failed (${res.status})`);
+  }
   // Use the in-memory list — no need to re-fetch
   const images = [..._galleryImages, data.url];
   await apiFetch('/api/design/settings', {
@@ -2401,7 +2406,7 @@ async function handleGalleryFileInput(input) {
     await renderGalleryGrid();
     toast('Gallery updated', 'success');
   } catch (err) {
-    toast('Upload failed — please try again', 'error');
+    toast(err.message || 'Upload failed — please try again', 'error');
     console.error('Gallery upload error:', err);
   } finally {
     if (zone) zone.style.opacity = '';
@@ -2427,7 +2432,7 @@ function initGalleryDropZone() {
       await renderGalleryGrid();
       toast('Gallery updated', 'success');
     } catch (err) {
-      toast('Upload failed — please try again', 'error');
+      toast(err.message || 'Upload failed — please try again', 'error');
       console.error('Gallery upload error:', err);
     } finally {
       zone.style.opacity = '';
