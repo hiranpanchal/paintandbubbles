@@ -365,6 +365,12 @@ function renderEventDetail(event) {
             </div>
           </div>
 
+          <!-- Share -->
+          <div class="ed-section">
+            <h2 class="ed-section-title">Share</h2>
+            ${renderShareButtons(event)}
+          </div>
+
         </div>
 
         <!-- RIGHT: Booking card -->
@@ -1196,4 +1202,75 @@ function setLoadingBtn(loading, text) {
   if (!btn) return;
   btn.disabled = loading;
   if (text && loading) btn.textContent = text;
+}
+
+// ---- SHARE BUTTONS ----
+// Renders a row of share targets for the event detail page. We compute the
+// canonical URL at render time (origin + pathname, stripping any tracking
+// query/hash) so anything pasted into a chat/feed is clean.
+function renderShareButtons(event) {
+  const url   = `${window.location.origin}${window.location.pathname}`;
+  const title = `${event.title} — Paint & Bubbles`;
+  const enc   = encodeURIComponent;
+
+  // Pre-built intent URLs. Each opens in a new tab via target="_blank".
+  const fbUrl    = `https://www.facebook.com/sharer/sharer.php?u=${enc(url)}`;
+  const xUrl     = `https://twitter.com/intent/tweet?text=${enc(title)}&url=${enc(url)}`;
+  const waUrl    = `https://wa.me/?text=${enc(title + ' — ' + url)}`;
+  const mailUrl  = `mailto:?subject=${enc(title)}&body=${enc('Thought you might like this:\n\n' + url)}`;
+
+  // Inline SVGs — single-stroke marks that match the Location icon's weight
+  const fbSvg = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M13.5 22v-8h2.7l.4-3.1h-3.1V8.9c0-.9.3-1.5 1.6-1.5h1.7V4.6c-.3 0-1.3-.1-2.4-.1-2.4 0-4 1.5-4 4.1V11H7.7v3.1h2.6V22h3.2z"/></svg>';
+  const xSvg  = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>';
+  const waSvg = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.5 14.4c-.3-.1-1.7-.8-1.9-.9-.3-.1-.5-.1-.7.1-.2.3-.8.9-1 1.1-.2.2-.4.2-.6.1-.3-.1-1.2-.5-2.3-1.4-.8-.7-1.4-1.7-1.6-1.9-.2-.3 0-.5.1-.6.1-.1.3-.3.4-.5.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5 0-.1-.7-1.7-1-2.3-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.4 0 1.4 1 2.8 1.2 3 .1.2 2 3 4.7 4.2.7.3 1.2.5 1.6.6.7.2 1.3.2 1.8.1.6-.1 1.7-.7 1.9-1.4.2-.7.2-1.2.2-1.4-.1-.1-.3-.2-.5-.3M12 21c-1.5 0-3-.4-4.4-1.2l-.3-.2-3.3.9.9-3.2-.2-.3C3.9 15.6 3.5 14 3.5 12.4 3.5 7.7 7.3 3.9 12 3.9c2.3 0 4.4.9 6 2.5 1.6 1.6 2.5 3.7 2.5 6 0 4.7-3.8 8.6-8.5 8.6m7.3-15.9C17.4 3.2 14.8 2 12.1 2 6.5 2 2 6.5 2 12.1 2 13.9 2.5 15.7 3.4 17.2L2 22l4.9-1.3c1.5.8 3.2 1.2 4.9 1.2h.1c5.5 0 10-4.5 10-10 0-2.7-1-5.2-2.9-7.1"/></svg>';
+  const mailSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>';
+  const linkSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.07 0l3-3a5 5 0 1 0-7.07-7.07l-1 1"/><path d="M14 11a5 5 0 0 0-7.07 0l-3 3a5 5 0 1 0 7.07 7.07l1-1"/></svg>';
+
+  const btn = (href, label, svg, brandClass) =>
+    `<a class="ed-share-btn ${brandClass}" href="${href}" target="_blank" rel="noopener" aria-label="Share on ${label}">
+       <span class="ed-share-icon">${svg}</span>
+       <span class="ed-share-label">${label}</span>
+     </a>`;
+
+  return `
+    <div class="ed-share-card">
+      ${btn(fbUrl,   'Facebook', fbSvg,   'is-fb')}
+      ${btn(xUrl,    'X',        xSvg,    'is-x')}
+      ${btn(waUrl,   'WhatsApp', waSvg,   'is-wa')}
+      ${btn(mailUrl, 'Email',    mailSvg, 'is-mail')}
+      <button type="button" class="ed-share-btn is-copy" onclick="copyEventLink(this)" aria-label="Copy link">
+        <span class="ed-share-icon">${linkSvg}</span>
+        <span class="ed-share-label">Copy link</span>
+      </button>
+    </div>`;
+}
+
+// Copy the canonical event URL to the clipboard and flash the button label.
+function copyEventLink(btn) {
+  const url = `${window.location.origin}${window.location.pathname}`;
+  const finish = (ok) => {
+    const labelEl = btn.querySelector('.ed-share-label');
+    if (!labelEl) return;
+    const original = labelEl.textContent;
+    labelEl.textContent = ok ? 'Copied!' : 'Press Ctrl+C';
+    btn.classList.toggle('is-copied', !!ok);
+    setTimeout(() => {
+      labelEl.textContent = original;
+      btn.classList.remove('is-copied');
+    }, 1600);
+  };
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url).then(() => finish(true)).catch(() => finish(false));
+    return;
+  }
+  // Fallback for older browsers / non-secure contexts
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = url; ta.style.position = 'fixed'; ta.style.left = '-9999px';
+    document.body.appendChild(ta); ta.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    finish(ok);
+  } catch { finish(false); }
 }

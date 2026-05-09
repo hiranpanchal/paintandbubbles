@@ -1790,6 +1790,55 @@ h4 { font-family: var(--font-h4); }
 }
 .ed-location-link:hover { text-decoration: underline; }
 
+/* Share buttons — sit beneath the Location card */
+.ed-share-card {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.ed-share-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: white;
+  color: var(--text-dark);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+  font-family: inherit;
+}
+.ed-share-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(31, 19, 24, 0.08);
+}
+.ed-share-icon {
+  display: inline-flex;
+  width: 18px;
+  height: 18px;
+  align-items: center;
+  justify-content: center;
+}
+.ed-share-icon svg { width: 18px; height: 18px; display: block; }
+.ed-share-label { white-space: nowrap; }
+
+/* Brand tints on hover so each target is recognisable but the resting state
+   stays neutral and matches the rest of the page. */
+.ed-share-btn.is-fb:hover   { border-color: #1877F2; color: #1877F2; }
+.ed-share-btn.is-x:hover    { border-color: #000;    color: #000;    }
+.ed-share-btn.is-wa:hover   { border-color: #25D366; color: #128C7E; }
+.ed-share-btn.is-mail:hover { border-color: var(--rose-deep); color: var(--rose-deep); }
+.ed-share-btn.is-copy:hover { border-color: var(--rose-deep); color: var(--rose-deep); }
+.ed-share-btn.is-copied {
+  border-color: #16a34a;
+  color: #16a34a;
+  background: #f0fdf4;
+}
+
 /* Booking card (sticky sidebar) */
 .ed-sidebar {
   position: sticky;
