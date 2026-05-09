@@ -347,15 +347,14 @@ function renderEventCard(event) {
   const price = event.price_pence === 0
     ? '<span class="event-price event-price-free">Free</span>'
     : `<span class="event-price">£${(event.price_pence / 100).toFixed(2)}</span>`;
-  const spotsLeft = event.spots_remaining;
-  const isSoldOut = spotsLeft <= 0;
-  const isLow = spotsLeft > 0 && spotsLeft <= 3;
+  const isSoldOut = event.spots_remaining <= 0;
 
+  // Listing cards don't surface a live spot count — only flag the sold-out case
+  // so customers don't click in to find no availability. Capacity detail lives
+  // on the event page itself.
   const spotsHtml = isSoldOut
     ? '<span class="event-spots" style="color:var(--coral);font-weight:700;">Sold out</span>'
-    : isLow
-    ? `<span class="event-spots low">${spotsLeft} spot${spotsLeft > 1 ? 's' : ''} left!</span>`
-    : `<span class="event-spots">${spotsLeft} spots left</span>`;
+    : '';
 
   const imageHtml = event.image_url
     ? `<img src="${escHtml(event.image_url)}" alt="${escHtml(event.title)}">`

@@ -69,15 +69,13 @@ function renderEventCard(e) {
     ? new Date(e.date + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'long' })
     : '';
   const timeStr  = e.time ? e.time.slice(0, 5) : '';
-  const spotsLeft = e.capacity - (e.bookings_count || 0);
-  const soldOut   = spotsLeft <= 0;
-  const fewLeft   = !soldOut && spotsLeft <= 5;
+  const soldOut = (e.capacity - (e.bookings_count || 0)) <= 0;
 
+  // Listing cards no longer show a remaining-spots count — only the sold-out
+  // case is surfaced.
   const badge = soldOut
     ? '<span class="loc-event-badge" style="background:#fee2e2;color:#dc2626">Sold Out</span>'
-    : fewLeft
-      ? `<span class="loc-event-badge" style="background:#fff7ed;color:#ea580c">Only ${spotsLeft} left</span>`
-      : '';
+    : '';
 
   const imgHtml = e.image_url
     ? `<img class="loc-event-img" src="${escHtml(e.image_url)}" alt="${escHtml(e.title)}" loading="lazy">`
