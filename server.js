@@ -36,6 +36,10 @@ function getOgImage(s, siteUrl) {
 }
 
 function injectSeoMeta(html, { title, description, canonicalUrl, ogImage, ogType = 'website', schema, extraMeta = '' }) {
+  // `schema` may be a single object or an array — emit one <script> per entry.
+  const schemaList = !schema ? [] : (Array.isArray(schema) ? schema.filter(Boolean) : [schema]);
+  const schemaLines = schemaList.map(s => `  <script type="application/ld+json">${JSON.stringify(s)}</script>`);
+
   const parts = [
     `  <title>${escSeo(title)}</title>`,
     `  <meta name="description" content="${escSeo(description)}">`,
@@ -53,7 +57,7 @@ function injectSeoMeta(html, { title, description, canonicalUrl, ogImage, ogType
     `  <meta name="twitter:description" content="${escSeo(description)}">`,
     ogImage ? `  <meta name="twitter:image" content="${escSeo(ogImage)}">` : null,
     extraMeta ? `  ${extraMeta}` : null,
-    schema ? `  <script type="application/ld+json">${JSON.stringify(schema)}</script>` : null,
+    ...schemaLines,
   ].filter(Boolean).join('\n');
 
   // Replace existing title tag, then inject everything before </head>
@@ -71,6 +75,55 @@ function serveSeoPage(res, filename, seoOpts) {
     console.error('SEO page serve error:', err);
     res.sendFile(path.join(__dirname, 'public', filename));
   }
+}
+
+// Build the LocalBusiness / EntertainmentBusiness JSON-LD block from settings.
+// Returns null if nothing meaningful is set, so callers can spread it into a
+// schema array without producing an empty entity.
+function buildLocalBusinessSchema(s, siteUrl, ogImage) {
+  const biz = s.seo_business_name || 'Paint & Bubbles';
+  const city = s.seo_business_city || '';
+  const desc = s.seo_desc_home || `Creative paint & sip events${city ? ' in ' + city : ''}. All materials and drinks provided — no experience needed.`;
+
+  // areasServed: split a comma-separated list ("Coventry, Leamington Spa") into an array.
+  const areasRaw = s.seo_areas_served || '';
+  const areas = areasRaw.split(',').map(a => a.trim()).filter(Boolean);
+
+  // Opening hours: stored as JSON; safely parse and tag each entry.
+  let openingHours = null;
+  if (s.seo_opening_hours_json) {
+    try {
+      const parsed = JSON.parse(s.seo_opening_hours_json);
+      if (Array.isArray(parsed) && parsed.length) {
+        openingHours = parsed.map(h => ({ '@type': 'OpeningHoursSpecification', ...h }));
+      }
+    } catch { /* malformed JSON — skip */ }
+  }
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'EntertainmentBusiness',
+    name: biz,
+    description: desc,
+    url: siteUrl,
+    ...(s.seo_business_phone ? { telephone: s.seo_business_phone }   : {}),
+    ...(s.notification_email ? { email: s.notification_email }       : {}),
+    ...(ogImage              ? { image: ogImage, logo: ogImage }     : {}),
+    priceRange: '££',
+    currenciesAccepted: 'GBP',
+    paymentAccepted: 'Credit Card, Debit Card',
+    ...(s.seo_business_address || city ? {
+      address: {
+        '@type': 'PostalAddress',
+        ...(s.seo_business_address  ? { streetAddress: s.seo_business_address }   : {}),
+        ...(city                    ? { addressLocality: city }                    : {}),
+        ...(s.seo_business_postcode ? { postalCode: s.seo_business_postcode }      : {}),
+        addressCountry: 'GB',
+      },
+    } : {}),
+    ...(areas.length             ? { areaServed: areas.map(a => ({ '@type': 'City', name: a })) } : {}),
+    ...(openingHours             ? { openingHoursSpecification: openingHours }                    : {}),
+  };
 }
 
 // Railway / most PaaS terminate TLS upstream — Express needs to trust the
@@ -161,7 +214,9 @@ app.get('/sitemap.xml', (req, res) => {
 // ---- STATIC FILES ----
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'db');
 app.use('/uploads', express.static(path.join(DATA_DIR, 'uploads')));
-app.use(express.static(path.join(__dirname, 'public')));
+// `index: false` so GET / doesn't auto-serve public/index.html and bypass our
+// SEO route below. Asset paths (/css/*, /js/*, named .html) still resolve fine.
+app.use(express.static(path.join(__dirname, 'public'), { index: false }));
 
 // ---- API ROUTES ----
 // Analytics is mounted BEFORE /api/admin so its more-specific path wins.
@@ -198,29 +253,6 @@ app.get('/', (req, res) => {
     const desc = s.seo_desc_home ||
       `Join us for fun painting and craft events${city ? ' in ' + city : ''}. All materials and drinks provided. Perfect for all skill levels — no experience needed!`;
 
-    const schema = {
-      '@context': 'https://schema.org',
-      '@type': 'EntertainmentBusiness',
-      name: biz,
-      description: desc,
-      url: siteUrl,
-      ...(s.seo_business_phone  ? { telephone: s.seo_business_phone }      : {}),
-      ...(s.notification_email  ? { email: s.notification_email }           : {}),
-      ...(ogImage               ? { image: ogImage }                        : {}),
-      priceRange: '££',
-      currenciesAccepted: 'GBP',
-      paymentAccepted: 'Credit Card, Debit Card',
-      ...(s.seo_business_address || city ? {
-        address: {
-          '@type': 'PostalAddress',
-          ...(s.seo_business_address  ? { streetAddress: s.seo_business_address }   : {}),
-          ...(city                    ? { addressLocality: city }                    : {}),
-          ...(s.seo_business_postcode ? { postalCode: s.seo_business_postcode }      : {}),
-          addressCountry: 'GB',
-        },
-      } : {}),
-    };
-
     const extraMeta = s.seo_google_verification
       ? `<meta name="google-site-verification" content="${escSeo(s.seo_google_verification)}">`
       : '';
@@ -230,7 +262,7 @@ app.get('/', (req, res) => {
       description: desc,
       canonicalUrl: `${siteUrl}/`,
       ogImage,
-      schema,
+      schema: buildLocalBusinessSchema(s, siteUrl, ogImage),
       extraMeta,
     });
   } catch (err) {
@@ -245,12 +277,14 @@ app.get('/about', (req, res) => {
     const s = getSeoSettings();
     const siteUrl = getSiteUrl(req);
     const city = s.seo_business_city || '';
+    const ogImage = getOgImage(s, siteUrl);
     serveSeoPage(res, 'about.html', {
       title: `About Us — Paint & Bubbles${city ? ' ' + city : ''}`,
       description: s.seo_desc_about ||
         `Learn about Paint & Bubbles${city ? ' in ' + city : ''} — a creative events studio hosting fun, relaxed painting and craft sessions for all skill levels.`,
       canonicalUrl: `${siteUrl}/about`,
-      ogImage: getOgImage(s, siteUrl),
+      ogImage,
+      schema: buildLocalBusinessSchema(s, siteUrl, ogImage),
     });
   } catch (err) { res.sendFile(path.join(__dirname, 'public', 'about.html')); }
 });
@@ -261,12 +295,14 @@ app.get('/events', (req, res) => {
     const s = getSeoSettings();
     const siteUrl = getSiteUrl(req);
     const city = s.seo_business_city || '';
+    const ogImage = getOgImage(s, siteUrl);
     serveSeoPage(res, 'events.html', {
       title: `Upcoming Painting & Craft Events${city ? ' in ' + city : ''} — Paint & Bubbles`,
       description: s.seo_desc_events ||
         `Browse all upcoming painting and craft events${city ? ' in ' + city : ''}. All materials and drinks included. Book your spot — no experience needed!`,
       canonicalUrl: `${siteUrl}/events`,
-      ogImage: getOgImage(s, siteUrl),
+      ogImage,
+      schema: buildLocalBusinessSchema(s, siteUrl, ogImage),
     });
   } catch (err) { res.sendFile(path.join(__dirname, 'public', 'events.html')); }
 });
@@ -368,26 +404,25 @@ app.get('/reviews', (req, res) => {
       ? (published.reduce((sum, r) => sum + (r.rating || 5), 0) / count).toFixed(1)
       : '5.0';
 
-    const schema = count > 0 ? {
-      '@context': 'https://schema.org',
-      '@type': 'LocalBusiness',
-      name: s.seo_business_name || 'Paint & Bubbles',
-      url: siteUrl,
-      aggregateRating: {
+    // Fold the aggregate rating into the canonical LocalBusiness entity so
+    // Google ties the rating to the business, not a standalone schema block.
+    const lb = buildLocalBusinessSchema(s, siteUrl, getOgImage(s, siteUrl));
+    if (count > 0) {
+      lb.aggregateRating = {
         '@type': 'AggregateRating',
         ratingValue: avg,
         reviewCount: count,
         bestRating: '5',
         worstRating: '1',
-      },
-      review: published.slice(0, 10).map(r => ({
+      };
+      lb.review = published.slice(0, 10).map(r => ({
         '@type': 'Review',
         author: { '@type': 'Person', name: r.author_name },
         reviewRating: { '@type': 'Rating', ratingValue: String(r.rating || 5), bestRating: '5' },
         reviewBody: r.body,
         ...(r.review_date ? { datePublished: r.review_date } : {}),
-      })),
-    } : null;
+      }));
+    }
 
     serveSeoPage(res, 'reviews.html', {
       title: 'Customer Reviews — Paint & Bubbles',
@@ -395,7 +430,7 @@ app.get('/reviews', (req, res) => {
         `See what our guests say about Paint & Bubbles. Rated ${avg} stars from ${count} reviews. Join us for a creative event today!`,
       canonicalUrl: `${siteUrl}/reviews`,
       ogImage: getOgImage(s, siteUrl),
-      schema,
+      schema: lb,
     });
   } catch (err) { res.sendFile(path.join(__dirname, 'public', 'reviews.html')); }
 });
@@ -405,12 +440,14 @@ app.get('/gallery', (req, res) => {
   try {
     const s = getSeoSettings();
     const siteUrl = getSiteUrl(req);
+    const ogImage = getOgImage(s, siteUrl);
     serveSeoPage(res, 'gallery.html', {
       title: 'Gallery — Paintings & Artwork — Paint & Bubbles',
       description: s.seo_desc_gallery ||
         'Browse our gallery of paintings and artwork created at Paint & Bubbles events. Get inspired for your next creative session!',
       canonicalUrl: `${siteUrl}/gallery`,
-      ogImage: getOgImage(s, siteUrl),
+      ogImage,
+      schema: buildLocalBusinessSchema(s, siteUrl, ogImage),
     });
   } catch (err) { res.sendFile(path.join(__dirname, 'public', 'gallery.html')); }
 });
@@ -424,7 +461,7 @@ app.get('/faq', (req, res) => {
       'SELECT question, answer FROM faqs WHERE is_active = 1 ORDER BY sort_order ASC'
     ).all();
 
-    const schema = faqs.length > 0 ? {
+    const faqSchema = faqs.length > 0 ? {
       '@context': 'https://schema.org',
       '@type': 'FAQPage',
       mainEntity: faqs.map(f => ({
@@ -434,13 +471,14 @@ app.get('/faq', (req, res) => {
       })),
     } : null;
 
+    const ogImage = getOgImage(s, siteUrl);
     serveSeoPage(res, 'faq.html', {
       title: 'FAQs — Paint & Bubbles',
       description: s.seo_desc_faq ||
         'Frequently asked questions about Paint & Bubbles events — what\'s included, how to book, cancellation policy and more.',
       canonicalUrl: `${siteUrl}/faq`,
-      ogImage: getOgImage(s, siteUrl),
-      schema,
+      ogImage,
+      schema: [faqSchema, buildLocalBusinessSchema(s, siteUrl, ogImage)],
     });
   } catch (err) { res.sendFile(path.join(__dirname, 'public', 'faq.html')); }
 });
@@ -450,12 +488,14 @@ app.get('/contact', (req, res) => {
   try {
     const s = getSeoSettings();
     const siteUrl = getSiteUrl(req);
+    const ogImage = getOgImage(s, siteUrl);
     serveSeoPage(res, 'contact.html', {
       title: 'Contact Us — Paint & Bubbles',
       description: s.seo_desc_contact ||
         "Get in touch with Paint & Bubbles. Have a question about our events? We'd love to hear from you — we reply within 24 hours.",
       canonicalUrl: `${siteUrl}/contact`,
-      ogImage: getOgImage(s, siteUrl),
+      ogImage,
+      schema: buildLocalBusinessSchema(s, siteUrl, ogImage),
     });
   } catch (err) { res.sendFile(path.join(__dirname, 'public', 'contact.html')); }
 });
@@ -465,12 +505,14 @@ app.get('/gift-vouchers', (req, res) => {
   try {
     const s = getSeoSettings();
     const siteUrl = getSiteUrl(req);
+    const ogImage = getOgImage(s, siteUrl);
     serveSeoPage(res, 'gift-vouchers.html', {
       title: 'Gift Vouchers — Paint & Bubbles',
       description: s.seo_desc_gift_vouchers ||
         'Give the gift of creativity with a Paint & Bubbles gift voucher. Perfect for birthdays, anniversaries and special occasions.',
       canonicalUrl: `${siteUrl}/gift-vouchers`,
-      ogImage: getOgImage(s, siteUrl),
+      ogImage,
+      schema: buildLocalBusinessSchema(s, siteUrl, ogImage),
     });
   } catch (err) { res.sendFile(path.join(__dirname, 'public', 'gift-vouchers.html')); }
 });
@@ -480,12 +522,14 @@ app.get('/private-events', (req, res) => {
   try {
     const s = getSeoSettings();
     const siteUrl = getSiteUrl(req);
+    const ogImage = getOgImage(s, siteUrl);
     serveSeoPage(res, 'private-events.html', {
       title: 'Private Events & Hen Parties — Paint & Bubbles',
       description: s.seo_desc_private_events ||
         'Book a private painting or craft event for your group. Perfect for hen parties, birthdays and special occasions.',
       canonicalUrl: `${siteUrl}/private-events`,
-      ogImage: getOgImage(s, siteUrl),
+      ogImage,
+      schema: buildLocalBusinessSchema(s, siteUrl, ogImage),
     });
   } catch (err) { res.sendFile(path.join(__dirname, 'public', 'private-events.html')); }
 });
@@ -495,12 +539,14 @@ app.get('/corporate-events', (req, res) => {
   try {
     const s = getSeoSettings();
     const siteUrl = getSiteUrl(req);
+    const ogImage = getOgImage(s, siteUrl);
     serveSeoPage(res, 'corporate-events.html', {
       title: 'Corporate Team Building — Paint & Bubbles',
       description: s.seo_desc_corporate_events ||
         'Creative team-building workshops for companies across Coventry, Leamington Spa, Solihull and the Midlands. On-site, off-site or virtual. PO-friendly invoicing.',
       canonicalUrl: `${siteUrl}/corporate-events`,
-      ogImage: getOgImage(s, siteUrl),
+      ogImage,
+      schema: buildLocalBusinessSchema(s, siteUrl, ogImage),
     });
   } catch (err) { res.sendFile(path.join(__dirname, 'public', 'corporate-events.html')); }
 });

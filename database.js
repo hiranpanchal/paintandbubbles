@@ -782,6 +782,45 @@ db.prepare("INSERT OR IGNORE INTO site_settings (key, value) VALUES ('pe_quote_c
   }
 }
 
+// Seed LocalBusiness schema details (phone, city, areas served, opening hours).
+// Each key is added only if missing — never overwrites a value the admin has
+// already set via the SEO settings tab. The opening-hours JSON matches
+// schema.org's OpeningHoursSpecification format so server.js can emit it
+// straight into the LocalBusiness JSON-LD block.
+{
+  const ins = db.prepare('INSERT OR IGNORE INTO site_settings (key, value) VALUES (?, ?)');
+
+  // Set phone in international format so Google can validate it.
+  const phoneRow = db.prepare("SELECT value FROM site_settings WHERE key='seo_business_phone'").get();
+  if (!phoneRow || !phoneRow.value) {
+    db.prepare("INSERT OR REPLACE INTO site_settings (key, value) VALUES ('seo_business_phone', '+447877336620')").run();
+  }
+
+  const cityRow = db.prepare("SELECT value FROM site_settings WHERE key='seo_business_city'").get();
+  if (!cityRow || !cityRow.value) {
+    db.prepare("INSERT OR REPLACE INTO site_settings (key, value) VALUES ('seo_business_city', 'Coventry')").run();
+  }
+
+  ins.run('seo_areas_served', 'Coventry, Leamington Spa, Solihull');
+
+  // Opening-hours spec — schema.org OpeningHoursSpecification array, two
+  // shifts per weekday for the split lunch/evening hours.
+  const defaultHours = JSON.stringify([
+    { dayOfWeek: 'Monday',    opens: '10:00', closes: '14:00' },
+    { dayOfWeek: 'Monday',    opens: '18:00', closes: '21:00' },
+    { dayOfWeek: 'Tuesday',   opens: '10:00', closes: '14:00' },
+    { dayOfWeek: 'Tuesday',   opens: '18:00', closes: '21:00' },
+    { dayOfWeek: 'Wednesday', opens: '10:00', closes: '14:00' },
+    { dayOfWeek: 'Wednesday', opens: '18:00', closes: '21:00' },
+    { dayOfWeek: 'Thursday',  opens: '10:00', closes: '14:00' },
+    { dayOfWeek: 'Thursday',  opens: '18:00', closes: '21:00' },
+    { dayOfWeek: 'Friday',    opens: '10:00', closes: '14:00' },
+    { dayOfWeek: 'Saturday',  opens: '10:00', closes: '17:00' },
+    { dayOfWeek: 'Sunday',    opens: '09:00', closes: '17:00' },
+  ]);
+  ins.run('seo_opening_hours_json', defaultHours);
+}
+
 // Ensure Legal pages (Terms, Privacy, Refund Policy) settings exist
 {
   const check = db.prepare("SELECT COUNT(*) as count FROM site_settings WHERE key = 'legal_terms_content'").get();
