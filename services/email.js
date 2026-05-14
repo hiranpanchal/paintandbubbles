@@ -23,7 +23,7 @@ function getSiteBaseUrl() {
   if (raw && !/localhost|127\.0\.0\.1/i.test(raw)) {
     return raw.replace(/\/+$/, '');
   }
-  return 'https://paintandbubbles.co.uk';
+  return 'https://www.paintandbubbles.co.uk';
 }
 
 // Turn a stored asset URL (which may be relative like "/uploads/x.png")

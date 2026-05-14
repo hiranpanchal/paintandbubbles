@@ -73,6 +73,30 @@ function serveSeoPage(res, filename, seoOpts) {
   }
 }
 
+// Railway / most PaaS terminate TLS upstream — Express needs to trust the
+// proxy headers so req.protocol and req.hostname reflect the real client URL.
+app.set('trust proxy', 1);
+
+// ---- CANONICAL HOST + HTTPS REDIRECT ----
+// Google was indexing four versions of the site (www/non-www × http/https),
+// splitting authority and tripping the "Crawled - currently not indexed"
+// classifier. Funnel everything to https://www.paintandbubbles.co.uk via 301.
+// Skips API routes so payment webhooks reach their configured URL untouched,
+// and skips local dev so localhost still works.
+const CANONICAL_HOST = 'www.paintandbubbles.co.uk';
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api/')) return next();
+  const host = (req.headers.host || '').toLowerCase();
+  if (host.startsWith('localhost') || host.startsWith('127.0.0.1')) return next();
+
+  const proto = req.headers['x-forwarded-proto'] || req.protocol;
+  const isHttps = proto === 'https';
+  const isCanonicalHost = host === CANONICAL_HOST;
+  if (isHttps && isCanonicalHost) return next();
+
+  return res.redirect(301, `https://${CANONICAL_HOST}${req.originalUrl}`);
+});
+
 // ---- STRIPE WEBHOOK (must be before json middleware) ----
 app.use('/api/payments/webhook', express.raw({ type: 'application/json' }));
 
