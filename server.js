@@ -21,7 +21,25 @@ function truncate(s, n) {
   return s.length > n ? s.slice(0, n - 1) + '\u2026' : s;
 }
 function getSiteUrl(req) {
-  return process.env.SITE_URL || `${req.protocol}://${req.get('host')}`;
+  // Honour SITE_URL when it points at a real host, but ignore a stale
+  // localhost value — a misconfigured env var was leaking http://localhost:3000
+  // into the canonical JSON-LD output, breaking Google's image validation.
+  const raw = (process.env.SITE_URL || '').trim();
+  if (raw && !/localhost|127\.0\.0\.1/i.test(raw)) {
+    return raw.replace(/\/+$/, '');
+  }
+  // Derive from the actual request, trusting the proxy's forwarded protocol
+  // so Railway requests come back as https.
+  if (req) {
+    const proto = req.headers['x-forwarded-proto'] || req.protocol;
+    const host  = req.get('host') || '';
+    if (host && !/^localhost|^127\.0\.0\.1/i.test(host)) {
+      return `${proto}://${host}`;
+    }
+  }
+  // Last-resort fallback so even a dev environment doesn't emit localhost
+  // URLs into structured data.
+  return 'https://www.paintandbubbles.co.uk';
 }
 function getSeoSettings() {
   const rows = db.prepare('SELECT key, value FROM site_settings').all();
