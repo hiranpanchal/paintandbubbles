@@ -821,6 +821,13 @@ db.prepare("INSERT OR IGNORE INTO site_settings (key, value) VALUES ('pe_quote_c
   ins.run('seo_opening_hours_json', defaultHours);
 }
 
+// Marketing pixels — Facebook (Meta) Pixel only for now. Stored as a plain
+// numeric ID string. Empty by default; admin enters the value via the SEO tab.
+{
+  const ins = db.prepare('INSERT OR IGNORE INTO site_settings (key, value) VALUES (?, ?)');
+  ins.run('meta_pixel_id', '');
+}
+
 // Ensure Legal pages (Terms, Privacy, Refund Policy) settings exist
 {
   const check = db.prepare("SELECT COUNT(*) as count FROM site_settings WHERE key = 'legal_terms_content'").get();

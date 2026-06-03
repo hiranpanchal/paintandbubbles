@@ -4029,6 +4029,17 @@ async function loadContentTab() {
           </div>
 
           <div class="design-card">
+            <div class="design-card-header"><h3 class="design-card-title">Meta (Facebook) Pixel <span style="font-size:12px;font-weight:400;color:var(--text-light)">For Facebook / Instagram ad tracking</span></h3></div>
+            <div class="design-card-body">
+              <div class="form-group">
+                <label>Pixel ID</label>
+                <input type="text" id="ds-meta_pixel_id" value="${escHtml(s.meta_pixel_id || '')}" placeholder="e.g. 1234567890123456" pattern="\\d*">
+                <p style="font-size:12px;color:var(--text-light);margin-top:4px">Find it in Meta Events Manager → your pixel → Settings. Paste only the numeric ID. The pixel fires only after the visitor accepts cookies (UK GDPR / PECR compliant). Leave blank to disable tracking.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="design-card">
             <div class="design-card-header"><h3 class="design-card-title">Page Meta Descriptions <span style="font-size:12px;font-weight:400;color:var(--text-light)">Shown in Google search results — aim for 120–160 characters</span></h3></div>
             <div class="design-card-body">
               ${[
@@ -4154,7 +4165,7 @@ const CONTENT_PAGE_KEYS = {
   'legal-privacy':  ['legal_privacy_hero_title','legal_privacy_hero_sub','legal_privacy_content'],
   'legal-refund':   ['legal_refund_hero_title','legal_refund_hero_sub','legal_refund_content'],
   // seo_og_image is handled by its drop zone (auto-saves on upload), not this batch.
-  seo:              ['seo_business_name','seo_business_phone','seo_business_address','seo_business_city','seo_business_postcode','seo_google_verification','seo_desc_home','seo_desc_events','seo_desc_about','seo_desc_reviews','seo_desc_gallery','seo_desc_faq','seo_desc_contact','seo_desc_gift_vouchers','seo_desc_private_events','seo_desc_terms','seo_desc_privacy','seo_desc_refund'],
+  seo:              ['seo_business_name','seo_business_phone','seo_business_address','seo_business_city','seo_business_postcode','seo_google_verification','meta_pixel_id','seo_desc_home','seo_desc_events','seo_desc_about','seo_desc_reviews','seo_desc_gallery','seo_desc_faq','seo_desc_contact','seo_desc_gift_vouchers','seo_desc_private_events','seo_desc_terms','seo_desc_privacy','seo_desc_refund'],
 };
 
 function updateSeoCharCount(key, val) {

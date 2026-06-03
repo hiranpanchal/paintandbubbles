@@ -1,23 +1,27 @@
 /* =============================================
    PAINT & BUBBLES — COOKIE CONSENT BANNER
-   Self-contained: injects banner + styles, sets
-   a localStorage flag when user makes a choice.
-   UK GDPR / PECR compliant (no tracking cookies
-   are set; banner is informational only).
+   UK GDPR / PECR compliant — gives the visitor a
+   real choice before any non-essential cookies
+   (e.g. Meta Pixel) are set.
+
+   Stores `{ v:2, t, analytics: true|false }` under
+   localStorage['pb_cookie_consent']. Other scripts
+   (pixel, analytics) listen for the
+   `pb:consent-changed` event so they can fire
+   immediately on accept without a page reload.
    ============================================= */
 (function () {
   'use strict';
 
   var STORAGE_KEY = 'pb_cookie_consent';
 
-  // If the user has already made a choice, do nothing.
+  // Already made a choice? Don't show the banner again.
   try {
     if (localStorage.getItem(STORAGE_KEY)) return;
   } catch (e) {
-    // localStorage unavailable — show banner but can't remember choice
+    // localStorage unavailable — banner will show but choice can't persist.
   }
 
-  // Defer to DOMContentLoaded so we don't run before <body> exists.
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', injectBanner);
   } else {
@@ -45,24 +49,34 @@
         '</div>',
         '<div class="pb-cookie-text">',
           '<strong>We use cookies 🍪</strong>',
-          '<span>We use essential cookies to make this site work, and to remember your preferences. ',
-          'We don\'t use tracking or advertising cookies. See our ',
+          '<span>Essential cookies keep this site working. With your permission we’d also use analytics &amp; advertising cookies (e.g. Meta Pixel) so we can show you more relevant ads and improve the site. See our ',
           '<a href="/privacy">Privacy Policy</a>.</span>',
         '</div>',
         '<div class="pb-cookie-actions">',
-          '<button type="button" class="pb-cookie-btn pb-cookie-accept" id="pb-cookie-accept">Got it</button>',
+          '<button type="button" class="pb-cookie-btn pb-cookie-reject" id="pb-cookie-reject">Reject</button>',
+          '<button type="button" class="pb-cookie-btn pb-cookie-accept" id="pb-cookie-accept">Accept</button>',
         '</div>',
       '</div>'
     ].join('');
 
     document.body.appendChild(banner);
 
-    var btn = document.getElementById('pb-cookie-accept');
-    if (btn) btn.addEventListener('click', accept);
+    var btnAccept = document.getElementById('pb-cookie-accept');
+    var btnReject = document.getElementById('pb-cookie-reject');
+    if (btnAccept) btnAccept.addEventListener('click', function () { decide(true); });
+    if (btnReject) btnReject.addEventListener('click', function () { decide(false); });
   }
 
-  function accept() {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ v: 1, t: Date.now() })); } catch (e) {}
+  function decide(analytics) {
+    var value = { v: 2, t: Date.now(), analytics: !!analytics };
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(value)); } catch (e) {}
+
+    // Notify listeners (Meta Pixel, future analytics) so they can fire
+    // immediately on accept without waiting for a page reload.
+    try {
+      window.dispatchEvent(new CustomEvent('pb:consent-changed', { detail: value }));
+    } catch (e) { /* old browser without CustomEvent — fine, next page load picks it up */ }
+
     var b = document.getElementById('pb-cookie-banner');
     if (b) {
       b.classList.add('pb-cookie-hide');

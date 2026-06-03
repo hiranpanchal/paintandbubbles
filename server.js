@@ -53,10 +53,48 @@ function getOgImage(s, siteUrl) {
   return img.startsWith('http') ? img : `${siteUrl}${img}`;
 }
 
+// Returns the Meta Pixel inline script. Loads dormant; only activates once
+// the visitor grants analytics consent (via the cookie banner's accept
+// button, which dispatches the pb:consent-changed event). Also runs straight
+// away if the visitor has previously accepted on a prior visit.
+function buildPixelScript(pixelId) {
+  return `  <script>
+  (function(){
+    var PIXEL_ID = ${JSON.stringify(pixelId)};
+    function loadPixel(){
+      if (window.__pbPixelLoaded) return;
+      window.__pbPixelLoaded = true;
+      !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+      n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+      n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+      t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
+      document,'script','https://connect.facebook.net/en_US/fbevents.js');
+      window.fbq('init', PIXEL_ID);
+      window.fbq('track', 'PageView');
+    }
+    function hasAnalyticsConsent(){
+      try { var c = JSON.parse(localStorage.getItem('pb_cookie_consent') || 'null');
+            return !!(c && c.analytics === true); }
+      catch(e){ return false; }
+    }
+    if (hasAnalyticsConsent()) loadPixel();
+    window.addEventListener('pb:consent-changed', function(e){
+      if (e && e.detail && e.detail.analytics) loadPixel();
+    });
+  })();
+  </script>`;
+}
+
 function injectSeoMeta(html, { title, description, canonicalUrl, ogImage, ogType = 'website', schema, extraMeta = '' }) {
   // `schema` may be a single object or an array — emit one <script> per entry.
   const schemaList = !schema ? [] : (Array.isArray(schema) ? schema.filter(Boolean) : [schema]);
   const schemaLines = schemaList.map(s => `  <script type="application/ld+json">${JSON.stringify(s)}</script>`);
+
+  // Facebook (Meta) Pixel — fires only after the visitor grants analytics
+  // consent via the cookie banner. The base script registers fbq() but stays
+  // dormant; the consent listener calls fbq('init', ...) + PageView once.
+  const pixelId = getSeoSettings().meta_pixel_id;
+  const pixelBlock = pixelId && /^\d{8,20}$/.test(pixelId) ? buildPixelScript(pixelId) : '';
 
   const parts = [
     `  <title>${escSeo(title)}</title>`,
@@ -75,6 +113,7 @@ function injectSeoMeta(html, { title, description, canonicalUrl, ogImage, ogType
     `  <meta name="twitter:description" content="${escSeo(description)}">`,
     ogImage ? `  <meta name="twitter:image" content="${escSeo(ogImage)}">` : null,
     extraMeta ? `  ${extraMeta}` : null,
+    pixelBlock || null,
     ...schemaLines,
   ].filter(Boolean).join('\n');
 
