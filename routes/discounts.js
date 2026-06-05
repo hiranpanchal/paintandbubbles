@@ -2,9 +2,9 @@ const router = require('express').Router();
 const db     = require('../database');
 const { requireAdmin } = require('../middleware/auth');
 
-// GET /api/discounts/validate?code=XXX — public
+// GET /api/discounts/validate?code=XXX&event_id=N&order_pence=M — public
 router.get('/validate', (req, res) => {
-  const { code, order_pence } = req.query;
+  const { code, order_pence, event_id } = req.query;
   if (!code) return res.status(400).json({ error: 'code required' });
 
   const dc = db.prepare('SELECT * FROM discount_codes WHERE code = ?').get(code.toUpperCase().trim());
@@ -17,6 +17,19 @@ router.get('/validate', (req, res) => {
   }
   if (dc.max_uses !== null && dc.used_count >= dc.max_uses) {
     return res.json({ valid: false, message: 'This discount code has reached its maximum uses.' });
+  }
+
+  // Per-event scoping: if the code has an event_ids JSON array, the booking's
+  // event_id must be on that list. NULL / empty / unparseable = applies to all.
+  if (dc.event_ids) {
+    let scoped = null;
+    try { const parsed = JSON.parse(dc.event_ids); if (Array.isArray(parsed) && parsed.length) scoped = parsed; } catch {}
+    if (scoped) {
+      const eid = parseInt(event_id);
+      if (!eid || !scoped.includes(eid)) {
+        return res.json({ valid: false, message: "This code isn't valid for this event." });
+      }
+    }
   }
 
   const orderPence = parseInt(order_pence) || 0;
@@ -56,7 +69,7 @@ router.get('/', requireAdmin, (req, res) => {
 
 // POST /api/discounts — admin only
 router.post('/', requireAdmin, (req, res) => {
-  const { code, name, discount_type, discount_value, min_order_pence, max_uses, expires_at } = req.body;
+  const { code, name, discount_type, discount_value, min_order_pence, max_uses, expires_at, event_ids } = req.body;
 
   if (!code || !code.trim()) return res.status(400).json({ error: 'Code is required.' });
   if (!['percentage', 'fixed'].includes(discount_type)) return res.status(400).json({ error: 'discount_type must be percentage or fixed.' });
@@ -67,9 +80,18 @@ router.post('/', requireAdmin, (req, res) => {
   const existing = db.prepare('SELECT id FROM discount_codes WHERE code = ?').get(upperCode);
   if (existing) return res.status(400).json({ error: 'A discount code with this code already exists.' });
 
+  // Validate the per-event allowlist. Accept either null/undefined (=> all
+  // events) or an array of integers (event IDs). An empty array also means
+  // "all events" so the admin can clear scoping without deleting the row.
+  let eventIdsJson = null;
+  if (Array.isArray(event_ids) && event_ids.length) {
+    const cleaned = event_ids.map(n => parseInt(n)).filter(n => Number.isInteger(n) && n > 0);
+    if (cleaned.length) eventIdsJson = JSON.stringify(cleaned);
+  }
+
   const result = db.prepare(`
-    INSERT INTO discount_codes (code, name, discount_type, discount_value, min_order_pence, max_uses, expires_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO discount_codes (code, name, discount_type, discount_value, min_order_pence, max_uses, expires_at, event_ids)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     upperCode,
     name ? name.trim() : '',
@@ -77,7 +99,8 @@ router.post('/', requireAdmin, (req, res) => {
     discount_type === 'percentage' ? Math.round(discount_value) : Math.round(discount_value * 100),
     min_order_pence ? Math.round(min_order_pence * 100) : 0,
     max_uses ? parseInt(max_uses) : null,
-    expires_at || null
+    expires_at || null,
+    eventIdsJson
   );
 
   res.json({ success: true, id: result.lastInsertRowid });

@@ -707,7 +707,8 @@ async function applyDiscountCode() {
 
   try {
     const subtotal = currentBookingState.event.price_pence * currentBookingState.quantity;
-    const res = await fetch(`/api/discounts/validate?code=${encodeURIComponent(code)}&order_pence=${subtotal}`);
+    const eventId  = currentBookingState.event.id;
+    const res = await fetch(`/api/discounts/validate?code=${encodeURIComponent(code)}&order_pence=${subtotal}&event_id=${eventId}`);
     const data = await res.json();
 
     if (data.valid) {

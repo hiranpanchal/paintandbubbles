@@ -607,6 +607,17 @@ db.exec(`
   }
 }
 
+// Migrate discount_codes: add event_ids column for per-event scoping.
+// NULL/empty = applies to all events. Otherwise a JSON array of event IDs the
+// code is valid for.
+{
+  const cols = db.prepare('PRAGMA table_info(discount_codes)').all();
+  if (!cols.find(c => c.name === 'event_ids')) {
+    db.prepare('ALTER TABLE discount_codes ADD COLUMN event_ids TEXT').run();
+    console.log('Migrated discount_codes: added event_ids column.');
+  }
+}
+
 // Create categories table
 db.exec(`
   CREATE TABLE IF NOT EXISTS categories (

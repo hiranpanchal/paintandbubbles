@@ -5659,7 +5659,10 @@ async function loadAdminDiscounts() {
         <tbody>${codes.map(dc => `
           <tr>
             <td><code style="font-size:13px;font-weight:700;letter-spacing:0.5px">${escHtml(dc.code)}</code></td>
-            <td>${escHtml(dc.name || '—')}</td>
+            <td>
+              <div>${escHtml(dc.name || '—')}</div>
+              <div style="font-size:11px;color:var(--text-light);margin-top:2px">${discountScopeLabel(dc)}</div>
+            </td>
             <td>${dc.discount_type === 'percentage' ? `${dc.discount_value}%` : `£${(dc.discount_value / 100).toFixed(2)}`} off</td>
             <td>${dc.used_count}${dc.max_uses ? ` / ${dc.max_uses}` : ''}</td>
             <td class="hide-mobile">${dc.expires_at ? formatDate(dc.expires_at.split('T')[0]) : '—'}</td>
@@ -5683,15 +5686,54 @@ function discountBadge(status) {
   return '<span style="background:#F3F4F6;color:#6B7280;padding:3px 10px;border-radius:50px;font-size:11px;font-weight:700;">Inactive</span>';
 }
 
+// Render a "All events" / "N events" hint for a discount-code row. Parses
+// the JSON-encoded event_ids column; falls back to all-events if invalid.
+function discountScopeLabel(dc) {
+  if (!dc.event_ids) return 'All events';
+  try {
+    const ids = JSON.parse(dc.event_ids);
+    if (Array.isArray(ids) && ids.length) {
+      return `${ids.length} event${ids.length > 1 ? 's' : ''} only`;
+    }
+  } catch {}
+  return 'All events';
+}
+
 function generateDiscountCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   const seg = (n) => Array.from({length: n}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
   return seg(4) + seg(4);
 }
 
-function openCreateDiscountModal() {
+async function openCreateDiscountModal() {
   const body = document.getElementById('discount-form-body');
   const code = generateDiscountCode();
+
+  // Fetch the full event roster so the admin can scope the code to specific
+  // events. Past events are included so codes can be issued to refund-style
+  // recovery flows if needed.
+  let events = [];
+  try {
+    events = await apiFetch('/api/events?include_inactive=true&include_past=true', { headers: authHeaders() });
+  } catch {
+    events = [];
+  }
+  // Future-first ordering with a date label so the list reads naturally.
+  const today = new Date().toISOString().slice(0, 10);
+  events.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+  const eventOptionsHtml = events.length
+    ? events.map(e => {
+        const past = e.date && e.date < today;
+        const dateStr = e.date ? formatDate(e.date) : '';
+        return `
+          <label class="dc-event-row" style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:6px;cursor:pointer;${past ? 'opacity:0.55' : ''}">
+            <input type="checkbox" class="dc-event-checkbox" value="${e.id}" style="width:auto;margin:0">
+            <span style="flex:1;font-size:13px;font-weight:600">${escHtml(e.title)}</span>
+            <span style="font-size:11px;color:var(--text-light);${past ? '' : 'font-weight:600'}">${escHtml(dateStr)}${past ? ' · past' : ''}</span>
+          </label>`;
+      }).join('')
+    : '<p style="color:var(--text-light);font-size:13px;margin:0">No events to select.</p>';
+
   body.innerHTML = `
     <div class="form-group">
       <label>Code <span style="color:var(--text-light);font-size:12px">Customers enter this at checkout</span></label>
@@ -5729,11 +5771,33 @@ function openCreateDiscountModal() {
       <label>Minimum Order Value <span style="color:var(--text-light);font-size:12px">Optional — £0 means no minimum</span></label>
       <input type="number" id="dc-min-order" min="0" step="0.01" placeholder="e.g. 25.00" style="max-width:140px">
     </div>
+
+    <div class="form-group" style="background:var(--cream);padding:14px;border-radius:8px">
+      <label style="margin:0 0 8px;display:block;font-weight:700">Applies to</label>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin:0 0 6px">
+        <input type="radio" name="dc-scope" value="all" checked onchange="toggleDiscountScope()" style="width:auto;margin:0">
+        <span>All events</span>
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin:0">
+        <input type="radio" name="dc-scope" value="selected" onchange="toggleDiscountScope()" style="width:auto;margin:0">
+        <span>Selected events only</span>
+      </label>
+      <div id="dc-event-picker" style="display:none;margin-top:10px;background:#fff;border:1px solid var(--border);border-radius:8px;max-height:260px;overflow-y:auto;padding:4px">
+        ${eventOptionsHtml}
+      </div>
+    </div>
+
     <div style="display:flex;gap:12px;margin-top:8px">
       <button class="btn btn-ghost btn-full" onclick="closeAdminModal('discount-form-modal')">Cancel</button>
       <button class="btn btn-primary btn-full" onclick="saveDiscount()">Create Code</button>
     </div>`;
   document.getElementById('discount-form-modal').classList.remove('hidden');
+}
+
+function toggleDiscountScope() {
+  const picked = document.querySelector('input[name="dc-scope"]:checked')?.value;
+  const picker = document.getElementById('dc-event-picker');
+  if (picker) picker.style.display = picked === 'selected' ? '' : 'none';
 }
 
 function updateDiscountValueLabel() {
@@ -5754,6 +5818,20 @@ async function saveDiscount() {
   if (!value || value <= 0) { toast('Enter a valid discount value.', 'error'); return; }
   if (type === 'percentage' && value > 100) { toast('Percentage cannot exceed 100.', 'error'); return; }
 
+  // Read per-event scope. "selected" with at least one ticked box → array of ids.
+  // Otherwise (radio = "all", or "selected" with zero boxes) → omit so the
+  // server stores NULL (= applies to all events).
+  let eventIds = null;
+  if (document.querySelector('input[name="dc-scope"]:checked')?.value === 'selected') {
+    eventIds = Array.from(document.querySelectorAll('.dc-event-checkbox:checked'))
+      .map(el => parseInt(el.value))
+      .filter(Boolean);
+    if (!eventIds.length) {
+      toast('Tick at least one event, or switch to "All events".', 'error');
+      return;
+    }
+  }
+
   try {
     await apiFetch('/api/discounts', {
       method: 'POST',
@@ -5761,7 +5839,8 @@ async function saveDiscount() {
         code, name, discount_type: type, discount_value: value,
         max_uses: maxUses || null,
         expires_at: expires || null,
-        min_order_pence: minOrder ? parseFloat(minOrder) : 0
+        min_order_pence: minOrder ? parseFloat(minOrder) : 0,
+        event_ids: eventIds,
       })
     });
     toast('Discount code created.');
