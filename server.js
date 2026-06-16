@@ -284,8 +284,11 @@ app.get('/robots.txt', (req, res) => {
 app.get('/sitemap.xml', (req, res) => {
   const siteUrl = getSiteUrl(req);
   const now = new Date().toISOString().split('T')[0];
+  // Only list bookable (today + future) events. Past events keep working at
+  // their URLs but drop out of the sitemap so Google's crawl budget stays
+  // focused on pages a customer could actually book.
   const events = db.prepare(
-    "SELECT id, slug, date FROM events WHERE is_active = 1 ORDER BY date ASC"
+    "SELECT id, slug, date FROM events WHERE is_active = 1 AND date >= date('now') ORDER BY date ASC"
   ).all();
 
   const staticPages = [
