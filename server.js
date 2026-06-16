@@ -53,6 +53,64 @@ function getOgImage(s, siteUrl) {
   return img.startsWith('http') ? img : `${siteUrl}${img}`;
 }
 
+// Server-render the event content into the page body so search engines see
+// real text on first paint instead of a "Loading…" spinner. Without this
+// Googlebot was classifying every event page as Soft 404. The SPA's renderer
+// overwrites #event-detail-root on hydration, so this content is replaced by
+// the full interactive UI as soon as event-detail.js runs.
+function buildEventSsrBody(event, opts = {}) {
+  const { siteUrl = '', imgUrl = '' } = opts;
+  const e = (s) => escSeo(s || '');
+
+  // Pretty date: "Sunday, 31 May 2026 at 11:00"
+  let prettyDate = '';
+  if (event.date) {
+    const dt = new Date(`${event.date}T${event.time || '00:00'}`);
+    if (!isNaN(dt)) {
+      prettyDate = dt.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+      if (event.time) prettyDate += ' at ' + event.time;
+    }
+  }
+
+  // Duration: "1h 30m"
+  const dur = event.duration_minutes
+    ? (event.duration_minutes >= 60
+        ? `${Math.floor(event.duration_minutes / 60)}h${event.duration_minutes % 60 ? ' ' + (event.duration_minutes % 60) + 'm' : ''}`
+        : `${event.duration_minutes}m`)
+    : '';
+
+  const price = event.price_pence === 0
+    ? 'Free'
+    : `£${((event.price_pence || 0) / 100).toFixed(2)}`;
+
+  // Plain-text description paragraphs, basic safety: strip tags, split on blanks.
+  const descParas = stripTags(event.description || '')
+    .split(/\n{2,}/)
+    .map(p => p.trim())
+    .filter(Boolean)
+    .map(p => `<p>${e(p)}</p>`)
+    .join('');
+
+  const imgTag = imgUrl
+    ? `<img src="${e(imgUrl)}" alt="${e(event.title)}" style="width:100%;max-width:720px;border-radius:14px;display:block;margin:0 auto 24px">`
+    : '';
+
+  return `
+  <article class="ed-ssr" style="max-width:840px;margin:0 auto;padding:32px 20px;font-family:'Nunito','Segoe UI',Arial,sans-serif;color:#2C2028;">
+    ${imgTag}
+    <p style="margin:0 0 6px;text-transform:uppercase;letter-spacing:1.2px;color:#9E8E96;font-size:12px;font-weight:800;">${e(event.category || 'Event')}</p>
+    <h1 style="margin:0 0 14px;font-size:34px;font-weight:800;line-height:1.15;">${e(event.title)}</h1>
+    <ul style="list-style:none;padding:0;margin:0 0 24px;display:flex;flex-wrap:wrap;gap:18px 28px;color:#5C4F57;font-size:15px;font-weight:600">
+      ${prettyDate ? `<li><strong style="color:#2C2028">When:</strong> ${e(prettyDate)}</li>` : ''}
+      ${dur        ? `<li><strong style="color:#2C2028">Duration:</strong> ${e(dur)}</li>`        : ''}
+      ${event.location ? `<li><strong style="color:#2C2028">Venue:</strong> ${e(event.location)}</li>` : ''}
+      <li><strong style="color:#2C2028">Price:</strong> ${e(price)} per person</li>
+    </ul>
+    ${descParas ? `<div class="ed-ssr-desc" style="font-size:16px;line-height:1.7;color:#3A2D32">${descParas}</div>` : ''}
+    <div style="margin-top:24px"><div class="spinner"></div><p style="color:#9E8E96;font-size:13px">Loading booking options…</p></div>
+  </article>`;
+}
+
 // Returns the Meta Pixel inline script. Loads dormant; only activates once
 // the visitor grants analytics consent (via the cookie banner's accept
 // button, which dispatches the pb:consent-changed event). Also runs straight
@@ -140,7 +198,7 @@ function serveSeoPage(res, filename, seoOpts) {
 function buildLocalBusinessSchema(s, siteUrl, ogImage) {
   const biz = s.seo_business_name || 'Paint & Bubbles';
   const city = s.seo_business_city || '';
-  const desc = s.seo_desc_home || `Creative paint & sip events${city ? ' in ' + city : ''}. All materials and drinks provided — no experience needed.`;
+  const desc = s.seo_desc_home || `Creative paint & sip events${city ? ' in ' + city : ''}. All materials provided — no experience needed.`;
 
   // areasServed: split a comma-separated list ("Coventry, Leamington Spa") into an array.
   const areasRaw = s.seo_areas_served || '';
@@ -308,14 +366,14 @@ app.get('/', (req, res) => {
     const city = s.seo_business_city || '';
     const biz  = s.seo_business_name || 'Paint & Bubbles';
     const desc = s.seo_desc_home ||
-      `Join us for fun painting and craft events${city ? ' in ' + city : ''}. All materials and drinks provided. Perfect for all skill levels — no experience needed!`;
+      `Join us for fun painting and craft events${city ? ' in ' + city : ''}. All materials provided. Perfect for all skill levels — no experience needed!`;
 
     const extraMeta = s.seo_google_verification
       ? `<meta name="google-site-verification" content="${escSeo(s.seo_google_verification)}">`
       : '';
 
     serveSeoPage(res, 'index.html', {
-      title: `${biz} — Creative Art Events${city ? ' in ' + city : ''}`,
+      title: 'Paint and Sip Events Coventry Warwickshire & Midlands | Paint & Bubbles',
       description: desc,
       canonicalUrl: `${siteUrl}/`,
       ogImage,
@@ -356,7 +414,7 @@ app.get('/events', (req, res) => {
     serveSeoPage(res, 'events.html', {
       title: `Upcoming Painting & Craft Events${city ? ' in ' + city : ''} — Paint & Bubbles`,
       description: s.seo_desc_events ||
-        `Browse all upcoming painting and craft events${city ? ' in ' + city : ''}. All materials and drinks included. Book your spot — no experience needed!`,
+        `Browse all upcoming painting and craft events${city ? ' in ' + city : ''}. All materials provided. Book your spot — no experience needed!`,
       canonicalUrl: `${siteUrl}/events`,
       ogImage,
       schema: buildLocalBusinessSchema(s, siteUrl, ogImage),
@@ -432,9 +490,18 @@ app.get('/events/:idOrSlug', (req, res) => {
       ...(imgUrl ? { image: [imgUrl] } : {}),
     };
 
+    // Server-render the event into the body so Google sees real content
+    // instead of a loading spinner. The SPA's renderEventDetail() overwrites
+    // this content on hydration, so the interactive UI is unchanged.
+    const ssrBody = buildEventSsrBody(event, { siteUrl, imgUrl });
+    const ssrHtml = html.replace(
+      /<div id="event-detail-root">[\s\S]*?<\/div>(\s*<!-- REVIEWS|\s*<section)/,
+      (_, tail) => `<div id="event-detail-root">${ssrBody}</div>${tail}`
+    );
+
     res.setHeader('Content-Type', 'text/html');
     res.setHeader('Cache-Control', 'no-store');
-    res.send(injectSeoMeta(html, {
+    res.send(injectSeoMeta(ssrHtml, {
       title: `${event.title} — Paint & Bubbles`,
       description: desc,
       canonicalUrl: pageUrl,
@@ -716,7 +783,7 @@ LOCATION_PAGES.forEach(({ path: routePath, city, county }) => {
         '@context': 'https://schema.org',
         '@type':    'EntertainmentBusiness',
         name:       biz,
-        description: `Fun, relaxed paint and sip events in ${city}, ${county}. All materials and drinks included. No experience needed.`,
+        description: `Fun, relaxed paint and sip events in ${city}, ${county}. All materials provided. No experience needed.`,
         url:        `${siteUrl}${routePath}`,
         ...(s.seo_business_phone ? { telephone: s.seo_business_phone } : {}),
         ...(ogImage              ? { image: ogImage }                  : {}),
@@ -736,7 +803,7 @@ LOCATION_PAGES.forEach(({ path: routePath, city, county }) => {
 
       serveSeoPage(res, 'location.html', {
         title:        `Paint and Sip Events in ${city} | ${biz}`,
-        description:  `Join ${biz} for fun, relaxed paint and sip events in ${city}. All materials and drinks included. All abilities welcome — no experience needed. Book your spot online!`,
+        description:  `Join ${biz} for fun, relaxed paint and sip events in ${city}. All materials provided. All abilities welcome — no experience needed. Book your spot online!`,
         canonicalUrl: `${siteUrl}${routePath}`,
         ogImage,
         schema,

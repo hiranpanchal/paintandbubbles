@@ -181,16 +181,16 @@ if (!existingAdmin) {
 const settingsCount = db.prepare('SELECT COUNT(*) as count FROM site_settings').get();
 if (settingsCount.count === 0) {
   const defaults = {
-    hero_title:                'Paint, Create',
-    hero_title_highlight:      '& Celebrate',
-    hero_subtitle:             'Discover unique painting and craft events across Coventry, Leamington Spa and Solihull. All materials provided. Drinks included. Just bring yourself!',
+    hero_title:                'Paint and Sip Events',
+    hero_title_highlight:      'Coventry, Warwickshire & the Midlands',
+    hero_subtitle:             'Discover unique painting and craft events across Coventry, Warwickshire and the Midlands. All materials provided. Just bring yourself!',
     hero_cta_primary_text:     'Browse All Events',
     hero_cta_primary_url:      '/events',
     hero_cta_secondary_text:   'About Us',
     hero_cta_secondary_url:    '#about',
     about_title:               'Where creativity meets good company',
     about_body_1:              "Paint & Bubbles is the Midlands' go-to creative events studio, hosting relaxed, fun painting and craft sessions across Coventry, Leamington Spa and Solihull. All skill levels welcome — whether you're a total beginner or a seasoned artist, you'll leave with something you're proud of and a smile on your face.",
-    about_body_2:              'Every event includes all the materials you need, a welcoming space, and drinks to keep the creativity flowing. No experience necessary — just show up, let loose, and enjoy the ride.',
+    about_body_2:              'Every event includes all the materials you need and a welcoming space to get creative. No experience necessary — just show up, let loose, and enjoy the ride.',
     footer_tagline:            'Creative events for everyone',
     color_rose:                '#C4748A',
     color_rose_deep:           '#A85D72',
@@ -208,8 +208,8 @@ if (settingsCount.count === 0) {
     included_items: JSON.stringify([
       'All materials and tools provided',
       'Step-by-step instructor guidance',
-      'Drinks included throughout the session',
       'Small group setting — max {capacity} people',
+      'Relaxed, welcoming atmosphere',
       'Take your finished creation home',
     ]),
   };
@@ -263,8 +263,8 @@ if (settingsCount.count === 0) {
     ins.run('included_items', JSON.stringify([
       'All materials and tools provided',
       'Step-by-step instructor guidance',
-      'Drinks included throughout the session',
       'Small group setting — max {capacity} people',
+      'Relaxed, welcoming atmosphere',
       'Take your finished creation home',
     ]));
     console.log('Seeded included_items defaults.');
@@ -306,12 +306,12 @@ if (settingsCount.count === 0) {
     ins.run('aboutpage_label', 'Our Story');
     ins.run('aboutpage_title', 'Where creativity meets good company');
     ins.run('aboutpage_body_1', "Paint & Bubbles is the Midlands' go-to creative events studio, hosting relaxed, fun painting and craft sessions across Coventry, Leamington Spa and Solihull. All skill levels welcome — whether you're a total beginner or a seasoned artist, you'll leave with something you're proud of and a smile on your face.");
-    ins.run('aboutpage_body_2', 'Every event includes all the materials you need, a welcoming space, and drinks to keep the creativity flowing. No experience necessary — just show up, let loose, and enjoy the ride.');
+    ins.run('aboutpage_body_2', 'Every event includes all the materials you need and a welcoming space to get creative. No experience necessary — just show up, let loose, and enjoy the ride.');
     ins.run('aboutpage_body_3', '');
     ins.run('aboutpage_pillar_1_title', 'All levels welcome');
     ins.run('aboutpage_pillar_1_text', 'From first-timers to seasoned creatives');
     ins.run('aboutpage_pillar_2_title', 'Everything included');
-    ins.run('aboutpage_pillar_2_text', 'Materials, guidance and drinks provided');
+    ins.run('aboutpage_pillar_2_text', 'Materials and step-by-step guidance');
     ins.run('aboutpage_pillar_3_title', 'Small groups');
     ins.run('aboutpage_pillar_3_text', 'Intimate sessions for a personal experience');
     console.log('Seeded about page defaults.');
@@ -325,7 +325,7 @@ if (settingsCount.count === 0) {
     "UPDATE site_settings SET value = ? WHERE key = ? AND value LIKE '%Brighton%'"
   );
   brightonFix.run(
-    'Discover unique painting and craft events across Coventry, Leamington Spa and Solihull. All materials provided. Drinks included. Just bring yourself!',
+    'Discover unique painting and craft events across Coventry, Warwickshire and the Midlands. All materials provided. Just bring yourself!',
     'hero_subtitle'
   );
   brightonFix.run(
@@ -367,7 +367,7 @@ if (settingsCount.count === 0) {
     const ins = db.prepare('INSERT OR IGNORE INTO site_settings (key, value) VALUES (?, ?)');
     ins.run('private_events_hero_title', 'Private Events');
     ins.run('private_events_hero_sub', 'Create an unforgettable experience for your group');
-    ins.run('private_events_content', '<h2>Host Your Own Private Event</h2><p>Looking for a unique and memorable experience for your team, hen party, birthday, or any special occasion? We offer fully tailored private painting and craft sessions just for your group.</p><h3>What we offer</h3><ul><li>Fully private session — just your group</li><li>Choose your preferred painting or craft activity</li><li>All materials and guidance included</li><li>Flexible on location — our venue or yours</li><li>Drinks packages available</li></ul><h3>How to book</h3><p>Simply fill in our contact form and tell us a bit about your event — group size, preferred date, and any special requests. We\'ll be in touch within 24 hours to discuss the details.</p>');
+    ins.run('private_events_content', '<h2>Host Your Own Private Event</h2><p>Looking for a unique and memorable experience for your team, hen party, birthday, or any special occasion? We offer fully tailored private painting and craft sessions just for your group.</p><h3>What we offer</h3><ul><li>Fully private session — just your group</li><li>Choose your preferred painting or craft activity</li><li>All materials and guidance included</li><li>Flexible on location — our venue or yours</li></ul><h3>How to book</h3><p>Simply fill in our contact form and tell us a bit about your event — group size, preferred date, and any special requests. We\'ll be in touch within 24 hours to discuss the details.</p>');
     console.log('Seeded private events page defaults.');
   }
 }
@@ -379,7 +379,7 @@ if (settingsCount.count === 0) {
     const ins = db.prepare('INSERT OR IGNORE INTO site_settings (key, value) VALUES (?, ?)');
     ins.run('corporate_events_hero_title', 'Team bonding that actually lands');
     ins.run('corporate_events_hero_sub',   'Creative workshops your whole team will enjoy — from the quiet newcomer to the loudest exec.');
-    ins.run('corporate_events_intro',      'We run facilitated painting and craft workshops for teams of 4 to 100+. Book once, everything is handled — materials, venue, drinks, photos, and an invoice your finance team will actually enjoy.');
+    ins.run('corporate_events_intro',      'We run facilitated painting and craft workshops for teams of 4 to 100+. Book once, everything is handled — materials, venue, photos, and an invoice your finance team will actually enjoy.');
     // Editable testimonial quotes (JSON array). Start with sensible placeholders —
     // admins can replace with real quotes via the Content tab.
     ins.run('corporate_events_testimonials', JSON.stringify([
@@ -442,7 +442,6 @@ if (settingsCount.count === 0) {
   ins.run('corporate_events_included', JSON.stringify([
     'All materials — canvases, paints, brushes, aprons',
     'Professional artist to facilitate',
-    'Soft drinks included — prosecco optional',
     'Themed music playlist',
     'Photos from the session on request',
     'Dietary & accessibility adjustments',
@@ -458,7 +457,7 @@ if (settingsCount.count === 0) {
   ins.run('corporate_events_faq_title',   'The questions we get most often');
   ins.run('corporate_events_faq', JSON.stringify([
     { q: 'Can you accommodate dietary requirements and allergies?',
-      a: "Yes — always. Tell us about any allergies, dietary requirements or dry/no-alcohol preferences in the enquiry form and we'll adjust. Our drinks packages include non-alcoholic options as standard." },
+      a: "Yes — always. Tell us about any allergies, dietary requirements or dry/no-alcohol preferences in the enquiry form and we'll adjust. We accommodate every team member." },
     { q: 'Do you invoice with a PO and offer 30-day terms?',
       a: "Yes. We invoice your finance team directly with a clean VAT invoice quoting your PO number. Standard terms are net-30. We're VAT-registered." },
     { q: "What if some of our team genuinely can't paint?",
@@ -674,7 +673,7 @@ db.exec(`
     ins.run('about_pillar_1_title', 'All levels welcome');
     ins.run('about_pillar_1_text',  'From first-timers to seasoned creatives');
     ins.run('about_pillar_2_title', 'Everything included');
-    ins.run('about_pillar_2_text',  'Materials, guidance and drinks provided');
+    ins.run('about_pillar_2_text',  'Materials and step-by-step guidance');
     ins.run('about_pillar_3_title', 'Small groups');
     ins.run('about_pillar_3_text',  'Intimate sessions for a personal experience');
     console.log('Seeded homepage pillar defaults.');

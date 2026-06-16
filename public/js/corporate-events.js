@@ -263,7 +263,6 @@
         included = [
           'All materials — canvases, paints, brushes, aprons',
           'Professional artist to facilitate',
-          'Soft drinks included — prosecco optional',
           'Themed music playlist',
           'Photos from the session on request',
           'Dietary & accessibility adjustments',

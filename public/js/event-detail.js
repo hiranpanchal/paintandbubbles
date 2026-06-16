@@ -442,8 +442,8 @@ function getIncludedItems(capacity) {
     items = [
       'All materials and tools provided',
       'Step-by-step instructor guidance',
-      'Drinks included throughout the session',
       `Small group setting — max ${capacity} people`,
+      'Relaxed, welcoming atmosphere',
       'Take your finished creation home',
     ];
   }

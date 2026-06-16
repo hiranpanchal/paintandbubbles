@@ -696,8 +696,8 @@ ${dateStr} · ${timeStr}${location ? `\n📍 ${location}` : ''}
 🎟 ${priceStr}
 ${description ? `\n${description}\n` : ''}
 ✨ All materials included
-🥂 Drinks provided
 🌟 All skill levels welcome
+👩‍🎨 Step-by-step guidance
 
 👉 Link in bio to book your spot!
 
@@ -2034,8 +2034,8 @@ function renderIncludedItemsList(jsonStr) {
     items = [
       'All materials and tools provided',
       'Step-by-step instructor guidance',
-      'Drinks included throughout the session',
       'Small group setting — max {capacity} people',
+      'Relaxed, welcoming atmosphere',
       'Take your finished creation home',
     ];
   }

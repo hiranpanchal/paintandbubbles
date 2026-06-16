@@ -55,8 +55,8 @@ async function applyDesignSettings() {
     // Hero title
     const heroTitle = document.querySelector('.hero-title');
     if (heroTitle) {
-      const main      = s.hero_title            || 'Paint, Create';
-      const highlight = s.hero_title_highlight  || '& Celebrate';
+      const main      = s.hero_title            || 'Paint and Sip Events';
+      const highlight = s.hero_title_highlight  || 'Coventry, Warwickshire & the Midlands';
       heroTitle.innerHTML = escHtml(main) + ' <span class="hero-highlight">' + escHtml(highlight) + '</span>';
     }
 
