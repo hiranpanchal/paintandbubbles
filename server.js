@@ -53,6 +53,46 @@ function getOgImage(s, siteUrl) {
   return img.startsWith('http') ? img : `${siteUrl}${img}`;
 }
 
+// Server-render a list of event cards into the /events listing grid so
+// Googlebot sees real event content (titles, dates, prices) on first paint.
+// The SPA's events.js will overwrite this on hydration with the interactive
+// version, but only AFTER it sees the data-ssr marker — see public/js/events.js.
+function buildEventsListSsrHtml(events, opts = {}) {
+  const { siteUrl = '' } = opts;
+  const e = (s) => escSeo(s || '');
+
+  if (!events.length) {
+    return '<div class="empty-state"><h3>No upcoming events</h3><p>Check back soon for new dates.</p></div>';
+  }
+
+  return events.map(ev => {
+    let dateStr = '';
+    if (ev.date) {
+      const dt = new Date(`${ev.date}T${ev.time || '00:00'}`);
+      if (!isNaN(dt)) {
+        dateStr = dt.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+        if (ev.time) dateStr += ' · ' + ev.time;
+      }
+    }
+    const price = ev.price_pence === 0 ? 'Free' : `£${((ev.price_pence || 0) / 100).toFixed(2)}`;
+    const href  = `/events/${ev.slug || ev.id}`;
+    const img   = ev.image_url
+      ? `<img src="${e(ev.image_url)}" alt="${e(ev.title)}" loading="lazy" style="width:100%;height:200px;object-fit:cover;display:block">`
+      : '';
+    return `
+    <a class="event-card-ssr" href="${e(href)}" style="display:block;background:#fff;border:1px solid #FFE8EE;border-radius:14px;overflow:hidden;text-decoration:none;color:#2C2028;margin-bottom:18px">
+      ${img}
+      <div style="padding:18px 20px">
+        <p style="margin:0 0 4px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#A85D72">${e(ev.category || 'Event')}</p>
+        <h2 style="margin:0 0 8px;font-size:20px;font-weight:800;line-height:1.25">${e(ev.title)}</h2>
+        <p style="margin:0 0 4px;color:#5C4F57;font-size:14px;font-weight:600">${e(dateStr)}</p>
+        ${ev.location ? `<p style="margin:0 0 10px;color:#9E8E96;font-size:13px">${e(ev.location)}</p>` : ''}
+        <p style="margin:0;color:#A85D72;font-size:15px;font-weight:800">${e(price)} per person</p>
+      </div>
+    </a>`;
+  }).join('');
+}
+
 // Server-render the event content into the page body so search engines see
 // real text on first paint instead of a "Loading…" spinner. Without this
 // Googlebot was classifying every event page as Soft 404. The SPA's renderer
@@ -407,22 +447,46 @@ app.get('/about', (req, res) => {
   } catch (err) { res.sendFile(path.join(__dirname, 'public', 'about.html')); }
 });
 
-// EVENTS LIST
+// EVENTS LIST — SSR'd cards in the grid so Googlebot sees real content
 app.get('/events', (req, res) => {
   try {
     const s = getSeoSettings();
     const siteUrl = getSiteUrl(req);
     const city = s.seo_business_city || '';
     const ogImage = getOgImage(s, siteUrl);
-    serveSeoPage(res, 'events.html', {
+
+    // Fetch upcoming events to bake into the grid before send.
+    const events = db.prepare(`
+      SELECT id, slug, title, description, category, date, time, location, price_pence, image_url
+      FROM events
+      WHERE is_active = 1 AND date >= date('now')
+      ORDER BY date ASC, time ASC
+    `).all();
+
+    // Read template, replace the empty events-grid with SSR'd cards. Mark the
+    // grid with data-ssr="1" so events.js can detect SSR content and avoid
+    // flashing a loading spinner over it during hydration.
+    const ssrCards = buildEventsListSsrHtml(events, { siteUrl });
+    const html = fs.readFileSync(path.join(__dirname, 'public', 'events.html'), 'utf8');
+    const ssrHtml = html.replace(
+      /<div([^>]*)id="events-grid"([^>]*)>[\s\S]*?<\/div>(\s*<!--|\s*<section|\s*<\/main|\s*<\/body)/i,
+      (_, pre, post, tail) => `<div${pre}id="events-grid"${post} data-ssr="1">${ssrCards}</div>${tail}`
+    );
+
+    res.setHeader('Content-Type', 'text/html');
+    res.setHeader('Cache-Control', 'no-store');
+    res.send(injectSeoMeta(ssrHtml, {
       title: `Upcoming Painting & Craft Events${city ? ' in ' + city : ''} — Paint & Bubbles`,
       description: s.seo_desc_events ||
         `Browse all upcoming painting and craft events${city ? ' in ' + city : ''}. All materials provided. Book your spot — no experience needed!`,
       canonicalUrl: `${siteUrl}/events`,
       ogImage,
       schema: buildLocalBusinessSchema(s, siteUrl, ogImage),
-    });
-  } catch (err) { res.sendFile(path.join(__dirname, 'public', 'events.html')); }
+    }));
+  } catch (err) {
+    console.error('Events list SEO error:', err);
+    res.sendFile(path.join(__dirname, 'public', 'events.html'));
+  }
 });
 
 // EVENT DETAIL — Event schema + OG (accepts numeric id or slug)

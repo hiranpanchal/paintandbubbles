@@ -234,7 +234,15 @@ async function loadCategories() {
 // ---- LOAD EVENTS ----
 async function loadEvents() {
   const grid = document.getElementById('events-grid');
-  grid.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Loading events…</p></div>';
+
+  // The server SSRs event cards into this grid for the first paint (so Google
+  // sees real content). Only blank the grid with a loading spinner if the SSR
+  // content isn't present — otherwise we'd flash an empty state over real
+  // content during JS-rendering crawls and on slow networks.
+  const hasSsr = grid.dataset.ssr === '1';
+  if (!hasSsr) {
+    grid.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Loading events…</p></div>';
+  }
 
   const search   = document.getElementById('search-input')?.value.trim() || '';
   const category = document.getElementById('category-filter')?.value || '';
@@ -248,6 +256,10 @@ async function loadEvents() {
   try {
     const events = await apiFetch('/api/events?' + params.toString());
     const label  = document.getElementById('events-count-label');
+
+    // SSR content has done its job — drop the marker so subsequent filter
+    // changes go through the loading-state path.
+    delete grid.dataset.ssr;
 
     if (events.length === 0) {
       if (label) label.textContent = 'No events found';
