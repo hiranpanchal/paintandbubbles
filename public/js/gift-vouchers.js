@@ -350,6 +350,21 @@ function showVoucherSuccess(code) {
   document.getElementById('voucher-step-2').style.display = 'none';
   document.getElementById('voucher-step-3').style.display = '';
   document.getElementById('voucher-code-display').textContent = code;
+
+  // Meta Pixel: gift voucher purchase completed. Counted as a Purchase event
+  // since real money changed hands — Meta will optimise ad delivery for this
+  // conversion just like a booking.
+  if (window.fbq && voucherState.amountPence) {
+    fbq('track', 'Purchase', {
+      value:        voucherState.amountPence / 100,
+      currency:     'GBP',
+      content_type: 'product',
+      content_ids:  ['gift-voucher'],
+      content_name: 'Gift Voucher',
+      num_items:    1,
+      order_id:     code,
+    });
+  }
 }
 
 // ---- HELPERS ----

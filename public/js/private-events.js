@@ -264,6 +264,9 @@ async function submitQuote() {
 
     document.getElementById('pe-success-ref').textContent = data.quote_ref;
 
+    // Meta Pixel: private-event quote submitted = warm lead.
+    if (window.fbq) fbq('track', 'Lead', { content_name: 'Private event quote' });
+
     const low  = data.estimate.low;
     const high = data.estimate.high;
     const fmt  = p => `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: 0 })}`;

@@ -262,6 +262,8 @@ async function submitContact(e) {
     msgEl.className = 'review-form-msg success';
     msgEl.classList.remove('hidden');
     document.getElementById('contact-form').reset();
+    // Meta Pixel: contact form submitted — counts as a lead in Meta's funnel.
+    if (window.fbq) fbq('track', 'Lead', { content_name: 'Contact form' });
     // Re-render custom fields after reset (checkboxes go back to unchecked automatically)
   } catch {
     msgEl.textContent = 'Something went wrong. Please try again.';

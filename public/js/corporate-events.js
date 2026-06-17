@@ -464,6 +464,9 @@
       ok.classList.remove('hidden');
       document.getElementById('ce-success-ref').textContent = out.quote_ref || '';
       ok.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+      // Meta Pixel: corporate team-building enquiry — high-value B2B lead.
+      if (window.fbq) fbq('track', 'Lead', { content_name: 'Corporate enquiry' });
     } catch (e) {
       showError('Network hiccup — please check your connection and try again.');
       btn.disabled = false;

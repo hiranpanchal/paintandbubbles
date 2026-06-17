@@ -649,6 +649,19 @@ function showConfirmation(booking, customer, event) {
   const total = event.price_pence === 0 ? 'Free' : `£${(booking.total_pence / 100).toFixed(2)}`;
   const ref   = `#PB${String(booking.id).padStart(5, '0')}`;
 
+  // Meta Pixel: booking confirmed via the homepage modal flow.
+  if (window.fbq) {
+    fbq('track', 'Purchase', {
+      value:           (booking.total_pence || 0) / 100,
+      currency:        'GBP',
+      content_type:    'product',
+      content_ids:     [String(event.id)],
+      content_name:    event.title,
+      num_items:       booking.quantity || 1,
+      order_id:        ref.replace('#', ''),
+    });
+  }
+
   document.getElementById('confirm-modal-body').innerHTML = `
     <div class="confirmation-body">
       <h2 class="confirm-title">You're all booked!</h2>

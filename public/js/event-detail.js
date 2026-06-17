@@ -24,6 +24,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     currentEvent = event;
     document.title = `${event.title} — Paint & Bubbles`;
     renderEventDetail(event);
+    // Meta Pixel: customer is viewing a specific bookable event.
+    if (window.fbq) {
+      fbq('track', 'ViewContent', {
+        content_type:  'product',
+        content_ids:   [String(event.id)],
+        content_name:  event.title,
+        content_category: event.category || 'Event',
+        value:         (event.price_pence || 0) / 100,
+        currency:      'GBP',
+      });
+    }
   } catch {
     showError('This event could not be found.');
   }
@@ -478,6 +489,16 @@ function openBooking() {
   currentBookingState.discountPence   = 0;
   showBookingStep1();
   openModal('booking-modal');
+  // Meta Pixel: customer has entered the booking funnel.
+  if (window.fbq) {
+    fbq('track', 'InitiateCheckout', {
+      content_type:  'product',
+      content_ids:   [String(currentEvent.id)],
+      content_name:  currentEvent.title,
+      value:         (currentEvent.price_pence || 0) / 100,
+      currency:      'GBP',
+    });
+  }
 }
 
 function showBookingStep1() {
@@ -989,6 +1010,22 @@ function showConfirmation(booking, customer, event) {
   const total = event.price_pence === 0 ? 'Free' : charged === 0 ? 'Free (fully discounted)' : `£${(charged / 100).toFixed(2)}`;
   const ref   = `#PB${String(booking.id).padStart(5, '0')}`;
   const refPlain = `PB${String(booking.id).padStart(5, '0')}`;
+
+  // Meta Pixel: booking confirmed. This is the conversion event Meta uses to
+  // optimise ad delivery — value passed is the actual amount paid after any
+  // discount/voucher. Fires for every booking path (free, voucher-covered,
+  // Stripe, SumUp) because every path funnels through this function.
+  if (window.fbq) {
+    fbq('track', 'Purchase', {
+      value:           charged / 100,
+      currency:        'GBP',
+      content_type:    'product',
+      content_ids:     [String(event.id)],
+      content_name:    event.title,
+      num_items:       booking.quantity || 1,
+      order_id:        refPlain,
+    });
+  }
 
   document.getElementById('confirm-modal-body').innerHTML = `
     <div class="confirmation-body">
