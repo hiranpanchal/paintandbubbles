@@ -316,9 +316,25 @@ app.use(express.json());
 app.get('/robots.txt', (req, res) => {
   const siteUrl = getSiteUrl(req);
   res.setHeader('Content-Type', 'text/plain');
-  res.send(
-    `User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /api/\n\nSitemap: ${siteUrl}/sitemap.xml`
-  );
+  // Allow public-read endpoints Google needs to render and index pages —
+  // /api/design/* serves CSS variables + site_settings (logo, colours, hero
+  // copy), /api/events/* serves the event JSON consumed by the event detail
+  // SPA after first paint. Per Google's robots.txt spec, the more-specific
+  // Allow wins over the broader Disallow, so /api/payments, /api/admin and
+  // the rest of /api/ remain blocked.
+  res.send([
+    'User-agent: *',
+    'Allow: /',
+    'Allow: /api/design/',
+    'Allow: /api/events/',
+    'Allow: /api/reviews',
+    'Allow: /api/categories',
+    'Allow: /api/faqs',
+    'Disallow: /admin',
+    'Disallow: /api/',
+    '',
+    `Sitemap: ${siteUrl}/sitemap.xml`,
+  ].join('\n'));
 });
 
 app.get('/sitemap.xml', (req, res) => {
