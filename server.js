@@ -224,7 +224,7 @@ function serveSeoPage(res, filename, seoOpts) {
   try {
     const html = fs.readFileSync(path.join(__dirname, 'public', filename), 'utf8');
     res.setHeader('Content-Type', 'text/html');
-    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Cache-Control', 'public, max-age=120, s-maxage=600, stale-while-revalidate=3600');
     res.send(injectSeoMeta(html, seoOpts));
   } catch (err) {
     console.error('SEO page serve error:', err);
@@ -490,7 +490,7 @@ app.get('/events', (req, res) => {
     );
 
     res.setHeader('Content-Type', 'text/html');
-    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Cache-Control', 'public, max-age=120, s-maxage=600, stale-while-revalidate=3600');
     res.send(injectSeoMeta(ssrHtml, {
       title: `Upcoming Painting & Craft Events${city ? ' in ' + city : ''} — Paint & Bubbles`,
       description: s.seo_desc_events ||
@@ -583,7 +583,7 @@ app.get('/events/:idOrSlug', (req, res) => {
     );
 
     res.setHeader('Content-Type', 'text/html');
-    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Cache-Control', 'public, max-age=120, s-maxage=600, stale-while-revalidate=3600');
     res.send(injectSeoMeta(ssrHtml, {
       title: `${event.title} — Paint & Bubbles`,
       description: desc,
@@ -776,7 +776,7 @@ function serveLegalPage(res, { page, title, description, canonicalUrl, ogImage }
       `<body data-legal-page="${page}"`
     );
     res.setHeader('Content-Type', 'text/html');
-    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Cache-Control', 'public, max-age=120, s-maxage=600, stale-while-revalidate=3600');
     res.send(injectSeoMeta(tagged, {
       title, description, canonicalUrl, ogImage, ogType: 'website',
     }));

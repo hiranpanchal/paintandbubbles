@@ -42,7 +42,7 @@ async function sendPendingReminders() {
 }
 
 async function sendPendingReviewRequests() {
-  const siteUrl = process.env.SITE_URL || 'https://paintandbubbles.co.uk';
+  const siteUrl = process.env.SITE_URL || 'https://www.paintandbubbles.co.uk';
 
   // Events that ended between 23 and 25 hours ago (end time = start + duration_minutes)
   const bookings = db.prepare(`
