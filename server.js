@@ -316,22 +316,22 @@ app.use(express.json());
 app.get('/robots.txt', (req, res) => {
   const siteUrl = getSiteUrl(req);
   res.setHeader('Content-Type', 'text/plain');
-  // Allow public-read endpoints Google needs to render and index pages —
-  // /api/design/* serves CSS variables + site_settings (logo, colours, hero
-  // copy), /api/events/* serves the event JSON consumed by the event detail
-  // SPA after first paint. Per Google's robots.txt spec, the more-specific
-  // Allow wins over the broader Disallow, so /api/payments, /api/admin and
-  // the rest of /api/ remain blocked.
+  // Explicit-deny style: every endpoint is crawlable unless listed below.
+  // Googlebot needs /api/events/* and /api/design/* to fully render event
+  // pages after first paint; the rest of the public-read endpoints (reviews,
+  // categories, faqs) get crawled too which is fine — they're already public.
+  // We explicitly block the data-sensitive routes (payments / bookings /
+  // customers / admin), and the /admin dashboard page itself.
   res.send([
     'User-agent: *',
     'Allow: /',
-    'Allow: /api/design/',
     'Allow: /api/events/',
-    'Allow: /api/reviews',
-    'Allow: /api/categories',
-    'Allow: /api/faqs',
+    'Allow: /api/design/',
     'Disallow: /admin',
-    'Disallow: /api/',
+    'Disallow: /api/admin/',
+    'Disallow: /api/payments/',
+    'Disallow: /api/bookings/',
+    'Disallow: /api/customers/',
     '',
     `Sitemap: ${siteUrl}/sitemap.xml`,
   ].join('\n'));
