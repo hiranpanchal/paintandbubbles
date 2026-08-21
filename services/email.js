@@ -1037,6 +1037,130 @@ async function sendCancellationEmail(booking, isRefund = false) {
   console.log(`[Email] Cancellation email sent to ${booking.customer_email}`);
 }
 
+// Booking has been moved to a different event (different date/time/venue).
+// The old event details are passed in so we can show a clear "was → now" swap
+// in the email; ics attachment covers the new slot so it lands in the
+// customer's calendar and supersedes the original invite.
+async function sendRescheduleEmail(booking, oldEvent) {
+  const siteUrl = getSiteBaseUrl();
+  const bookingRef = `#PB${String(booking.id).padStart(5, '0')}`;
+  const bookingRefPlain = `PB${String(booking.id).padStart(5, '0')}`;
+  const logoHeader = getLogoHeaderHtml();
+  const logoFooter = getLogoFooterHtml();
+
+  let icsFile = null;
+  try {
+    const icsBody = buildBookingIcs(booking, siteUrl);
+    icsFile = {
+      filename: `paint-and-bubbles-${bookingRefPlain}.ics`,
+      content: icsBody,
+      contentType: 'text/calendar; charset=utf-8; method=PUBLISH',
+    };
+  } catch (err) {
+    console.error('[Email] Failed to build .ics for reschedule', booking.id, err);
+  }
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body style="margin:0;padding:0;background:#FDF8F9;font-family:'Nunito','Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#FDF8F9;padding:40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 8px 40px rgba(160,80,110,0.15);">
+
+          <tr>
+            <td style="background:linear-gradient(135deg,#2C0F18 0%,#6B2D42 50%,#C4748A 100%);padding:44px 48px;text-align:center;">
+              ${logoHeader}
+              <p style="margin:10px 0 0;color:rgba(255,255,255,0.85);font-size:14px;font-weight:600;letter-spacing:0.3px;">Booking Rescheduled</p>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:40px 48px;">
+              <p style="margin:0 0 6px;color:#9E8E96;font-size:14px;font-weight:600;">Hi ${escapeHtml(booking.customer_name)},</p>
+              <p style="margin:0 0 24px;color:#2C2028;font-size:18px;font-weight:800;">Your booking has been moved to a new date.</p>
+              <p style="margin:0 0 28px;color:#5C4F57;font-size:14px;font-weight:500;line-height:1.7;">Reference <strong style="color:#2C2028;">${bookingRef}</strong> is still valid — no need to rebook or repay. Here are the updated details:</p>
+
+              <!-- New date -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="background:#F1FBF4;border:1px solid #BFE7CC;border-radius:14px;margin-bottom:20px;">
+                <tr>
+                  <td style="padding:24px 28px;">
+                    <p style="margin:0 0 4px;color:#2F7A46;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.8px;">✓ New Date</p>
+                    <h2 style="margin:0 0 18px;color:#2C2028;font-size:20px;font-weight:900;">${escapeHtml(booking.event_title)}</h2>
+                    <table width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td style="padding:7px 0;color:#9E8E96;font-size:13px;font-weight:600;width:30%;vertical-align:top;">📅 Date</td>
+                        <td style="padding:7px 0;color:#2C2028;font-size:13px;font-weight:700;">${formatDate(booking.event_date)}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:7px 0;color:#9E8E96;font-size:13px;font-weight:600;vertical-align:top;">🕐 Time</td>
+                        <td style="padding:7px 0;color:#2C2028;font-size:13px;font-weight:700;">${escapeHtml(booking.event_time || '')}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:7px 0;color:#9E8E96;font-size:13px;font-weight:600;vertical-align:top;">📍 Venue</td>
+                        <td style="padding:7px 0;color:#2C2028;font-size:13px;font-weight:700;">${escapeHtml(booking.event_location || '')}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:7px 0;color:#9E8E96;font-size:13px;font-weight:600;vertical-align:top;">🎟️ Tickets</td>
+                        <td style="padding:7px 0;color:#2C2028;font-size:13px;font-weight:700;">${booking.quantity}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Old date, struck through -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="background:#FFF6F8;border:1px solid #FFCCD8;border-radius:14px;margin-bottom:28px;">
+                <tr>
+                  <td style="padding:20px 28px;">
+                    <p style="margin:0 0 8px;color:#A85D72;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.8px;">Previously booked for</p>
+                    <p style="margin:0;color:#9E8E96;font-size:13px;font-weight:600;text-decoration:line-through;">${formatDate(oldEvent.date)} at ${escapeHtml(oldEvent.time || '')} · ${escapeHtml(oldEvent.title)}</p>
+                  </td>
+                </tr>
+              </table>
+
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+                <tr>
+                  <td align="center">
+                    <a href="${siteUrl}/events" style="display:inline-block;background:linear-gradient(135deg,#6B2D42,#C4748A);color:#ffffff;font-size:15px;font-weight:800;text-decoration:none;padding:14px 32px;border-radius:50px;letter-spacing:0.3px;">View Event Details →</a>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:0;color:#9E8E96;font-size:13px;font-weight:500;line-height:1.7;">A calendar invite for the new date is attached. If anything about the change doesn't look right, just reply to this email and we'll sort it.</p>
+              <p style="margin:16px 0 0;color:#C4748A;font-size:16px;font-weight:700;">See you there! 🎨</p>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="background:#FFF6F8;padding:24px 48px;text-align:center;border-top:1px solid #FFE8EE;">
+              ${logoFooter}
+              <p style="margin:4px 0 0;color:#9E8E96;font-size:12px;font-weight:500;">Questions? Reply to this email  •  <a href="${siteUrl}" style="color:#C4748A;text-decoration:none;font-weight:700;">${siteUrl}</a></p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`.trim();
+
+  await sendEmail({
+    to: booking.customer_email,
+    subject: `Booking Rescheduled: ${escapeHtml(booking.event_title)} — ${bookingRef}`,
+    html,
+    attachments: icsFile ? [icsFile] : undefined,
+  });
+  console.log(`[Email] Reschedule email sent to ${booking.customer_email}`);
+}
+
 async function sendTestEmail(to) {
   await sendEmail({
     to,
@@ -1607,6 +1731,7 @@ async function sendAbandonedCartEmail(booking) {
 module.exports = {
   sendBookingConfirmation,
   sendCancellationEmail,
+  sendRescheduleEmail,
   sendReminderEmail,
   sendReviewRequest,
   sendWaitlistConfirmation,

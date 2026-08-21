@@ -249,6 +249,7 @@ async function viewBookingDetail(id) {
 
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:4px">
           ${b.status !== 'confirmed' ? `<button class="btn btn-primary btn-sm" onclick="updateBookingStatus(${b.id},'confirmed');closeAdminModal('generic-modal')">Mark Confirmed</button>` : ''}
+          ${b.status !== 'cancelled' && b.status !== 'refunded' ? `<button class="btn btn-sm btn-ghost" onclick="openReschedulePicker(${b.id}, ${b.event_id}, ${b.quantity})">Move to Different Date</button>` : ''}
           ${b.status !== 'cancelled' ? `<button class="btn btn-sm btn-ghost" onclick="updateBookingStatus(${b.id},'cancelled');closeAdminModal('generic-modal')">Cancel Booking</button>` : ''}
           <button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:none;margin-left:auto" onclick="deleteBooking(${b.id})">Delete Booking</button>
         </div>
@@ -1036,6 +1037,81 @@ async function deleteBooking(id) {
     loadAdminBookings();
   } catch (err) {
     toast(err.message || 'Failed to delete booking.', 'error');
+  }
+}
+
+// Rebuilds the booking-detail modal as an event picker. Loads all upcoming
+// active events (already returned with `spots_remaining`), hides the current
+// one, and disables any that can't seat `quantity`. Clicking Move fires the
+// PATCH; on success we refresh the bookings table and close the modal.
+async function openReschedulePicker(bookingId, currentEventId, quantity) {
+  const body = document.getElementById('generic-modal-body');
+  body.innerHTML = `
+    <div class="modal-header">
+      <h2>Move Booking to Different Date</h2>
+      <button class="modal-close" onclick="closeAdminModal('generic-modal')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:24px">
+      <div class="loading-state"><div class="spinner"></div></div>
+    </div>`;
+
+  try {
+    const events = await apiFetch('/api/events', { headers: authHeaders() });
+    const options = events.filter(e => e.id !== currentEventId);
+
+    if (!options.length) {
+      body.querySelector('.modal-body').innerHTML =
+        '<p style="color:var(--text-mid);text-align:center;padding:24px 0">No other upcoming events to move to.</p>';
+      return;
+    }
+
+    body.querySelector('.modal-body').innerHTML = `
+      <p style="margin:0 0 16px;color:var(--text-mid);font-size:13px">Pick the new date for this booking. Payment, discount, and reference number are preserved. The customer will get an email.</p>
+      <input type="text" id="reschedule-search" placeholder="Search events…" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;margin-bottom:12px" oninput="filterReschedulePicker(this.value)">
+      <div id="reschedule-picker-list" style="display:flex;flex-direction:column;gap:8px;max-height:420px;overflow-y:auto">
+        ${options.map(e => renderRescheduleOption(bookingId, e, quantity)).join('')}
+      </div>`;
+  } catch (err) {
+    body.querySelector('.modal-body').innerHTML =
+      `<p style="color:var(--coral)">${escHtml(err.message || 'Failed to load events')}</p>`;
+  }
+}
+
+function renderRescheduleOption(bookingId, e, quantity) {
+  const full   = e.spots_remaining < quantity;
+  const price  = e.price_pence === 0 ? 'Free' : formatPrice(e.price_pence);
+  const search = `${e.title} ${e.date} ${e.location || ''}`.toLowerCase();
+  return `
+    <div class="reschedule-option" data-search="${escHtml(search)}" style="display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--border);border-radius:10px;background:${full ? '#faf7f8' : '#fff'};opacity:${full ? '0.6' : '1'}">
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:700;font-size:14px;color:var(--text-strong)">${escHtml(e.title)}</div>
+        <div style="font-size:12px;color:var(--text-mid);margin-top:2px">${formatDate(e.date)} at ${escHtml(e.time || '')} · ${escHtml(e.location || '')}</div>
+        <div style="font-size:12px;color:${full ? 'var(--coral)' : 'var(--text-mid)'};margin-top:2px">${price} · ${full ? `Full (${e.spots_remaining} left, need ${quantity})` : `${e.spots_remaining} spot${e.spots_remaining === 1 ? '' : 's'} left`}</div>
+      </div>
+      <button class="btn btn-sm btn-primary" onclick="rescheduleBooking(${bookingId}, ${e.id})" ${full ? 'disabled style="opacity:0.5;cursor:not-allowed"' : ''}>Move Here</button>
+    </div>`;
+}
+
+function filterReschedulePicker(q) {
+  const needle = q.trim().toLowerCase();
+  document.querySelectorAll('#reschedule-picker-list .reschedule-option').forEach(el => {
+    el.style.display = !needle || el.dataset.search.includes(needle) ? '' : 'none';
+  });
+}
+
+async function rescheduleBooking(bookingId, newEventId) {
+  if (!confirm('Move this booking to the selected date? The customer will be emailed.')) return;
+  try {
+    await apiFetch(`/api/bookings/${bookingId}/reschedule`, {
+      method: 'PATCH',
+      body: JSON.stringify({ new_event_id: newEventId }),
+      headers: authHeaders(),
+    });
+    toast('Booking rescheduled.', 'success');
+    closeAdminModal('generic-modal');
+    loadAdminBookings();
+  } catch (err) {
+    toast(err.message || 'Failed to reschedule booking.', 'error');
   }
 }
 

@@ -1,7 +1,7 @@
 const router = require('express').Router();
 const db = require('../database');
 const { requireAdmin } = require('../middleware/auth');
-const { sendBookingConfirmation, sendAdminBookingNotification, sendCancellationEmail } = require('../services/email');
+const { sendBookingConfirmation, sendAdminBookingNotification, sendCancellationEmail, sendRescheduleEmail } = require('../services/email');
 const { notifyNextOnWaitlist } = require('./waitlist');
 
 // GET /api/bookings — admin only
@@ -182,6 +182,80 @@ router.post('/:id/confirm', async (req, res) => {
   sendAdminBookingNotification(booking, notificationEmail).catch(err => console.error('Admin booking notification error:', err));
 
   res.json({ success: true, bookingId: booking.id });
+});
+
+// PATCH /api/bookings/:id/reschedule — admin only
+// Reassigns a booking to a different event (a different date / time / class).
+// The booking id, payment, discount, voucher, and status are all preserved —
+// only event_id changes. Frees a spot on the old event (so we ping the top of
+// its waitlist) and consumes one on the new event (capacity-checked).
+router.patch('/:id/reschedule', requireAdmin, async (req, res) => {
+  const { new_event_id } = req.body;
+  if (!new_event_id) return res.status(400).json({ error: 'Missing new_event_id' });
+
+  const booking = db.prepare(`
+    SELECT b.*, c.name as customer_name, c.email as customer_email,
+           e.id as event_id, e.title as event_title, e.date as event_date,
+           e.time as event_time, e.location as event_location
+    FROM bookings b
+    JOIN customers c ON b.customer_id = c.id
+    JOIN events   e ON b.event_id    = e.id
+    WHERE b.id = ?
+  `).get(req.params.id);
+
+  if (!booking) return res.status(404).json({ error: 'Booking not found' });
+  if (booking.status === 'cancelled' || booking.status === 'refunded') {
+    return res.status(400).json({ error: `Cannot reschedule a ${booking.status} booking` });
+  }
+  if (Number(new_event_id) === Number(booking.event_id)) {
+    return res.status(400).json({ error: 'Booking is already on that date' });
+  }
+
+  const newEvent = db.prepare(`
+    SELECT e.*,
+      (e.capacity - COALESCE(
+        (SELECT SUM(b.quantity) FROM bookings b WHERE b.event_id = e.id AND b.status IN ('confirmed','pending')),
+        0
+      )) as spots_remaining
+    FROM events e WHERE e.id = ? AND e.is_active = 1
+  `).get(new_event_id);
+
+  if (!newEvent) return res.status(404).json({ error: 'Target event not found or inactive' });
+  if (newEvent.date < new Date().toISOString().slice(0, 10)) {
+    return res.status(400).json({ error: 'Target event is in the past' });
+  }
+  if (newEvent.spots_remaining < booking.quantity) {
+    return res.status(400).json({ error: `Only ${newEvent.spots_remaining} spot(s) remaining on the new date` });
+  }
+
+  const oldEventId    = booking.event_id;
+  const oldSnapshot   = { title: booking.event_title, date: booking.event_date, time: booking.event_time, location: booking.event_location };
+
+  db.prepare('UPDATE bookings SET event_id = ? WHERE id = ?').run(new_event_id, req.params.id);
+
+  // A confirmed booking leaving the old event frees a real spot — nudge the
+  // waitlist. Pending bookings didn't hold a confirmed seat so we skip.
+  if (booking.status === 'confirmed') {
+    notifyNextOnWaitlist(oldEventId);
+  }
+
+  // Rebuild the booking row with the new event joined in, for the email.
+  const updated = db.prepare(`
+    SELECT b.*, c.name as customer_name, c.email as customer_email,
+           e.title as event_title, e.date as event_date, e.time as event_time,
+           e.location as event_location, e.price_pence,
+           e.duration_minutes as event_duration_minutes
+    FROM bookings b
+    JOIN customers c ON b.customer_id = c.id
+    JOIN events   e ON b.event_id    = e.id
+    WHERE b.id = ?
+  `).get(req.params.id);
+
+  sendRescheduleEmail(updated, oldSnapshot).catch(err =>
+    console.error('[Email] Failed to send reschedule email:', err)
+  );
+
+  res.json({ success: true, booking: updated });
 });
 
 // DELETE /api/bookings/:id — admin only
