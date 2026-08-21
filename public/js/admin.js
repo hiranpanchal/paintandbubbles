@@ -200,59 +200,69 @@ async function viewBookingDetail(id) {
     const discount = (b.discount_pence || 0) + (b.voucher_discount_pence || 0);
     const charged  = Math.max(0, b.total_pence - discount);
 
+    const tickets = `${b.quantity} ticket${b.quantity !== 1 ? 's' : ''}`;
+
     body.innerHTML = `
-      <div class="modal-header">
+      <div class="bd-header">
         <div>
           <h2>${ref}</h2>
-          <div style="margin-top:2px">${statusBadge(b.status)}</div>
+          <div class="bd-header-meta">
+            ${statusBadge(b.status)}
+            <span class="dot"></span>
+            <span>${formatPrice(charged)}</span>
+            <span class="dot"></span>
+            <span>${tickets}</span>
+          </div>
         </div>
         <button class="modal-close" onclick="closeAdminModal('generic-modal')">✕</button>
       </div>
-      <div class="modal-body" style="padding:24px;display:flex;flex-direction:column;gap:20px">
 
-        <div class="booking-detail-section">
-          <div class="booking-detail-label">Customer</div>
-          <div class="booking-detail-value">${escHtml(b.customer_name)}</div>
-          <div class="booking-detail-sub">${escHtml(b.customer_email)}${b.customer_phone ? ' · ' + escHtml(b.customer_phone) : ''}</div>
-        </div>
+      <div class="bd-body">
 
-        <div class="booking-detail-section">
-          <div class="booking-detail-label">Event</div>
-          <div class="booking-detail-value">${escHtml(b.event_title)}</div>
-          <div class="booking-detail-sub">${formatDate(b.event_date)} at ${escHtml(b.event_time || '')} · ${b.quantity} ticket${b.quantity !== 1 ? 's' : ''}</div>
-        </div>
-
-        <div class="booking-detail-section">
-          <div class="booking-detail-label">Payment</div>
-          <div style="display:flex;flex-direction:column;gap:6px;margin-top:4px">
-            <div class="booking-detail-row-split"><span>Subtotal</span><span>${formatPrice(b.total_pence)}</span></div>
-            ${b.discount_pence > 0 ? `<div class="booking-detail-row-split" style="color:var(--green)"><span>🏷️ Discount (${escHtml(b.discount_code || '')})</span><span>−${formatPrice(b.discount_pence)}</span></div>` : ''}
-            ${b.voucher_discount_pence > 0 ? `<div class="booking-detail-row-split" style="color:var(--green)"><span>🎁 Voucher (${escHtml(b.voucher_code || '')})</span><span>−${formatPrice(b.voucher_discount_pence)}</span></div>` : ''}
-            <div class="booking-detail-row-split" style="font-weight:700;border-top:1px solid var(--border);padding-top:6px"><span>Total Charged</span><span style="color:var(--green)">${formatPrice(charged)}</span></div>
+        <div class="bd-grid-2">
+          <div class="bd-card">
+            <div class="bd-card-label">Customer</div>
+            <div class="bd-card-title">${escHtml(b.customer_name)}</div>
+            <div class="bd-card-sub">${escHtml(b.customer_email)}${b.customer_phone ? '<br>' + escHtml(b.customer_phone) : ''}</div>
+          </div>
+          <div class="bd-card">
+            <div class="bd-card-label">Event</div>
+            <div class="bd-card-title">${escHtml(b.event_title)}</div>
+            <div class="bd-card-sub">${formatDate(b.event_date)} · ${escHtml(b.event_time || '')}${b.event_location ? '<br>' + escHtml(b.event_location) : ''}</div>
           </div>
         </div>
 
-        ${b.notes ? `<div class="booking-detail-section">
-          <div class="booking-detail-label">Special Requirements</div>
-          <div class="booking-detail-value" style="font-weight:400;font-size:13px;color:var(--text-mid)">${escHtml(b.notes)}</div>
-        </div>` : ''}
-
-        ${b.group_note ? `<div class="booking-detail-section">
-          <div class="booking-detail-label">👥 Group Note</div>
-          <div class="booking-detail-value" style="font-weight:400;font-size:13px;color:var(--text-mid)">${escHtml(b.group_note)}</div>
-        </div>` : ''}
-
-        ${b.payment_reference ? `<div class="booking-detail-section">
-          <div class="booking-detail-label">Payment Reference</div>
-          <div style="font-family:monospace;font-size:12px;color:var(--text-mid);word-break:break-all;margin-top:4px">${escHtml(b.payment_reference)}</div>
-        </div>` : ''}
-
-        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:4px">
-          ${b.status !== 'confirmed' ? `<button class="btn btn-primary btn-sm" onclick="updateBookingStatus(${b.id},'confirmed');closeAdminModal('generic-modal')">Mark Confirmed</button>` : ''}
-          ${b.status !== 'cancelled' && b.status !== 'refunded' ? `<button class="btn btn-sm btn-ghost" onclick="openReschedulePicker(${b.id}, ${b.event_id}, ${b.quantity})">Move to Different Date</button>` : ''}
-          ${b.status !== 'cancelled' ? `<button class="btn btn-sm btn-ghost" onclick="updateBookingStatus(${b.id},'cancelled');closeAdminModal('generic-modal')">Cancel Booking</button>` : ''}
-          <button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:none;margin-left:auto" onclick="deleteBooking(${b.id})">Delete Booking</button>
+        <div class="bd-payment">
+          <div class="bd-payment-row"><span>Subtotal</span><span>${formatPrice(b.total_pence)}</span></div>
+          ${b.discount_pence > 0 ? `<div class="bd-payment-row discount"><span>Discount · ${escHtml(b.discount_code || '')}</span><span>−${formatPrice(b.discount_pence)}</span></div>` : ''}
+          ${b.voucher_discount_pence > 0 ? `<div class="bd-payment-row discount"><span>Voucher · ${escHtml(b.voucher_code || '')}</span><span>−${formatPrice(b.voucher_discount_pence)}</span></div>` : ''}
+          <div class="bd-payment-row total"><span>Total charged</span><span class="bd-amount">${formatPrice(charged)}</span></div>
         </div>
+
+        ${b.notes ? `
+          <div class="bd-note">
+            <div class="bd-note-label">Special requirements</div>
+            <div class="bd-note-body">${escHtml(b.notes)}</div>
+          </div>` : ''}
+
+        ${b.group_note ? `
+          <div class="bd-note group">
+            <div class="bd-note-label">Group note</div>
+            <div class="bd-note-body">${escHtml(b.group_note)}</div>
+          </div>` : ''}
+
+        ${b.payment_reference ? `
+          <div class="bd-ref">
+            Payment reference: <span class="bd-ref-value">${escHtml(b.payment_reference)}</span>
+          </div>` : ''}
+      </div>
+
+      <div class="bd-footer">
+        ${b.status !== 'confirmed' ? `<button class="btn btn-primary btn-sm" onclick="updateBookingStatus(${b.id},'confirmed');closeAdminModal('generic-modal')">Mark Confirmed</button>` : ''}
+        ${b.status !== 'cancelled' && b.status !== 'refunded' ? `<button class="btn btn-sm btn-ghost" onclick="openReschedulePicker(${b.id}, ${b.event_id}, ${b.quantity})">Move to Different Date</button>` : ''}
+        ${b.status !== 'cancelled' ? `<button class="btn btn-sm btn-ghost" onclick="updateBookingStatus(${b.id},'cancelled');closeAdminModal('generic-modal')">Cancel Booking</button>` : ''}
+        <span class="bd-footer-spacer"></span>
+        <button class="btn btn-sm bd-btn-danger" onclick="deleteBooking(${b.id})">Delete</button>
       </div>`;
   } catch (err) {
     body.innerHTML = `<div class="modal-header"><h2>Error</h2><button class="modal-close" onclick="closeAdminModal('generic-modal')">✕</button></div>
