@@ -215,8 +215,16 @@ function injectSeoMeta(html, { title, description, canonicalUrl, ogImage, ogType
     ...schemaLines,
   ].filter(Boolean).join('\n');
 
-  // Replace existing title tag, then inject everything before </head>
-  let result = html.replace(/<title>[^<]*<\/title>/, '');
+  // Strip any pre-existing SEO tags baked into the static HTML file — otherwise
+  // the page ends up with duplicate <link rel="canonical">, <meta name="description">
+  // and og:*/twitter:* tags, which Google treats as a hint that the canonical
+  // signals are unreliable. `injectSeoMeta` is the single source of truth per page.
+  let result = html
+    .replace(/[ \t]*<title>[^<]*<\/title>[ \t]*\n?/i, '')
+    .replace(/[ \t]*<link\s+rel="canonical"[^>]*>[ \t]*\n?/gi, '')
+    .replace(/[ \t]*<meta\s+name="description"[^>]*>[ \t]*\n?/gi, '')
+    .replace(/[ \t]*<meta\s+property="og:[^"]+"[^>]*>[ \t]*\n?/gi, '')
+    .replace(/[ \t]*<meta\s+name="twitter:[^"]+"[^>]*>[ \t]*\n?/gi, '');
   return result.replace('</head>', `${parts}\n</head>`);
 }
 
@@ -303,6 +311,22 @@ app.use((req, res, next) => {
   if (isHttps && isCanonicalHost) return next();
 
   return res.redirect(301, `https://${CANONICAL_HOST}${req.originalUrl}`);
+});
+
+// ---- TRAILING-SLASH → NO TRAILING SLASH (301) ----
+// Google discovers both /events and /events/ (Express matches both by default)
+// and, since our canonical points to the non-trailing form, marks the trailing
+// version as "Alternate page with proper canonical tag" and skips indexing it.
+// A permanent redirect collapses the pair back to one indexable URL. Skips
+// /api (semantics may matter) and root. Preserves query strings.
+app.use((req, res, next) => {
+  if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+  if (req.path.startsWith('/api/')) return next();
+  if (req.path.length > 1 && req.path.endsWith('/')) {
+    const query = req.originalUrl.slice(req.path.length);
+    return res.redirect(301, req.path.slice(0, -1) + query);
+  }
+  next();
 });
 
 // ---- STRIPE WEBHOOK (must be before json middleware) ----
