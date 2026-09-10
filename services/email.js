@@ -253,6 +253,17 @@ async function sendBookingConfirmation(booking) {
 
               <p style="margin:0;color:#9E8E96;font-size:13px;font-weight:500;line-height:1.7;">Got a question? Simply reply to this email and we'll get back to you as soon as possible.</p>
               <p style="margin:16px 0 0;color:#C4748A;font-size:16px;font-weight:700;">See you soon! 🥂✨</p>
+
+              <!-- Referral note from the founder -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:28px;background:#FFF6F8;border:1px solid #FFCCD8;border-radius:12px;">
+                <tr>
+                  <td style="padding:20px 24px;">
+                    <p style="margin:0 0 6px;color:#A85D72;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;">💌 A note from Vina</p>
+                    <p style="margin:0;color:#2C2028;font-size:13px;font-weight:500;line-height:1.7;">Know a business that would love a creative team event? Recommend Paint &amp; Bubbles and when they book you earn a free place at any of our public events as a thank you. Just ask them to mention your name when they get in touch.</p>
+                    <p style="margin:12px 0 0;color:#5C4F57;font-size:12px;font-weight:700;">— Vina, Founder · <a href="${siteUrl}" style="color:#C4748A;text-decoration:none;font-weight:700;">paintandbubbles.co.uk</a></p>
+                  </td>
+                </tr>
+              </table>
             </td>
           </tr>
 
