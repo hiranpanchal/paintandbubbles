@@ -27,4 +27,18 @@ function requireSuperAdmin(req, res, next) {
   });
 }
 
-module.exports = { requireAdmin, requireSuperAdmin, JWT_SECRET };
+// Non-blocking check: returns true if the request carries a valid, active
+// admin token, false otherwise. Lets a public route selectively expose extra
+// fields to admin callers without splitting into two separate endpoints.
+function isAdmin(req) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) return false;
+  try {
+    const decoded = jwt.verify(authHeader.split(' ')[1], JWT_SECRET);
+    return decoded.is_active !== false;
+  } catch {
+    return false;
+  }
+}
+
+module.exports = { requireAdmin, requireSuperAdmin, isAdmin, JWT_SECRET };

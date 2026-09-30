@@ -1,6 +1,6 @@
 const router = require('express').Router();
 const db = require('../database');
-const { requireAdmin } = require('../middleware/auth');
+const { requireAdmin, isAdmin } = require('../middleware/auth');
 
 function toSlug(title) {
   return title.toLowerCase()
@@ -21,7 +21,12 @@ function uniqueSlug(title, excludeId = null) {
 
 // GET /api/events — public, with optional search/filter
 router.get('/', (req, res) => {
-  const { search, category, from, to, include_past } = req.query;
+  const { search, category, from, to, include_past, include_inactive } = req.query;
+  // Draft (is_active = 0) events must stay hidden from the public listing, but
+  // admin needs to see and manage them. Honour include_inactive only when the
+  // caller presents a valid admin token — otherwise a public visitor could
+  // enumerate drafts just by tacking the param on.
+  const showInactive = include_inactive === 'true' && isAdmin(req);
   let query = `
     SELECT e.*,
       (e.capacity - COALESCE(
@@ -29,8 +34,9 @@ router.get('/', (req, res) => {
         0
       )) as spots_remaining
     FROM events e
-    WHERE e.is_active = 1
+    WHERE 1=1
   `;
+  if (!showInactive) query += ' AND e.is_active = 1';
   const params = [];
 
   // Hide past events from public listings by default. An event is considered
