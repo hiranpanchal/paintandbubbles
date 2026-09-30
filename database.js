@@ -149,6 +149,19 @@ try { db.exec("ALTER TABLE bookings ADD COLUMN abandoned_email_sent_at TEXT DEFA
 // Migrate: add slug to events if not present
 try { db.exec("ALTER TABLE events ADD COLUMN slug TEXT"); } catch {}
 
+// Migrate: optional upsell (add-on) per event, e.g. "Glass of Prosecco" + £6.
+// Kept generic — admin fills the item name themselves so the code isn't
+// drink-specific. NULL/blank upsell_name = no upsell offered.
+try { db.exec("ALTER TABLE events ADD COLUMN upsell_name TEXT"); } catch {}
+try { db.exec("ALTER TABLE events ADD COLUMN upsell_price_pence INTEGER DEFAULT 0"); } catch {}
+
+// Migrate: matching booking-side columns. Name + price are FROZEN at booking
+// time so a later edit to the event's upsell doesn't rewrite what a customer
+// actually paid for. `upsell_quantity` is per-booking (0..booking.quantity).
+try { db.exec("ALTER TABLE bookings ADD COLUMN upsell_name TEXT"); } catch {}
+try { db.exec("ALTER TABLE bookings ADD COLUMN upsell_quantity INTEGER DEFAULT 0"); } catch {}
+try { db.exec("ALTER TABLE bookings ADD COLUMN upsell_price_pence INTEGER DEFAULT 0"); } catch {}
+
 // Generate slugs for any events that don't have one yet
 function toSlug(title) {
   return title.toLowerCase()

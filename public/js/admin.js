@@ -233,7 +233,15 @@ async function viewBookingDetail(id) {
         </div>
 
         <div class="bd-payment">
-          <div class="bd-payment-row"><span>Subtotal</span><span>${formatPrice(b.total_pence)}</span></div>
+          ${(() => {
+            const upsellQty      = b.upsell_quantity || 0;
+            const upsellSubtotal = upsellQty * (b.upsell_price_pence || 0);
+            const ticketSubtotal = b.total_pence - upsellSubtotal;
+            return `
+              <div class="bd-payment-row"><span>Tickets · ${b.quantity}</span><span>${formatPrice(ticketSubtotal)}</span></div>
+              ${upsellQty > 0 ? `<div class="bd-payment-row"><span>${escHtml(b.upsell_name || 'Add-on')} · ${upsellQty}</span><span>${formatPrice(upsellSubtotal)}</span></div>` : ''}
+            `;
+          })()}
           ${b.discount_pence > 0 ? `<div class="bd-payment-row discount"><span>Discount · ${escHtml(b.discount_code || '')}</span><span>−${formatPrice(b.discount_pence)}</span></div>` : ''}
           ${b.voucher_discount_pence > 0 ? `<div class="bd-payment-row discount"><span>Voucher · ${escHtml(b.voucher_code || '')}</span><span>−${formatPrice(b.voucher_discount_pence)}</span></div>` : ''}
           <div class="bd-payment-row total"><span>Total charged</span><span class="bd-amount">${formatPrice(charged)}</span></div>
@@ -496,6 +504,22 @@ async function renderEventForm(event = null) {
       </div>
     </div>
     <input type="hidden" id="ef-slug" value="${escHtml(event?.slug || '')}">
+
+    <div class="form-group">
+      <label>Upsell / add-on (optional)</label>
+      <p style="margin:-2px 0 8px;font-size:12px;color:var(--text-light)">Offer customers an add-on at checkout — e.g. "Glass of Prosecco" for £6. Leave the item name blank to disable.</p>
+      <div class="form-row">
+        <div class="form-group" style="flex:2">
+          <label style="font-size:12px;color:var(--text-light);font-weight:600">Item name</label>
+          <input type="text" id="ef-upsell-name" value="${escHtml(event?.upsell_name || '')}" maxlength="100" placeholder="e.g. Glass of Prosecco">
+        </div>
+        <div class="form-group" style="flex:1">
+          <label style="font-size:12px;color:var(--text-light);font-weight:600">Price (£)</label>
+          <input type="number" id="ef-upsell-price" value="${event?.upsell_price_pence ? (event.upsell_price_pence / 100).toFixed(2) : ''}" min="0" step="0.01" placeholder="0.00">
+        </div>
+      </div>
+    </div>
+
     <div class="form-group">
       <label>Event Image (optional)</label>
       <input type="hidden" id="ef-image" value="${escHtml(event?.image_url || '')}">
@@ -559,6 +583,9 @@ async function saveEvent(id) {
     return;
   }
 
+  const upsellName  = document.getElementById('ef-upsell-name').value.trim();
+  const upsellPrice = parseFloat(document.getElementById('ef-upsell-price').value);
+
   const payload = {
     title,
     description: document.getElementById('ef-description').value.trim(),
@@ -568,6 +595,8 @@ async function saveEvent(id) {
     location, capacity,
     price_pence: Math.round(price * 100),
     image_url: document.getElementById('ef-image').value.trim() || null,
+    upsell_name: upsellName || null,
+    upsell_price_pence: upsellName ? Math.round((isNaN(upsellPrice) ? 0 : upsellPrice) * 100) : 0,
   };
 
   if (id) payload.is_active = document.getElementById('ef-active').checked ? 1 : 0;

@@ -212,6 +212,11 @@ async function sendBookingConfirmation(booking) {
                         <td style="padding:7px 0;color:#9E8E96;font-size:13px;font-weight:600;vertical-align:top;">🎟 Tickets</td>
                         <td style="padding:7px 0;color:#2C2028;font-size:13px;font-weight:700;">${booking.quantity} ticket${booking.quantity > 1 ? 's' : ''}</td>
                       </tr>
+                      ${booking.upsell_quantity > 0 && booking.upsell_name ? `
+                      <tr>
+                        <td style="padding:7px 0;color:#9E8E96;font-size:13px;font-weight:600;vertical-align:top;">✨ Add-on</td>
+                        <td style="padding:7px 0;color:#2C2028;font-size:13px;font-weight:700;">${booking.upsell_quantity} × ${booking.upsell_name}</td>
+                      </tr>` : ''}
                       <tr>
                         <td style="padding:10px 0 0;color:#9E8E96;font-size:13px;font-weight:600;border-top:1px solid #FFCCD8;vertical-align:top;">💳 Total Paid</td>
                         <td style="padding:10px 0 0;color:#059669;font-size:15px;font-weight:900;border-top:1px solid #FFCCD8;">${formatPrice(Math.max(0, booking.total_pence - (booking.discount_pence || 0) - (booking.voucher_discount_pence || 0)))}</td>

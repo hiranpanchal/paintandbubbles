@@ -95,18 +95,28 @@ router.get('/:idOrSlug', (req, res) => {
   res.json(event);
 });
 
+// Normalise incoming upsell fields: a blank name means "no upsell",
+// price is coerced to a non-negative integer pence value.
+function normaliseUpsell(body) {
+  const nameRaw = (body.upsell_name ?? '').toString().trim();
+  const name = nameRaw ? nameRaw.slice(0, 100) : null;
+  const price = name ? Math.max(0, Math.round(Number(body.upsell_price_pence) || 0)) : 0;
+  return { upsell_name: name, upsell_price_pence: price };
+}
+
 // POST /api/events — admin only
 router.post('/', requireAdmin, (req, res) => {
   const { title, description, category, date, time, duration_minutes, location, capacity, price_pence, image_url } = req.body;
   if (!title || !date || !time || !location || !capacity || price_pence === undefined) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
+  const { upsell_name, upsell_price_pence } = normaliseUpsell(req.body);
 
   const slug = uniqueSlug(title);
   const result = db.prepare(`
-    INSERT INTO events (title, description, category, date, time, duration_minutes, location, capacity, price_pence, image_url, slug)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(title, description || '', category || 'General', date, time, duration_minutes || 120, location, capacity, price_pence, image_url || null, slug);
+    INSERT INTO events (title, description, category, date, time, duration_minutes, location, capacity, price_pence, image_url, slug, upsell_name, upsell_price_pence)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(title, description || '', category || 'General', date, time, duration_minutes || 120, location, capacity, price_pence, image_url || null, slug, upsell_name, upsell_price_pence);
 
   const event = db.prepare('SELECT * FROM events WHERE id = ?').get(result.lastInsertRowid);
   res.status(201).json(event);
@@ -123,10 +133,19 @@ router.put('/:id', requireAdmin, (req, res) => {
   const newTitle = title ?? event.title;
   const slug = (title && title !== event.title) ? uniqueSlug(title, parseInt(req.params.id)) : (event.slug || uniqueSlug(event.title, parseInt(req.params.id)));
 
+  // Only overwrite upsell fields when the client explicitly sent them —
+  // otherwise a partial update (e.g. toggling is_active) would clear the
+  // upsell by accident.
+  const upsellProvided = 'upsell_name' in req.body || 'upsell_price_pence' in req.body;
+  const { upsell_name, upsell_price_pence } = upsellProvided
+    ? normaliseUpsell(req.body)
+    : { upsell_name: event.upsell_name, upsell_price_pence: event.upsell_price_pence };
+
   db.prepare(`
     UPDATE events SET
       title = ?, description = ?, category = ?, date = ?, time = ?,
-      duration_minutes = ?, location = ?, capacity = ?, price_pence = ?, image_url = ?, is_active = ?, slug = ?
+      duration_minutes = ?, location = ?, capacity = ?, price_pence = ?, image_url = ?, is_active = ?, slug = ?,
+      upsell_name = ?, upsell_price_pence = ?
     WHERE id = ?
   `).run(
     newTitle,
@@ -141,6 +160,8 @@ router.put('/:id', requireAdmin, (req, res) => {
     image_url ?? event.image_url,
     is_active ?? event.is_active,
     slug,
+    upsell_name,
+    upsell_price_pence,
     req.params.id
   );
 

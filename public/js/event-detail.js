@@ -483,6 +483,7 @@ function openBooking() {
   if (!currentEvent) return;
   currentBookingState.event           = currentEvent;
   currentBookingState.quantity        = 1;
+  currentBookingState.upsellQty       = 0;
   currentBookingState.voucherCode     = null;
   currentBookingState.voucherDiscount = 0;
   currentBookingState.discountCode    = null;
@@ -541,6 +542,21 @@ function showBookingStep1() {
           </div>
           <span style="font-size:14px;color:var(--text-light);">${price} per person</span>
         </div>
+        ${event.upsell_name ? `
+        <div class="upsell-card" style="margin-top:16px;padding:14px 16px;border:1px solid var(--rose-200, #FFCCD8);border-radius:12px;background:#FFF6F8">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+            <div style="min-width:0">
+              <div style="font-size:13px;color:var(--text-light);font-weight:700;text-transform:uppercase;letter-spacing:0.06em">Add-on</div>
+              <div style="font-size:15px;font-weight:700;color:var(--text-strong, #2C2028);margin-top:2px">${escHtml(event.upsell_name)}</div>
+              <div style="font-size:13px;color:var(--text-light);margin-top:2px">£${(event.upsell_price_pence / 100).toFixed(2)} each</div>
+            </div>
+            <div class="quantity-selector">
+              <button class="qty-btn" onclick="changeUpsellQty(-1)">−</button>
+              <div class="qty-display" id="upsell-qty-display">0</div>
+              <button class="qty-btn" onclick="changeUpsellQty(1)">+</button>
+            </div>
+          </div>
+        </div>` : ''}
         <div class="form-group" style="margin-top:14px;">
           <label>Special requirements (optional)</label>
           <textarea id="b-notes" rows="2" placeholder="Dietary requirements, accessibility needs, etc.">${escHtml(currentBookingState.notes || '')}</textarea>
@@ -584,19 +600,37 @@ function showBookingStep1() {
 function changeQty(delta) {
   const max = currentBookingState.event.spots_remaining;
   currentBookingState.quantity = Math.min(max, Math.max(1, (currentBookingState.quantity || 1) + delta));
+  // Clamp upsell quantity if the party just shrank — can't have more add-ons
+  // than tickets.
+  if ((currentBookingState.upsellQty || 0) > currentBookingState.quantity) {
+    currentBookingState.upsellQty = currentBookingState.quantity;
+  }
+  updateQtyDisplay();
+}
+
+// Upsell stepper — bounded by 0 and current ticket quantity.
+function changeUpsellQty(delta) {
+  const max = currentBookingState.quantity || 1;
+  currentBookingState.upsellQty = Math.min(max, Math.max(0, (currentBookingState.upsellQty || 0) + delta));
   updateQtyDisplay();
 }
 
 function updateQtyDisplay() {
   const qtyEl = document.getElementById('qty-display');
   if (qtyEl) qtyEl.textContent = currentBookingState.quantity;
+  const upEl = document.getElementById('upsell-qty-display');
+  if (upEl) upEl.textContent = currentBookingState.upsellQty || 0;
   const sumEl = document.getElementById('booking-summary');
   if (sumEl) sumEl.innerHTML = renderBookingSummary(currentBookingState.event, currentBookingState.quantity);
 }
 
 function renderBookingSummary(event, qty) {
-  const subtotal = event.price_pence * qty;
-  if (event.price_pence === 0) {
+  const ticketSubtotal = event.price_pence * qty;
+  const upsellQty      = currentBookingState.upsellQty || 0;
+  const upsellSubtotal = event.upsell_name ? (event.upsell_price_pence || 0) * upsellQty : 0;
+  const subtotal       = ticketSubtotal + upsellSubtotal;
+
+  if (event.price_pence === 0 && upsellSubtotal === 0) {
     return `<div class="summary-row"><span>${qty}x ticket</span><span style="color:var(--green);font-weight:700;">Free</span></div>`;
   }
   const voucherDiscount = currentBookingState.voucherDiscount || 0;
@@ -604,6 +638,9 @@ function renderBookingSummary(event, qty) {
   const discount = voucherDiscount + discountPence;
   const total = Math.max(0, subtotal - discount);
   let html = `<div class="summary-row"><span>${qty}x ticket${qty > 1 ? 's' : ''}</span><span>£${(event.price_pence / 100).toFixed(2)} each</span></div>`;
+  if (upsellQty > 0) {
+    html += `<div class="summary-row"><span>${upsellQty}x ${escHtml(event.upsell_name)}</span><span>£${(event.upsell_price_pence / 100).toFixed(2)} each</span></div>`;
+  }
   if (discountPence > 0) {
     html += `<div class="summary-row" style="color:var(--green)"><span>🏷️ Discount (${escHtml(currentBookingState.discountCode)})</span><span>−£${(discountPence / 100).toFixed(2)}</span></div>`;
   }
@@ -630,9 +667,14 @@ async function proceedToPayment() {
 
   Object.assign(currentBookingState, { name, email, phone, notes, groupNote });
 
-  if (currentBookingState.event.price_pence === 0) { await confirmFreeBooking(); return; }
+  const upsellQty = currentBookingState.upsellQty || 0;
+  const upsellSubtotal = currentBookingState.event.upsell_name ? (currentBookingState.event.upsell_price_pence || 0) * upsellQty : 0;
+  const subtotal = currentBookingState.event.price_pence * currentBookingState.quantity + upsellSubtotal;
 
-  const subtotal = currentBookingState.event.price_pence * currentBookingState.quantity;
+  // A free event with no add-ons goes straight to confirm. A free event WITH
+  // paid add-ons falls through to the paid path so we still take payment.
+  if (subtotal === 0) { await confirmFreeBooking(); return; }
+
   const discount = (currentBookingState.voucherDiscount || 0) + (currentBookingState.discountPence || 0);
   const total = Math.max(0, subtotal - discount);
 
@@ -647,7 +689,7 @@ async function proceedToPayment() {
     const src = attributionPayload();
     const data = await apiFetch('/api/bookings', {
       method: 'POST',
-      body: JSON.stringify({ event_id: currentBookingState.event.id, name, email, phone, notes, group_note: groupNote, quantity: currentBookingState.quantity, ...src })
+      body: JSON.stringify({ event_id: currentBookingState.event.id, name, email, phone, notes, group_note: groupNote, quantity: currentBookingState.quantity, upsell_quantity: upsellQty, ...src })
     });
     currentBookingState.booking  = data.booking;
     currentBookingState.customer = data.customer;
@@ -670,9 +712,9 @@ function attributionPayload() {
 async function confirmFreeBooking() {
   setLoadingBtn(true, 'Confirming…');
   try {
-    const { event, name, email, phone, notes, groupNote, quantity } = currentBookingState;
+    const { event, name, email, phone, notes, groupNote, quantity, upsellQty } = currentBookingState;
     const src = attributionPayload();
-    const data = await apiFetch('/api/bookings', { method: 'POST', body: JSON.stringify({ event_id: event.id, name, email, phone, notes, group_note: groupNote, quantity, ...src }) });
+    const data = await apiFetch('/api/bookings', { method: 'POST', body: JSON.stringify({ event_id: event.id, name, email, phone, notes, group_note: groupNote, quantity, upsell_quantity: upsellQty || 0, ...src }) });
     await apiFetch(`/api/bookings/${data.booking.id}/confirm`, { method: 'POST', body: JSON.stringify({ payment_reference: null }) });
     currentBookingState.booking = data.booking;
     closeModal('booking-modal');
@@ -686,9 +728,9 @@ async function confirmFreeBooking() {
 async function confirmVoucherCoveredBooking() {
   setLoadingBtn(true, 'Confirming…');
   try {
-    const { event, name, email, phone, notes, groupNote, quantity, voucherCode } = currentBookingState;
+    const { event, name, email, phone, notes, groupNote, quantity, upsellQty, voucherCode } = currentBookingState;
     const src = attributionPayload();
-    const data = await apiFetch('/api/bookings', { method: 'POST', body: JSON.stringify({ event_id: event.id, name, email, phone, notes, group_note: groupNote, quantity, ...src }) });
+    const data = await apiFetch('/api/bookings', { method: 'POST', body: JSON.stringify({ event_id: event.id, name, email, phone, notes, group_note: groupNote, quantity, upsell_quantity: upsellQty || 0, ...src }) });
     await apiFetch(`/api/bookings/${data.booking.id}/confirm`, { method: 'POST', body: JSON.stringify({ payment_reference: 'voucher:' + voucherCode }) });
     currentBookingState.booking = data.booking;
     // Redeem voucher (non-blocking)
