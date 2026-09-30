@@ -183,16 +183,54 @@ function buildPixelScript(pixelId) {
   </script>`;
 }
 
+// Returns the Google Analytics 4 (gtag.js) inline script. Same consent-gated
+// pattern as the Meta Pixel above — nothing loads until the visitor accepts
+// the cookie banner. Measurement IDs are the "G-XXXXXXXX" form.
+function buildGaScript(measurementId) {
+  return `  <script>
+  (function(){
+    var GA_ID = ${JSON.stringify(measurementId)};
+    function loadGa(){
+      if (window.__pbGaLoaded) return;
+      window.__pbGaLoaded = true;
+      var s = document.createElement('script');
+      s.async = true;
+      s.src = 'https://www.googletagmanager.com/gtag/js?id=' + encodeURIComponent(GA_ID);
+      document.head.appendChild(s);
+      window.dataLayer = window.dataLayer || [];
+      window.gtag = function(){ dataLayer.push(arguments); };
+      gtag('js', new Date());
+      gtag('config', GA_ID);
+    }
+    function hasAnalyticsConsent(){
+      try { var c = JSON.parse(localStorage.getItem('pb_cookie_consent') || 'null');
+            return !!(c && c.analytics === true); }
+      catch(e){ return false; }
+    }
+    if (hasAnalyticsConsent()) loadGa();
+    window.addEventListener('pb:consent-changed', function(e){
+      if (e && e.detail && e.detail.analytics) loadGa();
+    });
+  })();
+  </script>`;
+}
+
 function injectSeoMeta(html, { title, description, canonicalUrl, ogImage, ogType = 'website', schema, extraMeta = '' }) {
   // `schema` may be a single object or an array — emit one <script> per entry.
   const schemaList = !schema ? [] : (Array.isArray(schema) ? schema.filter(Boolean) : [schema]);
   const schemaLines = schemaList.map(s => `  <script type="application/ld+json">${JSON.stringify(s)}</script>`);
 
+  const seo = getSeoSettings();
+
   // Facebook (Meta) Pixel — fires only after the visitor grants analytics
   // consent via the cookie banner. The base script registers fbq() but stays
   // dormant; the consent listener calls fbq('init', ...) + PageView once.
-  const pixelId = getSeoSettings().meta_pixel_id;
+  const pixelId = seo.meta_pixel_id;
   const pixelBlock = pixelId && /^\d{8,20}$/.test(pixelId) ? buildPixelScript(pixelId) : '';
+
+  // Google Analytics 4 — same consent gate. Measurement ID looks like G-XXXXXXXX.
+  const gaId = seo.ga4_measurement_id;
+  const gaBlock = gaId && /^G-[A-Z0-9]{6,15}$/.test(gaId) ? buildGaScript(gaId) : '';
 
   const parts = [
     `  <title>${escSeo(title)}</title>`,
@@ -212,6 +250,7 @@ function injectSeoMeta(html, { title, description, canonicalUrl, ogImage, ogType
     ogImage ? `  <meta name="twitter:image" content="${escSeo(ogImage)}">` : null,
     extraMeta ? `  ${extraMeta}` : null,
     pixelBlock || null,
+    gaBlock || null,
     ...schemaLines,
   ].filter(Boolean).join('\n');
 
