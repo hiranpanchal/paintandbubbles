@@ -73,7 +73,7 @@ router.post('/', (req, res) => {
     name, email, phone,
     group_size, preferred_date, date_flexible,
     activity_type, venue_preference,
-    notes, how_heard, custom_answers,
+    notes, how_heard, custom_answers, occasion,
     // Corporate-only fields
     quote_type: rawQuoteType,
     company, job_title, budget_range: reqBudgetRange,
@@ -102,8 +102,8 @@ router.post('/', (req, res) => {
       (name, email, phone, group_size, preferred_date, date_flexible,
        activity_type, venue_preference, budget_range, notes, how_heard,
        estimate_low, estimate_high, custom_answers,
-       quote_type, company_name, job_title)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       quote_type, company_name, job_title, occasion)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     name.trim(),
     email.trim(),
@@ -122,6 +122,7 @@ router.post('/', (req, res) => {
     quoteType,
     (company || '').toString().trim(),
     (job_title || '').toString().trim(),
+    (occasion || '').toString().trim().slice(0, 100),
   );
 
   const quote = db.prepare('SELECT * FROM private_event_quotes WHERE id = ?').get(result.lastInsertRowid);
@@ -133,6 +134,7 @@ router.post('/', (req, res) => {
   const labelledAnswers = (config.questions || [])
     .filter(q => rawAnswers[q.id])
     .map(q => ({ label: q.label, answer: String(rawAnswers[q.id]) }));
+  if (quote.occasion) labelledAnswers.unshift({ label: 'Occasion', answer: quote.occasion });
 
   const notifSetting = db.prepare("SELECT value FROM site_settings WHERE key = 'notification_email'").get();
   const notificationEmail = notifSetting?.value || process.env.NOTIFICATION_EMAIL || '';

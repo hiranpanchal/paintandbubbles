@@ -531,6 +531,16 @@ function showBookingStep1() {
           <label>Phone Number *</label>
           <input type="tel" id="b-phone" placeholder="+44 7700 900000" value="${escHtml(currentBookingState.phone || '')}">
         </div>
+        <div class="form-group">
+          <label for="b-heard">How did you hear about us? *</label>
+          <select id="b-heard" onchange="toggleHeardOther()">
+            <option value="">Please choose…</option>
+            ${HEARD_ABOUT_OPTIONS.map(([v, l]) => `<option value="${v}" ${currentBookingState.heardAbout === v ? 'selected' : ''}>${l}</option>`).join('')}
+          </select>
+          <input type="text" id="b-heard-other" placeholder="Please tell us where" maxlength="200"
+                 style="margin-top:8px;${currentBookingState.heardAbout === 'other' ? '' : 'display:none'}"
+                 value="${escHtml(currentBookingState.heardAboutOther || '')}">
+        </div>
       </div>
       <div class="form-section">
         <h3>Number of Tickets</h3>
@@ -587,6 +597,13 @@ function showBookingStep1() {
           </div>
         </div>
       </div>
+      <div class="marketing-optin">
+        <label class="marketing-optin-row">
+          <input type="checkbox" id="b-marketing" ${currentBookingState.marketingOptIn ? 'checked' : ''}>
+          <span>I'd like to receive occasional emails / WhatsApp messages from Paint &amp; Bubbles with early event dates, special offers and updates.</span>
+        </label>
+        <p class="marketing-optin-note">We'll never share your details with third parties. See our <a href="/privacy" target="_blank" rel="noopener">Privacy Policy</a> for more information.</p>
+      </div>
       <div class="booking-summary" id="booking-summary">${renderBookingSummary(event, 1)}</div>
       <button class="btn btn-primary btn-full" onclick="proceedToPayment()">
         ${event.price_pence === 0 ? 'Confirm Booking →' : 'Continue to Payment →'}
@@ -595,6 +612,16 @@ function showBookingStep1() {
 
   currentBookingState.quantity = 1;
   updateQtyDisplay();
+}
+
+const HEARD_ABOUT_OPTIONS = [
+  ['google', 'Google search'], ['instagram', 'Instagram'], ['facebook', 'Facebook'], ['tiktok', 'TikTok'],
+  ['referral', 'Referral'], ['repeat', 'Repeat customer'], ['gift_voucher', 'Gift voucher'], ['other', 'Other – please state'],
+];
+
+function toggleHeardOther() {
+  const other = document.getElementById('b-heard-other');
+  if (other) other.style.display = document.getElementById('b-heard').value === 'other' ? '' : 'none';
 }
 
 function changeQty(delta) {
@@ -662,10 +689,16 @@ async function proceedToPayment() {
   const notes     = document.getElementById('b-notes').value.trim();
   const groupNote = document.getElementById('b-group-note').value.trim();
 
+  const heardAbout      = document.getElementById('b-heard').value;
+  const heardAboutOther = document.getElementById('b-heard-other').value.trim();
+  const marketingOptIn  = document.getElementById('b-marketing').checked;
+
   if (!name || !email || !phone) { highlightError(!name ? 'b-name' : !email ? 'b-email' : 'b-phone'); return; }
   if (!isValidEmail(email)) { highlightError('b-email'); return; }
+  if (!heardAbout) { highlightError('b-heard'); return; }
+  if (heardAbout === 'other' && !heardAboutOther) { highlightError('b-heard-other'); return; }
 
-  Object.assign(currentBookingState, { name, email, phone, notes, groupNote });
+  Object.assign(currentBookingState, { name, email, phone, notes, groupNote, heardAbout, heardAboutOther, marketingOptIn });
 
   const upsellQty = currentBookingState.upsellQty || 0;
   const upsellSubtotal = currentBookingState.event.upsell_name ? (currentBookingState.event.upsell_price_pence || 0) * upsellQty : 0;
@@ -686,18 +719,31 @@ async function proceedToPayment() {
 
   setLoadingBtn(true, 'Creating booking…');
   try {
-    const src = attributionPayload();
-    const data = await apiFetch('/api/bookings', {
-      method: 'POST',
-      body: JSON.stringify({ event_id: currentBookingState.event.id, name, email, phone, notes, group_note: groupNote, quantity: currentBookingState.quantity, upsell_quantity: upsellQty, ...src })
-    });
+    const data = await apiFetch('/api/bookings', { method: 'POST', body: JSON.stringify(bookingPayload()) });
+    // A new booking (or changed basket) needs a fresh payment session.
+    if (currentBookingState.booking?.id !== data.booking.id) {
+      currentBookingState.clientSecret = null;
+      currentBookingState.paymentIntentId = null;
+    }
     currentBookingState.booking  = data.booking;
     currentBookingState.customer = data.customer;
+    startHoldTimer(data.hold_seconds_remaining);
     showPaymentStep();
   } catch (err) {
     alert(err.message || 'Failed to create booking. Please try again.');
   }
   setLoadingBtn(false);
+}
+
+// Body for POST /api/bookings, built from the details captured on step 1.
+function bookingPayload() {
+  const st = currentBookingState;
+  return {
+    event_id: st.event.id, name: st.name, email: st.email, phone: st.phone,
+    notes: st.notes, group_note: st.groupNote, quantity: st.quantity, upsell_quantity: st.upsellQty || 0,
+    heard_about: st.heardAbout, heard_about_other: st.heardAboutOther, marketing_opt_in: !!st.marketingOptIn,
+    ...attributionPayload(),
+  };
 }
 
 // Read first-touch attribution from source-tracker.js (sessionStorage).
@@ -712,9 +758,8 @@ function attributionPayload() {
 async function confirmFreeBooking() {
   setLoadingBtn(true, 'Confirming…');
   try {
-    const { event, name, email, phone, notes, groupNote, quantity, upsellQty } = currentBookingState;
-    const src = attributionPayload();
-    const data = await apiFetch('/api/bookings', { method: 'POST', body: JSON.stringify({ event_id: event.id, name, email, phone, notes, group_note: groupNote, quantity, upsell_quantity: upsellQty || 0, ...src }) });
+    const { event } = currentBookingState;
+    const data = await apiFetch('/api/bookings', { method: 'POST', body: JSON.stringify(bookingPayload()) });
     await apiFetch(`/api/bookings/${data.booking.id}/confirm`, { method: 'POST', body: JSON.stringify({ payment_reference: null }) });
     currentBookingState.booking = data.booking;
     closeModal('booking-modal');
@@ -728,9 +773,8 @@ async function confirmFreeBooking() {
 async function confirmVoucherCoveredBooking() {
   setLoadingBtn(true, 'Confirming…');
   try {
-    const { event, name, email, phone, notes, groupNote, quantity, upsellQty, voucherCode } = currentBookingState;
-    const src = attributionPayload();
-    const data = await apiFetch('/api/bookings', { method: 'POST', body: JSON.stringify({ event_id: event.id, name, email, phone, notes, group_note: groupNote, quantity, upsell_quantity: upsellQty || 0, ...src }) });
+    const { event, voucherCode } = currentBookingState;
+    const data = await apiFetch('/api/bookings', { method: 'POST', body: JSON.stringify(bookingPayload()) });
     await apiFetch(`/api/bookings/${data.booking.id}/confirm`, { method: 'POST', body: JSON.stringify({ payment_reference: 'voucher:' + voucherCode }) });
     currentBookingState.booking = data.booking;
     // Redeem voucher (non-blocking)
@@ -872,6 +916,9 @@ function showPaymentStep() {
         <div class="booking-step active"></div>
         <div class="booking-step"></div>
       </div>
+      <div class="hold-timer" id="hold-timer" role="status" aria-live="polite">
+        ⏳ We're holding your tickets for <strong id="hold-timer-clock">${formatHoldClock(holdSecondsLeft())}</strong> — complete your booking before they're released
+      </div>
       <div class="booking-summary" style="margin-bottom:20px;">${renderBookingSummary(event, currentBookingState.quantity)}</div>
       ${methodPicker}
       <div class="form-section">
@@ -885,6 +932,76 @@ function showPaymentStep() {
   // Default: mount whichever provider is enabled (Stripe takes priority if both)
   currentBookingState.activeProvider = paymentConfig.stripe_enabled ? 'stripe' : 'sumup';
   mountActivePaymentProvider();
+  tickHoldTimer();
+}
+
+// ---- 15-MINUTE TICKET HOLD ----
+// The server owns the real expiry; we just count down the seconds it reported
+// so a wrong device clock can't skew the display.
+let holdTimerInterval = null;
+
+function startHoldTimer(secondsRemaining) {
+  currentBookingState.holdEndsAt = Date.now() + Math.max(0, secondsRemaining || 0) * 1000;
+  clearInterval(holdTimerInterval);
+  holdTimerInterval = setInterval(tickHoldTimer, 1000);
+}
+
+function stopHoldTimer() {
+  clearInterval(holdTimerInterval);
+  holdTimerInterval = null;
+}
+
+function holdSecondsLeft() {
+  return Math.max(0, Math.round(((currentBookingState.holdEndsAt || 0) - Date.now()) / 1000));
+}
+
+function formatHoldClock(secs) {
+  return `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
+}
+
+function tickHoldTimer() {
+  const el = document.getElementById('hold-timer');
+  if (!el) return; // not on the payment step
+  const secs = holdSecondsLeft();
+  if (secs > 0) {
+    document.getElementById('hold-timer-clock').textContent = formatHoldClock(secs);
+    el.classList.toggle('hold-timer-urgent', secs <= 120);
+    return;
+  }
+  stopHoldTimer();
+  showHoldExpired();
+}
+
+function showHoldExpired() {
+  const el = document.getElementById('hold-timer');
+  if (!el) return;
+  el.classList.add('hold-timer-expired');
+  el.innerHTML = `Your 15-minute hold has expired and the tickets have been released.
+    <button type="button" class="btn btn-primary btn-full" style="margin-top:12px" onclick="restartAfterHoldExpired()">Check availability &amp; try again</button>`;
+  const payEl = document.getElementById('payment-element');
+  if (payEl) payEl.innerHTML = '';
+  const payBtn = document.getElementById('pay-btn');
+  if (payBtn) payBtn.style.display = 'none';
+  const picker = document.getElementById('payment-method-picker');
+  if (picker) picker.style.display = 'none';
+}
+
+// Re-submit step 1 with the same details; the server re-checks stock and
+// starts a fresh 15-minute hold if the seats are still free.
+async function restartAfterHoldExpired() {
+  currentBookingState.clientSecret = null;
+  currentBookingState.paymentIntentId = null;
+  currentBookingState.stripeElements = null;
+  try {
+    const data = await apiFetch('/api/bookings', { method: 'POST', body: JSON.stringify(bookingPayload()) });
+    currentBookingState.booking  = data.booking;
+    currentBookingState.customer = data.customer;
+    startHoldTimer(data.hold_seconds_remaining);
+    showPaymentStep();
+  } catch (err) {
+    alert(err.message || 'Sorry, these tickets are no longer available.');
+    showBookingStep1();
+  }
 }
 
 function syncPayBtn() {
@@ -931,6 +1048,7 @@ async function mountStripeElements() {
       currentBookingState.clientSecret    = intentData.clientSecret;
       currentBookingState.paymentIntentId = intentData.paymentIntentId;
     } catch (err) {
+      if (err.holdExpired) { currentBookingState.holdEndsAt = 0; tickHoldTimer(); return; }
       el.innerHTML = `<p style="color:var(--coral);font-size:14px;">${escHtml(err.message || 'Could not initialise payment. Please try again.')}</p>`;
       return;
     }
@@ -996,6 +1114,7 @@ async function mountSumUpCheckout() {
       }
     });
   } catch (err) {
+    if (err.holdExpired) { currentBookingState.holdEndsAt = 0; tickHoldTimer(); return; }
     el.innerHTML = `<p style="color:var(--coral);font-size:14px;">${escHtml(err.message || 'Could not initialise SumUp payment.')}</p>`;
   }
 }
@@ -1046,6 +1165,7 @@ async function submitPayment() {
 }
 
 function showConfirmation(booking, customer, event) {
+  stopHoldTimer();
   const discountPence   = currentBookingState.discountPence   || 0;
   const voucherDiscount = currentBookingState.voucherDiscount || 0;
   const charged = Math.max(0, booking.total_pence - discountPence - voucherDiscount);
@@ -1246,7 +1366,11 @@ document.addEventListener('keydown', e => {
 async function apiFetch(url, opts = {}) {
   const res  = await fetch(url, { headers: { 'Content-Type': 'application/json', ...opts.headers }, ...opts });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+  if (!res.ok) {
+    const err = new Error(data.error || `Request failed (${res.status})`);
+    err.holdExpired = !!data.hold_expired;
+    throw err;
+  }
   return data;
 }
 

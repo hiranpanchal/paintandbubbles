@@ -3,6 +3,7 @@ const https  = require('https');
 const db     = require('../database');
 const { requireAdmin } = require('../middleware/auth');
 const { sendBookingConfirmation, sendAdminBookingNotification, sendGiftVoucher, sendAdminVoucherNotification } = require('../services/email');
+const { ensureHold } = require('../services/holds');
 
 function getNotificationEmail() {
   try {
@@ -86,6 +87,10 @@ router.post('/create-intent', async (req, res) => {
   if (!booking) return res.status(404).json({ error: 'Booking not found' });
   if (booking.status === 'confirmed') return res.status(400).json({ error: 'Booking already confirmed' });
 
+  // Don't start a payment for seats we're no longer holding.
+  const hold = ensureHold(db, booking_id);
+  if (!hold.ok) return res.status(409).json({ error: hold.error, hold_expired: true });
+
   let amount = booking.total_pence;
   let voucherDiscount = 0;
   let discountPence = 0;
@@ -153,6 +158,10 @@ router.post('/sumup-checkout', async (req, res) => {
 
   if (!booking) return res.status(404).json({ error: 'Booking not found' });
   if (booking.status === 'confirmed') return res.status(400).json({ error: 'Booking already confirmed' });
+
+  // Don't start a payment for seats we're no longer holding.
+  const hold = ensureHold(db, booking_id);
+  if (!hold.ok) return res.status(409).json({ error: hold.error, hold_expired: true });
 
   // Apply discounts to get the correct amount to charge
   let amount = booking.total_pence;

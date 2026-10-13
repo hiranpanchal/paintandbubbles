@@ -3,6 +3,8 @@ const db = require('../database');
 const { requireAdmin } = require('../middleware/auth');
 const { sendBookingConfirmation, sendAdminBookingNotification, sendCancellationEmail, sendRescheduleEmail } = require('../services/email');
 const { notifyNextOnWaitlist } = require('./waitlist');
+const { HOLD_MINUTES, spotsRemainingSql, holdSecondsRemaining } = require('../services/holds');
+const { CHECKOUT_CONSENT_TEXT, HEARD_ABOUT_OPTIONS, recordConsent } = require('../services/marketing');
 
 // GET /api/bookings — admin only
 router.get('/', requireAdmin, (req, res) => {
@@ -42,11 +44,20 @@ router.get('/:id', requireAdmin, (req, res) => {
 
 // POST /api/bookings — public (creates a pending booking before payment)
 router.post('/', (req, res) => {
-  const { event_id, name, email, phone, quantity, notes, group_note, source, referrer, upsell_quantity } = req.body;
+  const { event_id, name, email, phone, quantity, notes, group_note, source, referrer, upsell_quantity,
+          heard_about, heard_about_other, marketing_opt_in } = req.body;
 
   if (!event_id || !name || !email || !quantity) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
+  if (!heard_about || !HEARD_ABOUT_OPTIONS[heard_about]) {
+    return res.status(400).json({ error: 'Please tell us how you heard about us' });
+  }
+  const heardOther = heard_about === 'other' ? String(heard_about_other || '').trim().slice(0, 200) : '';
+  if (heard_about === 'other' && !heardOther) {
+    return res.status(400).json({ error: 'Please tell us where you heard about us' });
+  }
+  const optIn = marketing_opt_in === true || marketing_opt_in === 1 || marketing_opt_in === '1';
 
   // Normalise + bucket the source into one of a known set. Anything we don't
   // recognise is still stored raw in `referrer` but bucketed as 'other' for
@@ -57,13 +68,20 @@ router.post('/', (req, res) => {
     : 'direct';
   const ref = (typeof referrer === 'string') ? referrer.slice(0, 255) : '';
 
+  // Upsert customer first so we can release any earlier hold of theirs on
+  // this event before counting seats (e.g. they went back and changed qty).
+  let customer = db.prepare('SELECT * FROM customers WHERE email = ?').get(email);
+  if (customer) {
+    db.prepare(`
+      UPDATE bookings SET hold_expires_at = datetime('now')
+      WHERE event_id = ? AND customer_id = ? AND status = 'pending' AND hold_expires_at > datetime('now')
+    `).run(event_id, customer.id);
+  }
+
+  // Private events are unlisted but bookable via their direct link.
   const event = db.prepare(`
-    SELECT e.*,
-      (e.capacity - COALESCE(
-        (SELECT SUM(b.quantity) FROM bookings b WHERE b.event_id = e.id AND b.status IN ('confirmed','pending')),
-        0
-      )) as spots_remaining
-    FROM events e WHERE e.id = ? AND e.is_active = 1
+    SELECT e.*, ${spotsRemainingSql('e')} as spots_remaining
+    FROM events e WHERE e.id = ? AND e.status IN ('active','private')
   `).get(event_id);
 
   if (!event) return res.status(404).json({ error: 'Event not found' });
@@ -71,8 +89,6 @@ router.post('/', (req, res) => {
     return res.status(400).json({ error: `Only ${event.spots_remaining} spot(s) remaining` });
   }
 
-  // Upsert customer
-  let customer = db.prepare('SELECT * FROM customers WHERE email = ?').get(email);
   if (!customer) {
     const result = db.prepare('INSERT INTO customers (name, email, phone) VALUES (?, ?, ?)').run(name, email, phone || null);
     customer = db.prepare('SELECT * FROM customers WHERE id = ?').get(result.lastInsertRowid);
@@ -99,8 +115,7 @@ router.post('/', (req, res) => {
   // whose checkout flow retries a network call shouldn't end up with duplicate
   // pending rows. If we already have a pending booking for the same
   // (event, customer, quantity, upsell_qty) within the last 30 minutes, treat
-  // the new POST as a retry and hand back the existing booking instead of
-  // inserting again.
+  // the new POST as a retry: renew its hold and hand it back.
   const existing = db.prepare(`
     SELECT * FROM bookings
     WHERE event_id = ?
@@ -113,17 +128,38 @@ router.post('/', (req, res) => {
     LIMIT 1
   `).get(event_id, customer.id, quantity, upsellQty);
 
+  let bookingId;
   if (existing) {
-    return res.status(200).json({ booking: existing, customer, event, deduped: true });
+    db.prepare(`
+      UPDATE bookings SET hold_expires_at = datetime('now', '+${HOLD_MINUTES} minutes'),
+        notes = ?, group_note = ?, heard_about = ?, heard_about_other = ?, marketing_opt_in = ?
+      WHERE id = ?
+    `).run(notes || null, group_note || null, heard_about, heardOther || null, optIn ? 1 : 0, existing.id);
+    bookingId = existing.id;
+  } else {
+    const result = db.prepare(`
+      INSERT INTO bookings (event_id, customer_id, quantity, total_pence, status, notes, group_note, source, referrer,
+                            upsell_name, upsell_quantity, upsell_price_pence, hold_expires_at,
+                            heard_about, heard_about_other, marketing_opt_in)
+      VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, datetime('now', '+${HOLD_MINUTES} minutes'), ?, ?, ?)
+    `).run(event_id, customer.id, quantity, total_pence, notes || null, group_note || null, src, ref,
+           upsellName, upsellQty, upsellPrice, heard_about, heardOther || null, optIn ? 1 : 0);
+    bookingId = result.lastInsertRowid;
   }
 
-  const result = db.prepare(`
-    INSERT INTO bookings (event_id, customer_id, quantity, total_pence, status, notes, group_note, source, referrer, upsell_name, upsell_quantity, upsell_price_pence)
-    VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?)
-  `).run(event_id, customer.id, quantity, total_pence, notes || null, group_note || null, src, ref, upsellName, upsellQty, upsellPrice);
+  // GDPR: log the checkout choice (opt-in or not) with the exact wording shown.
+  recordConsent(db, {
+    customerId: customer.id, email, consented: optIn, consentText: CHECKOUT_CONSENT_TEXT,
+    source: 'checkout', bookingId, req,
+  });
+  customer = db.prepare('SELECT * FROM customers WHERE id = ?').get(customer.id);
 
-  const booking = db.prepare('SELECT * FROM bookings WHERE id = ?').get(result.lastInsertRowid);
-  res.status(201).json({ booking, customer, event });
+  const booking = db.prepare('SELECT * FROM bookings WHERE id = ?').get(bookingId);
+  res.status(existing ? 200 : 201).json({
+    booking, customer, event,
+    hold_seconds_remaining: holdSecondsRemaining(db, bookingId),
+    ...(existing ? { deduped: true } : {}),
+  });
 });
 
 // PATCH /api/bookings/:id/status — admin only
@@ -226,12 +262,8 @@ router.patch('/:id/reschedule', requireAdmin, async (req, res) => {
   }
 
   const newEvent = db.prepare(`
-    SELECT e.*,
-      (e.capacity - COALESCE(
-        (SELECT SUM(b.quantity) FROM bookings b WHERE b.event_id = e.id AND b.status IN ('confirmed','pending')),
-        0
-      )) as spots_remaining
-    FROM events e WHERE e.id = ? AND e.is_active = 1
+    SELECT e.*, ${spotsRemainingSql('e')} as spots_remaining
+    FROM events e WHERE e.id = ? AND e.status IN ('active','private')
   `).get(new_event_id);
 
   if (!newEvent) return res.status(404).json({ error: 'Target event not found or inactive' });

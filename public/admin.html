@@ -193,7 +193,33 @@
     <!-- EVENTS TAB -->
     <div class="tab-content hidden" id="content-events">
       <div class="toolbar">
-        <div></div>
+        <div class="admin-filters" id="events-filters">
+          <label class="admin-filter">
+            <span>Status</span>
+            <select id="ev-filter-status" onchange="renderFilteredEvents()">
+              <option value="">All</option>
+              <option value="active">Active</option>
+              <option value="draft">Draft</option>
+              <option value="private">Private</option>
+              <option value="expired">Expired</option>
+            </select>
+          </label>
+          <label class="admin-filter">
+            <span>From</span>
+            <input type="date" id="ev-filter-from" onchange="renderFilteredEvents()">
+          </label>
+          <label class="admin-filter">
+            <span>To</span>
+            <input type="date" id="ev-filter-to" onchange="renderFilteredEvents()">
+          </label>
+          <label class="admin-filter">
+            <span>Location</span>
+            <select id="ev-filter-location" onchange="renderFilteredEvents()">
+              <option value="">All locations</option>
+            </select>
+          </label>
+          <button class="btn btn-ghost btn-sm" id="ev-filter-clear" onclick="clearEventFilters()" style="display:none">Clear filters</button>
+        </div>
         <button class="btn btn-primary btn-sm" onclick="openEventForm()">+ Add Event</button>
       </div>
       <div class="card">
@@ -224,6 +250,57 @@
         <div class="search-field-admin">
           <input type="text" id="customers-search" placeholder="Search customers…" oninput="debouncedCustomerSearch()">
         </div>
+        <button class="btn btn-ghost btn-sm" onclick="downloadCustomersCSV()">↓ Download CSV</button>
+      </div>
+      <div class="admin-filters" id="customers-filters" style="margin-bottom:16px">
+        <label class="admin-filter">
+          <span>Booking status</span>
+          <select id="cu-filter-status" onchange="loadAdminCustomers()">
+            <option value="">Any</option>
+            <option value="confirmed">Confirmed</option>
+            <option value="pending">Pending (didn't finish)</option>
+            <option value="cancelled">Cancelled</option>
+            <option value="refunded">Refunded</option>
+          </select>
+        </label>
+        <label class="admin-filter">
+          <span>Event attended</span>
+          <select id="cu-filter-event" onchange="loadAdminCustomers()">
+            <option value="">Any</option>
+            <option value="repeat">Repeat customers (2+ events)</option>
+          </select>
+        </label>
+        <label class="admin-filter">
+          <span>Booked from</span>
+          <input type="date" id="cu-filter-from" onchange="loadAdminCustomers()">
+        </label>
+        <label class="admin-filter">
+          <span>Booked to</span>
+          <input type="date" id="cu-filter-to" onchange="loadAdminCustomers()">
+        </label>
+        <label class="admin-filter">
+          <span>Heard about us</span>
+          <select id="cu-filter-heard" onchange="loadAdminCustomers()">
+            <option value="">Any</option>
+            <option value="google">Google search</option>
+            <option value="instagram">Instagram</option>
+            <option value="facebook">Facebook</option>
+            <option value="tiktok">TikTok</option>
+            <option value="referral">Referral</option>
+            <option value="repeat">Repeat customer</option>
+            <option value="gift_voucher">Gift voucher</option>
+            <option value="other">Other</option>
+          </select>
+        </label>
+        <label class="admin-filter">
+          <span>Marketing opt-in</span>
+          <select id="cu-filter-optin" onchange="loadAdminCustomers()">
+            <option value="">Any</option>
+            <option value="yes">Yes</option>
+            <option value="no">No — don't contact</option>
+          </select>
+        </label>
+        <button class="btn btn-ghost btn-sm" id="cu-filter-clear" onclick="clearCustomerFilters()" style="display:none">Clear filters</button>
       </div>
       <div class="card">
         <div id="customers-table"></div>
@@ -353,7 +430,7 @@
       <button class="modal-close" onclick="closeAdminModal('delete-modal')">✕</button>
     </div>
     <div class="modal-body">
-      <p style="color:var(--text-mid);margin-bottom:24px;font-weight:500;">This will remove the event from the public site. Existing bookings won't be affected.</p>
+      <p id="delete-modal-message" style="color:var(--text-mid);margin-bottom:24px;font-weight:500;">Are you sure? This permanently deletes the event and can't be undone.</p>
       <div style="display:flex;gap:12px;">
         <button class="btn btn-ghost btn-full" onclick="closeAdminModal('delete-modal')">Cancel</button>
         <button class="btn btn-danger btn-full" id="confirm-delete-btn">Delete</button>

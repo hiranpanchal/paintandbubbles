@@ -303,6 +303,9 @@ function renderRevenueChart(months) {
 }
 
 // ---- EVENTS ----
+let adminEventsCache = [];
+let adminWaitlistCounts = {};
+
 async function loadAdminEvents() {
   const el = document.getElementById('events-table');
   el.innerHTML = '<div class="loading-state"><div class="spinner"></div></div>';
@@ -311,14 +314,79 @@ async function loadAdminEvents() {
       apiFetch('/api/events?include_inactive=true&include_past=true', { headers: authHeaders() }),
       apiFetch('/api/waitlist/counts', { headers: authHeaders() }).catch(() => ({})),
     ]);
-    renderEventsTable(events, waitlistCounts);
+    adminEventsCache = events;
+    adminWaitlistCounts = waitlistCounts;
+    populateEventLocationFilter(events);
+    renderFilteredEvents();
   } catch { el.innerHTML = '<div class="empty-state"><p>Failed to load events</p></div>'; }
 }
 
-function renderEventsTable(events, waitlistCounts = {}) {
+// Effective status shown in admin: drafts stay drafts whatever the date;
+// active / private events become "expired" once their date has passed.
+function eventDisplayStatus(e) {
+  const status = e.status || (e.is_active ? 'active' : 'draft');
+  if (status === 'draft') return 'draft';
+  const today = new Date().toISOString().slice(0, 10);
+  return e.date < today ? 'expired' : status;
+}
+
+function eventStatusBadge(e) {
+  return {
+    active:  '<span class="badge badge-green">Active</span>',
+    draft:   '<span class="badge badge-amber">DRAFT</span>',
+    private: '<span class="badge badge-blue">PRIVATE</span>',
+    expired: '<span class="badge badge-gray">Expired</span>',
+  }[eventDisplayStatus(e)];
+}
+
+function populateEventLocationFilter(events) {
+  const sel = document.getElementById('ev-filter-location');
+  if (!sel) return;
+  const current = sel.value;
+  const locations = [...new Set(events.map(e => (e.location || '').trim()).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b));
+  sel.innerHTML = '<option value="">All locations</option>' +
+    locations.map(l => `<option value="${escHtml(l)}" ${l === current ? 'selected' : ''}>${escHtml(l)}</option>`).join('');
+}
+
+function renderFilteredEvents() {
+  const status   = document.getElementById('ev-filter-status')?.value || '';
+  const from     = document.getElementById('ev-filter-from')?.value || '';
+  const to       = document.getElementById('ev-filter-to')?.value || '';
+  const location = document.getElementById('ev-filter-location')?.value || '';
+  const filtered = adminEventsCache.filter(e =>
+    (!status   || eventDisplayStatus(e) === status) &&
+    (!from     || e.date >= from) &&
+    (!to       || e.date <= to) &&
+    (!location || (e.location || '').trim() === location)
+  );
+  const anyFilter = !!(status || from || to || location);
+  const clearBtn = document.getElementById('ev-filter-clear');
+  if (clearBtn) clearBtn.style.display = anyFilter ? '' : 'none';
+  renderEventsTable(filtered, adminWaitlistCounts, anyFilter);
+}
+
+function clearEventFilters() {
+  ['ev-filter-status', 'ev-filter-from', 'ev-filter-to', 'ev-filter-location'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  renderFilteredEvents();
+}
+
+function copyPrivateEventLink(slugOrId) {
+  const url = `${location.origin}/events/${slugOrId}`;
+  navigator.clipboard.writeText(url)
+    .then(() => toast('Private booking link copied', 'success'))
+    .catch(() => prompt('Copy this private booking link:', url));
+}
+
+function renderEventsTable(events, waitlistCounts = {}, filtered = false) {
   const el = document.getElementById('events-table');
   if (!events.length) {
-    el.innerHTML = '<div class="empty-state"><p>No events yet. Add your first event!</p></div>';
+    el.innerHTML = filtered
+      ? '<div class="empty-state"><p>No events match these filters.</p></div>'
+      : '<div class="empty-state"><p>No events yet. Add your first event!</p></div>';
     return;
   }
   el.innerHTML = `
@@ -339,7 +407,7 @@ function renderEventsTable(events, waitlistCounts = {}) {
             <div style="color:var(--text-light);font-size:11px;">${escHtml(e.category)}</div>
           </td>
           <td>${formatDate(e.date)}<br><span style="color:var(--text-light);font-size:11px">${e.time}</span></td>
-          <td class="hide-mobile" style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(e.location)}</td>
+          <td class="hide-mobile" style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escHtml(e.location)}">${escHtml(e.location)}</td>
           <td><strong>${e.price_pence === 0 ? 'Free' : formatPrice(e.price_pence)}</strong></td>
           <td>
             <span style="color:${e.spots_remaining <= 0 ? 'var(--coral)' : e.spots_remaining <= 3 ? 'var(--amber)' : 'var(--green)'}">
@@ -347,10 +415,11 @@ function renderEventsTable(events, waitlistCounts = {}) {
             </span>
             ${(waitlistCounts[e.id] || 0) > 0 ? `<br><span style="font-size:11px;color:var(--rose);font-weight:700;cursor:pointer" onclick="viewWaitlist(${e.id},'${escHtml(e.title)}')">⏳ ${waitlistCounts[e.id]} waiting</span>` : ''}
           </td>
-          <td>${e.is_active ? '<span class="badge badge-green">Active</span>' : '<span class="badge badge-gray">Hidden</span>'}</td>
+          <td>${eventStatusBadge(e)}</td>
           <td>
             <div class="actions">
               <button class="btn btn-ghost btn-xs" onclick="window.open('/events/${e.slug || e.id}','_blank')">View</button>
+              ${e.status === 'private' ? `<button class="btn btn-ghost btn-xs" onclick="copyPrivateEventLink('${escHtml(e.slug || String(e.id))}')">🔗 Copy link</button>` : ''}
               <button class="btn btn-ghost btn-xs" onclick="viewEventBookings(${e.id}, '${escHtml(e.title)}')">Bookings</button>
               <button class="btn btn-ghost btn-xs" onclick="viewWaitlist(${e.id},'${escHtml(e.title)}')">Waitlist</button>
               <button class="btn btn-ghost btn-xs" onclick="openEventForm(${e.id})">Edit</button>
@@ -537,12 +606,15 @@ async function renderEventForm(event = null) {
       <input type="file" id="ef-image-file" accept="image/*" style="display:none" onchange="handleEventImageFile(this.files[0])">
       ${event?.image_url ? `<button type="button" class="btn btn-ghost btn-sm" style="margin-top:6px;font-size:12px" onclick="clearEventImage()">✕ Remove image</button>` : ''}
     </div>
-    ${isEdit ? `
     <div class="form-group">
-      <label>
-        <input type="checkbox" id="ef-active" ${event?.is_active ? 'checked' : ''}> Show on public site
-      </label>
-    </div>` : ''}
+      <label>Status</label>
+      <select id="ef-status">
+        ${[['active', 'Active — listed on the public site'],
+           ['draft', 'Draft — admin only, hidden from the public site'],
+           ['private', 'Private — not listed, bookable by anyone with the link']]
+          .map(([v, l]) => `<option value="${v}" ${(event?.status || (isEdit ? (event.is_active ? 'active' : 'draft') : 'active')) === v ? 'selected' : ''}>${l}</option>`).join('')}
+      </select>
+    </div>
     <div style="display:flex;gap:12px;margin-top:8px;">
       <button class="btn btn-ghost btn-full" onclick="closeAdminModal('event-form-modal')">Cancel</button>
       <button class="btn btn-primary btn-full" onclick="saveEvent(${event?.id || 'null'})">${isEdit ? 'Save Changes' : 'Create Event'}</button>
@@ -599,7 +671,7 @@ async function saveEvent(id) {
     upsell_price_pence: upsellName ? Math.round((isNaN(upsellPrice) ? 0 : upsellPrice) * 100) : 0,
   };
 
-  if (id) payload.is_active = document.getElementById('ef-active').checked ? 1 : 0;
+  payload.status = document.getElementById('ef-status').value;
 
   try {
     const method = id ? 'PUT' : 'POST';
@@ -887,10 +959,12 @@ async function cloneEvent(id) {
       capacity: event.capacity,
       price_pence: event.price_pence,
       image_url: event.image_url || null,
-      is_active: 0,
+      upsell_name: event.upsell_name || null,
+      upsell_price_pence: event.upsell_price_pence || 0,
+      status: 'draft',
     };
     await apiFetch('/api/events', { method: 'POST', body: JSON.stringify(payload), headers: authHeaders() });
-    toast('Event cloned — it\'s hidden by default', 'success');
+    toast('Event cloned — saved as a draft', 'success');
     loadAdminEvents();
   } catch (err) {
     toast(err.message || 'Failed to clone event', 'error');
@@ -985,13 +1059,18 @@ function downloadBookingsCSV(eventId, eventTitle) {
 }
 
 function confirmDelete(id) {
-  document.getElementById('confirm-delete-btn').onclick = () => deleteEvent(id);
+  const event = adminEventsCache.find(e => e.id === id);
+  const count = event?.booking_count || 0;
+  document.getElementById('delete-modal-message').innerHTML = count > 0
+    ? `<strong style="color:#dc2626">This event has ${count} booking${count === 1 ? '' : 's'} — are you sure you want to delete it?</strong><br><br>The event and all of its bookings and payment records will be permanently deleted. This can't be undone.`
+    : `Are you sure you want to delete <strong>${escHtml(event?.title || 'this event')}</strong>? This can't be undone.`;
+  document.getElementById('confirm-delete-btn').onclick = () => deleteEvent(id, count > 0);
   openAdminModal('delete-modal');
 }
 
-async function deleteEvent(id) {
+async function deleteEvent(id, force = false) {
   try {
-    await apiFetch(`/api/events/${id}`, { method: 'DELETE', headers: authHeaders() });
+    await apiFetch(`/api/events/${id}${force ? '?force=true' : ''}`, { method: 'DELETE', headers: authHeaders() });
     closeAdminModal('delete-modal');
     toast('Event deleted', 'success');
     loadAdminEvents();
@@ -1158,18 +1237,89 @@ async function rescheduleBooking(bookingId, newEventId) {
 async function loadAdminCustomers() {
   const el = document.getElementById('customers-table');
   el.innerHTML = '<div class="loading-state"><div class="spinner"></div></div>';
+  populateCustomerEventFilter();
+  const params = new URLSearchParams();
   const search = document.getElementById('customers-search').value;
+  if (search) params.set('search', search);
+  const filters = {
+    booking_status: 'cu-filter-status', event_id: 'cu-filter-event', from: 'cu-filter-from',
+    to: 'cu-filter-to', heard_about: 'cu-filter-heard', opt_in: 'cu-filter-optin',
+  };
+  let anyFilter = false;
+  for (const [key, id] of Object.entries(filters)) {
+    const v = document.getElementById(id)?.value;
+    if (v) { params.set(key, v); anyFilter = true; }
+  }
+  const clearBtn = document.getElementById('cu-filter-clear');
+  if (clearBtn) clearBtn.style.display = anyFilter ? '' : 'none';
   try {
-    const params = search ? `?search=${encodeURIComponent(search)}` : '';
-    const customers = await apiFetch(`/api/customers${params}`, { headers: authHeaders() });
-    renderCustomersTable(customers);
+    const qs = params.toString();
+    const customers = await apiFetch(`/api/customers${qs ? '?' + qs : ''}`, { headers: authHeaders() });
+    adminCustomersCache = customers;
+    renderCustomersTable(customers, anyFilter || !!search);
   } catch { el.innerHTML = '<div class="empty-state"><p>Failed to load customers</p></div>'; }
 }
 
-function renderCustomersTable(customers) {
+let adminCustomersCache = [];
+let customerEventFilterLoaded = false;
+
+// Fill the "Event attended" dropdown once with every event (newest first).
+async function populateCustomerEventFilter() {
+  if (customerEventFilterLoaded) return;
+  customerEventFilterLoaded = true;
+  try {
+    const events = await apiFetch('/api/events?include_inactive=true&include_past=true', { headers: authHeaders() });
+    const sel = document.getElementById('cu-filter-event');
+    if (!sel) return;
+    events.sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
+    sel.insertAdjacentHTML('beforeend', events.map(e =>
+      `<option value="${e.id}">${escHtml(e.title)} — ${formatDate(e.date)}</option>`).join(''));
+  } catch { customerEventFilterLoaded = false; }
+}
+
+function clearCustomerFilters() {
+  ['cu-filter-status', 'cu-filter-event', 'cu-filter-from', 'cu-filter-to', 'cu-filter-heard', 'cu-filter-optin']
+    .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  loadAdminCustomers();
+}
+
+const HEARD_ABOUT_LABELS = {
+  google: 'Google search', instagram: 'Instagram', facebook: 'Facebook', tiktok: 'TikTok',
+  referral: 'Referral', repeat: 'Repeat customer', gift_voucher: 'Gift voucher', other: 'Other',
+};
+
+function heardAboutLabel(value, other) {
+  if (!value) return '—';
+  if (value === 'other' && other) return `Other: ${other}`;
+  return HEARD_ABOUT_LABELS[value] || value;
+}
+
+function marketingBadge(optIn) {
+  return optIn
+    ? '<span class="badge badge-green">✓ Opted in</span>'
+    : '<span class="badge badge-red">✗ Do not contact</span>';
+}
+
+function downloadCustomersCSV() {
+  const rows = [
+    ['Name', 'Email', 'Phone', 'Bookings', 'Events attended', 'Total spent (£)', 'Heard about us', 'Marketing opt-in', 'Opt-in updated', 'Joined'],
+    ...adminCustomersCache.map(c => [
+      c.name, c.email, c.phone || '', c.total_bookings, c.events_attended || 0,
+      ((c.total_spent || 0) / 100).toFixed(2), heardAboutLabel(c.heard_about, c.heard_about_other).replace('—', ''),
+      c.marketing_opt_in ? 'Yes' : 'No', c.marketing_opt_in_updated_at || '', c.created_at || '',
+    ]),
+  ];
+  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+  a.download = `customers-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+}
+
+function renderCustomersTable(customers, filtered = false) {
   const el = document.getElementById('customers-table');
   if (!customers.length) {
-    el.innerHTML = '<div class="empty-state"><p>No customers yet</p></div>';
+    el.innerHTML = `<div class="empty-state"><p>${filtered ? 'No customers match these filters.' : 'No customers yet'}</p></div>`;
     return;
   }
   el.innerHTML = `
@@ -1179,7 +1329,10 @@ function renderCustomersTable(customers) {
         <th>Email</th>
         <th class="hide-mobile">Phone</th>
         <th>Bookings</th>
+        <th class="hide-mobile">Events attended</th>
         <th>Total Spent</th>
+        <th class="hide-mobile">Heard about us</th>
+        <th>Marketing</th>
         <th class="hide-mobile">Joined</th>
       </tr></thead>
       <tbody>${customers.map(c => `
@@ -1188,7 +1341,10 @@ function renderCustomersTable(customers) {
           <td style="color:var(--blue)">${escHtml(c.email)}</td>
           <td class="hide-mobile">${escHtml(c.phone || '—')}</td>
           <td>${c.total_bookings}</td>
+          <td class="hide-mobile">${c.events_attended || 0}${(c.events_attended || 0) >= 2 ? ' <span class="badge badge-rose">Repeat</span>' : ''}</td>
           <td><strong>${formatPrice(c.total_spent)}</strong></td>
+          <td class="hide-mobile" style="font-size:12px">${escHtml(heardAboutLabel(c.heard_about, c.heard_about_other))}</td>
+          <td>${marketingBadge(c.marketing_opt_in)}</td>
           <td class="hide-mobile" style="color:var(--text-light)">${formatDate(c.created_at?.slice(0,10))}</td>
         </tr>`).join('')}
       </tbody>
@@ -1261,6 +1417,26 @@ async function openCustomerDetail(id) {
             </div>
           </div>
 
+          <!-- Marketing consent (GDPR) -->
+          <div style="border:1.5px solid var(--border);border-radius:12px;padding:20px;margin-bottom:20px">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+              <div>
+                <div style="font-size:13px;font-weight:700;color:var(--text-dark)">Marketing emails / WhatsApp</div>
+                <div style="font-size:12px;color:var(--text-light);margin-top:2px">
+                  ${c.marketing_opt_in_updated_at ? `Last updated ${formatDate(c.marketing_opt_in_updated_at.slice(0,10))}` : 'No choice recorded yet'}
+                </div>
+              </div>
+              <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;cursor:pointer">
+                <input type="checkbox" id="crd-optin" ${c.marketing_opt_in ? 'checked' : ''} onchange="setCustomerMarketing(${c.id}, this.checked)">
+                Opted in
+              </label>
+            </div>
+            <details style="margin-top:12px" ontoggle="if(this.open)loadConsentHistory(${c.id})">
+              <summary style="font-size:12px;font-weight:700;color:var(--rose-dark);cursor:pointer">Consent history (GDPR record)</summary>
+              <div id="crd-consents" style="margin-top:10px;font-size:12px;color:var(--text-mid)">Loading…</div>
+            </details>
+          </div>
+
           <!-- Upcoming bookings -->
           <div style="margin-bottom:20px">
             <div style="font-size:13px;font-weight:700;color:var(--text-dark);margin-bottom:10px">
@@ -1299,13 +1475,48 @@ function renderCustomerBookingRow(b, upcoming) {
       <div style="flex:1;min-width:0">
         <div style="font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(b.event_title)}</div>
         <div style="font-size:12px;color:var(--text-light);margin-top:2px">${formatDate(b.event_date)} ${b.event_time ? '· ' + b.event_time : ''} ${b.event_location ? '· ' + escHtml(b.event_location) : ''}</div>
+        ${b.heard_about ? `<div style="font-size:11px;color:var(--text-light);margin-top:2px">Heard about us: ${escHtml(heardAboutLabel(b.heard_about, b.heard_about_other))}</div>` : ''}
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
-        <span style="font-size:12px;font-weight:600;padding:2px 10px;border-radius:20px;background:${statusBg[st]||'#f3f4f6'};color:${statusColour[st]||'#374151'}">${st.charAt(0).toUpperCase()+st.slice(1)}</span>
+        <span style="font-size:12px;font-weight:600;padding:2px 10px;border-radius:20px;background:${statusBg[st]||'#f3f4f6'};color:${statusColour[st]||'#374151'}">${st === 'pending' ? 'Pending — not paid' : st.charAt(0).toUpperCase()+st.slice(1)}</span>
         <span style="font-size:13px;font-weight:700">${formatPrice(b.total_pence)}</span>
         <span style="font-size:12px;color:var(--text-light)">${b.quantity} ticket${b.quantity !== 1 ? 's' : ''}</span>
       </div>
     </div>`;
+}
+
+async function setCustomerMarketing(id, optIn) {
+  const confirmMsg = optIn
+    ? 'Only opt this customer in if they have asked to receive marketing. Continue?'
+    : 'Mark this customer as "do not contact"?';
+  if (!confirm(confirmMsg)) {
+    document.getElementById('crd-optin').checked = !optIn;
+    return;
+  }
+  try {
+    await apiFetch(`/api/customers/${id}/marketing`, { method: 'PATCH', body: JSON.stringify({ opt_in: optIn }) });
+    toast(optIn ? 'Customer opted in' : 'Customer marked as do not contact', 'success');
+    loadAdminCustomers();
+    const details = document.querySelector('#customer-detail-overlay details');
+    if (details?.open) loadConsentHistory(id);
+  } catch (err) {
+    document.getElementById('crd-optin').checked = !optIn;
+    toast(err.message || 'Failed to update', 'error');
+  }
+}
+
+async function loadConsentHistory(id) {
+  const el = document.getElementById('crd-consents');
+  if (!el) return;
+  try {
+    const rows = await apiFetch(`/api/customers/${id}/consents`);
+    el.innerHTML = rows.length ? rows.map(r => `
+      <div style="padding:8px 0;border-top:1px solid var(--border)">
+        <div><strong>${r.consented ? '✓ Opted in' : '✗ Not opted in / opted out'}</strong>
+          · ${escHtml(r.created_at)} UTC · ${escHtml(r.source)}${r.booking_id ? ` · booking #PB${String(r.booking_id).padStart(5,'0')}` : ''}</div>
+        <div style="color:var(--text-light);margin-top:2px">“${escHtml(r.consent_text)}”</div>
+      </div>`).join('') : 'No consent records yet.';
+  } catch { el.textContent = 'Failed to load consent history.'; }
 }
 
 function closeCustomerDetail() {
@@ -1478,12 +1689,20 @@ function renderRevenueByEvent(events) {
     return;
   }
   const max = Math.max(...events.map(e => e.revenue));
-  el.innerHTML = `<div class="chart-container"><div class="bar-chart">${events.map(e => `
+  // Long names are truncated on desktop with a hover/focus tooltip showing the
+  // full name; on mobile the label stacks above the bar at full width.
+  el.innerHTML = `<div class="chart-container"><div class="bar-chart rev-event-chart">${events.map(e => {
+    const full = `${e.title}${e.date ? ' — ' + formatDate(e.date) : ''}`;
+    return `
     <div class="bar-row">
-      <div class="bar-label" style="width:80px;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escHtml(e.title)}">${escHtml(e.title)}</div>
+      <div class="rev-label" tabindex="0" aria-label="${escHtml(full)}">
+        <span class="rev-label-text">${escHtml(e.title)}</span>
+        <span class="rev-label-tip" role="tooltip">${escHtml(full)}</span>
+      </div>
       <div class="bar-track"><div class="bar-fill" style="width:${max > 0 ? (e.revenue/max*100) : 0}%"></div></div>
       <div class="bar-value">${formatPrice(e.revenue)}</div>
-    </div>`).join('')}</div></div>`;
+    </div>`;
+  }).join('')}</div></div>`;
 }
 
 function renderPaymentsTable(payments) {
@@ -3339,6 +3558,9 @@ async function loadContentTab() {
   try {
     const s = await apiFetch('/api/design/settings');
     window._peQuillInitContent = s.private_events_content || '';
+    let peGallery = [];
+    try { peGallery = JSON.parse(s.pe_gallery_images || '[]'); } catch {}
+    window._peGalleryImages = Array.from({ length: PE_GALLERY_SLOTS }, (_, i) => peGallery[i] || '');
     window._legalInit = {
       terms:   s.legal_terms_content   || '',
       privacy: s.legal_privacy_content || '',
@@ -3686,24 +3908,36 @@ async function loadContentTab() {
       <div class="design-tab-panel hidden" id="ctab-private-events">
         <div class="design-centred-wrap">
           <div class="design-card">
-            <div class="design-card-header"><h3 class="design-card-title">Hero</h3></div>
+            <div class="design-card-header"><h3 class="design-card-title">Hero Banner</h3></div>
             <div class="design-card-body">
-              <div class="form-row">
-                <div class="form-group">
-                  <label>Hero Title</label>
-                  <input type="text" id="ds-private_events_hero_title" value="${escHtml(s.private_events_hero_title || 'Private Events')}">
-                </div>
-                <div class="form-group">
-                  <label>Hero Subtitle</label>
-                  <input type="text" id="ds-private_events_hero_sub" value="${escHtml(s.private_events_hero_sub || '')}">
-                </div>
+              <div class="form-group">
+                <label>Heading</label>
+                <input type="text" id="ds-pe_hero_heading" value="${escHtml(s.pe_hero_heading || 'Private Paint & Sip Parties')}">
+              </div>
+              <div class="form-group">
+                <label>Subheading</label>
+                <textarea id="ds-pe_hero_subheading" rows="3">${escHtml(s.pe_hero_subheading || 'Private paint and sip events across Coventry, Leamington Spa, Kenilworth, Solihull and Warwickshire — guided by professional artist, all materials included, no experience needed.')}</textarea>
+              </div>
+              <div class="form-group">
+                <label>Banner image <span class="design-hint">Wide landscape photo works best (e.g. 2000 × 900). The brand gradient shows until one is uploaded.</span></label>
+                <input type="hidden" id="ds-pe_hero_image" value="${escHtml(s.pe_hero_image || '')}">
+                <div class="pe-admin-slot pe-admin-hero" id="pe-hero-slot"></div>
               </div>
             </div>
           </div>
           <div class="design-card">
             <div class="design-card-header">
-              <h3 class="design-card-title">Page Content</h3>
-              <span class="design-hint">Use the toolbar to format headings, lists and links</span>
+              <h3 class="design-card-title">Gallery Strip</h3>
+              <span class="design-hint">Up to 20 photos. Empty slots are skipped on the live page.</span>
+            </div>
+            <div class="design-card-body">
+              <div class="pe-admin-gallery" id="pe-gallery-slots"></div>
+            </div>
+          </div>
+          <div class="design-card">
+            <div class="design-card-header">
+              <h3 class="design-card-title">Extra Content (optional)</h3>
+              <span class="design-hint">Shown under "What's included". Leave empty to hide.</span>
             </div>
             <div class="design-card-body">
               <div id="pe-quill-editor" style="min-height:300px;background:#fff;border-radius:6px"></div>
@@ -4262,6 +4496,8 @@ function initLegalQuill(which) {
 }
 
 function initContentPEQuill() {
+  renderPeHeroSlot();
+  renderPeGallerySlots();
   if (peQuill) return;
   const editorEl = document.getElementById('pe-quill-editor');
   if (!editorEl) return;
@@ -4285,7 +4521,7 @@ const CONTENT_PAGE_KEYS = {
   about:            ['aboutpage_hero_title','aboutpage_hero_sub','aboutpage_label','aboutpage_title','aboutpage_body_1','aboutpage_body_2','aboutpage_body_3','aboutpage_pillar_1_title','aboutpage_pillar_1_text','aboutpage_pillar_2_title','aboutpage_pillar_2_text','aboutpage_pillar_3_title','aboutpage_pillar_3_text'],
   events:           ['included_title','included_items','please_note_title','please_note_text'],
   contact:          ['contact_hero_title','contact_hero_sub','contact_page_text','notification_email'],
-  'private-events': ['private_events_hero_title','private_events_hero_sub','private_events_content'],
+  'private-events': ['pe_hero_heading','pe_hero_subheading','pe_hero_image','pe_gallery_images','private_events_content'],
   gallery:          ['gallery_hero_title','gallery_hero_sub'],
   'legal-terms':    ['legal_terms_hero_title','legal_terms_hero_sub','legal_terms_content'],
   'legal-privacy':  ['legal_privacy_hero_title','legal_privacy_hero_sub','legal_privacy_content'],
@@ -4420,6 +4656,82 @@ async function sendTestEmail() {
   }
 }
 
+// ---- PRIVATE EVENTS PAGE IMAGES ----
+const PE_GALLERY_SLOTS = 20;
+
+function renderPeImageSlot(url, { onPick, onClear, label }) {
+  return url
+    ? `<img src="${escHtml(url)}" alt="">
+       <div class="pe-admin-slot-actions">
+         <button type="button" class="btn btn-ghost btn-xs" onclick="${onPick}">Replace</button>
+         <button type="button" class="btn btn-xs" style="background:#fee2e2;color:#dc2626;border:none" onclick="${onClear}">Remove</button>
+       </div>`
+    : `<button type="button" class="pe-admin-slot-empty" onclick="${onPick}">
+         <span style="font-size:22px">＋</span><span>${label}</span>
+       </button>`;
+}
+
+function renderPeHeroSlot() {
+  const el = document.getElementById('pe-hero-slot');
+  if (!el) return;
+  el.innerHTML = renderPeImageSlot(document.getElementById('ds-pe_hero_image').value, {
+    onPick: 'pickPeImage(-1)', onClear: 'clearPeImage(-1)', label: 'Upload banner image',
+  });
+}
+
+function renderPeGallerySlots() {
+  const el = document.getElementById('pe-gallery-slots');
+  if (!el) return;
+  const imgs = window._peGalleryImages || [];
+  el.innerHTML = imgs.map((url, i) => `
+    <div class="pe-admin-slot" id="pe-gallery-slot-${i}">
+      ${renderPeImageSlot(url, { onPick: `pickPeImage(${i})`, onClear: `clearPeImage(${i})`, label: `Photo ${i + 1}` })}
+    </div>`).join('');
+}
+
+// slot -1 = hero banner, 0..19 = gallery
+function pickPeImage(slot) {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.onchange = () => input.files[0] && uploadPeImage(slot, input.files[0]);
+  input.click();
+}
+
+async function uploadPeImage(slot, file) {
+  const slotEl = document.getElementById(slot === -1 ? 'pe-hero-slot' : `pe-gallery-slot-${slot}`);
+  if (slotEl) slotEl.style.opacity = '0.5';
+  try {
+    const fd = new FormData();
+    fd.append('image', file);
+    const res = await fetch('/api/design/upload', { method: 'POST', headers: { Authorization: `Bearer ${authToken}` }, body: fd });
+    const data = await res.json();
+    if (!data.url) throw new Error(data.error || 'Upload failed');
+    if (slot === -1) {
+      document.getElementById('ds-pe_hero_image').value = data.url;
+      renderPeHeroSlot();
+    } else {
+      window._peGalleryImages[slot] = data.url;
+      renderPeGallerySlots();
+    }
+    toast('Image uploaded — remember to save the page', 'success');
+  } catch (err) {
+    toast(err.message || 'Image upload failed', 'error');
+  } finally {
+    if (slotEl) slotEl.style.opacity = '';
+  }
+}
+
+function clearPeImage(slot) {
+  if (slot === -1) {
+    document.getElementById('ds-pe_hero_image').value = '';
+    renderPeHeroSlot();
+  } else {
+    window._peGalleryImages[slot] = '';
+    renderPeGallerySlots();
+  }
+}
+
 async function saveContentPage(page) {
   if (page === 'events') syncIncludedItems();
   const quillForKey = {
@@ -4433,6 +4745,8 @@ async function saveContentPage(page) {
     if (quillForKey[key]) {
       const q = quillForKey[key]();
       data[key] = q ? q.root.innerHTML : '';
+    } else if (key === 'pe_gallery_images') {
+      data[key] = JSON.stringify((window._peGalleryImages || []).filter(Boolean));
     } else {
       const el = document.getElementById(`ds-${key}`);
       if (el) data[key] = el.value;
@@ -5211,6 +5525,7 @@ async function openPrivateQuote(id) {
                 ['How Heard',     q.how_heard         || 'Not specified'],
               ]
             : [
+                ...(q.occasion ? [['Occasion', q.occasion]] : []),
                 ['Activity',      q.activity_type],
                 ['Group Size',    q.group_size + ' people'],
                 ['Preferred Date', preferredDate],

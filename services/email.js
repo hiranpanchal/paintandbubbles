@@ -269,6 +269,8 @@ async function sendBookingConfirmation(booking) {
                   </td>
                 </tr>
               </table>
+              ${booking.marketing_opt_in ? `
+              <p style="margin:20px 0 0;color:#9E8E96;font-size:12px;font-weight:500;line-height:1.7;">You've opted in to our occasional mailing list — you'll be the first to hear about new event dates and special offers. To opt out at any time email us via our <a href="${siteUrl}/contact" style="color:#C4748A;text-decoration:none;font-weight:700;">Contact page</a>.</p>` : ''}
             </td>
           </tr>
 

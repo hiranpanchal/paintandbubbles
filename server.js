@@ -574,8 +574,8 @@ app.get('/events/:idOrSlug', (req, res) => {
     const param    = req.params.idOrSlug;
     const isNumeric = /^\d+$/.test(param);
     const event    = isNumeric
-      ? db.prepare('SELECT * FROM events WHERE id = ? AND is_active = 1').get(param)
-      : db.prepare('SELECT * FROM events WHERE slug = ? AND is_active = 1').get(param);
+      ? db.prepare("SELECT * FROM events WHERE id = ? AND status IN ('active','private')").get(param)
+      : db.prepare("SELECT * FROM events WHERE slug = ? AND status IN ('active','private')").get(param);
     const html     = fs.readFileSync(path.join(__dirname, 'public', 'event-detail.html'), 'utf8');
     if (!event) return res.send(html);
 
@@ -653,7 +653,9 @@ app.get('/events/:idOrSlug', (req, res) => {
       canonicalUrl: pageUrl,
       ogImage: imgUrl,
       ogType: 'website',
-      schema,
+      schema: event.status === 'private' ? undefined : schema,
+      // Private events are link-only: keep them out of search results.
+      extraMeta: event.status === 'private' ? '<meta name="robots" content="noindex, nofollow">' : '',
     }));
   } catch (err) {
     console.error('Event SEO error:', err);

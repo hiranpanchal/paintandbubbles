@@ -298,6 +298,214 @@
     .pe-next-step-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
 
     .hidden { display: none !important; }
+
+    /* ── Private Events landing sections ── */
+    html { scroll-behavior: smooth; }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+    .pe-section { padding: 72px 0; }
+    .pe-section-alt { background: var(--rose-50, #F5F0EB); }
+    .pe-section-title {
+      text-align: center;
+      font-size: clamp(1.5rem, 3.5vw, 2.2rem);
+      font-weight: 900;
+      color: var(--text-dark, #2C2028);
+      margin: 0 0 10px;
+    }
+    .pe-section-sub {
+      text-align: center;
+      color: var(--text-light, #9E8E96);
+      font-size: 15px;
+      font-weight: 600;
+      margin: 0 auto 36px;
+      max-width: 620px;
+    }
+
+    /* Hero */
+    .pe-hero {
+      position: relative;
+      min-height: clamp(420px, 62vh, 620px);
+      display: flex;
+      align-items: center;
+      background: linear-gradient(135deg, var(--banner-start, #2C0F18) 0%, var(--banner-mid, #6B2D42) 45%, var(--banner-end, #C4748A) 100%);
+      background-size: cover;
+      background-position: center;
+      color: #fff;
+      overflow: hidden;
+    }
+    .pe-hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, rgba(30,10,18,0.35) 0%, rgba(30,10,18,0.65) 100%);
+    }
+    .pe-hero-inner { position: relative; z-index: 1; max-width: 760px; padding: 64px 0; }
+    .pe-hero-title {
+      font-family: 'Dancing Script', cursive;
+      font-size: clamp(40px, 6vw, 68px);
+      font-weight: 700;
+      line-height: 1.1;
+      margin: 0 0 16px;
+      color: #fff;
+    }
+    .pe-hero-sub {
+      font-size: clamp(15px, 2vw, 18px);
+      font-weight: 600;
+      line-height: 1.6;
+      color: rgba(255,255,255,0.9);
+      margin: 0 0 28px;
+    }
+    .pe-hero .btn-primary { font-size: 16px; padding: 14px 28px; }
+
+    /* Occasion tiles */
+    .pe-occasions {
+      display: flex;
+      gap: 14px;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      scroll-padding-inline: 24px;
+      padding: 4px 24px 18px;
+      margin: 0 -24px;
+      scrollbar-width: thin;
+      -webkit-overflow-scrolling: touch;
+    }
+    .pe-occasion {
+      flex: 0 0 200px;
+      scroll-snap-align: start;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 20px 18px;
+      background: #fff;
+      border: 2px solid var(--border, #EDE0E5);
+      border-radius: 16px;
+      text-align: left;
+      font: inherit;
+      color: inherit;
+      text-decoration: none;
+      cursor: pointer;
+      transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .pe-occasion:hover, .pe-occasion:focus-visible {
+      transform: translateY(-3px);
+      border-color: var(--rose, #C4748A);
+      box-shadow: 0 8px 24px rgba(160,80,110,0.15);
+      outline: none;
+    }
+    .pe-occasion-emoji { font-size: 30px; line-height: 1; }
+    .pe-occasion-title { font-size: 15px; font-weight: 800; color: var(--text-dark, #2C2028); }
+    .pe-occasion-desc { font-size: 13px; font-weight: 600; color: var(--text-light, #9E8E96); line-height: 1.45; }
+    .pe-occasion-link { font-size: 12px; font-weight: 800; color: var(--rose-dark, #8A4560); margin-top: auto; }
+
+    /* How it works */
+    .pe-how { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; counter-reset: pe-how; }
+    .pe-how-step { text-align: center; padding: 8px 12px; }
+    .pe-how-icon {
+      width: 72px; height: 72px;
+      margin: 0 auto 16px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 32px;
+      border-radius: 50%;
+      background: var(--rose-100, #FFE8EE);
+      position: relative;
+    }
+    .pe-how-icon::after {
+      counter-increment: pe-how;
+      content: counter(pe-how);
+      position: absolute;
+      top: -2px; right: -2px;
+      width: 24px; height: 24px;
+      border-radius: 50%;
+      background: var(--rose, #C4748A);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 900;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .pe-how-title { font-size: 17px; font-weight: 800; color: var(--text-dark, #2C2028); margin: 0 0 6px; }
+    .pe-how-text { font-size: 14px; color: var(--text-mid, #5C4F57); font-weight: 600; margin: 0; }
+
+    /* What's included */
+    .pe-included {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 14px 28px;
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 0;
+      list-style: none;
+    }
+    .pe-included li {
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      padding: 16px 18px;
+      background: #fff;
+      border-radius: 14px;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-dark, #2C2028);
+      line-height: 1.5;
+      box-shadow: 0 1px 4px rgba(160,80,110,0.08);
+    }
+    .pe-included-icon { font-size: 22px; line-height: 1.2; flex-shrink: 0; }
+
+    /* Gallery strip */
+    .pe-gallery { overflow: hidden; }
+    .pe-gallery-track { display: flex; gap: 14px; width: max-content; animation: pe-marquee var(--pe-marquee-duration, 60s) linear infinite; }
+    .pe-gallery:hover .pe-gallery-track,
+    .pe-gallery:focus-within .pe-gallery-track { animation-play-state: paused; }
+    .pe-gallery-img {
+      height: 260px;
+      width: auto;
+      max-width: 420px;
+      object-fit: cover;
+      border-radius: 14px;
+      flex-shrink: 0;
+      background: var(--rose-100, #FFE8EE);
+    }
+    @keyframes pe-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+    /* Touch devices / reduced motion: no auto-scroll, swipe instead */
+    @media (hover: none), (max-width: 768px), (prefers-reduced-motion: reduce) {
+      .pe-gallery { overflow-x: auto; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; padding: 0 24px; }
+      .pe-gallery-track { animation: none; }
+      .pe-gallery-track .pe-gallery-dup { display: none; }
+      .pe-gallery-img { height: 220px; scroll-snap-align: center; }
+    }
+
+    /* Testimonials */
+    .pe-reviews { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 360px)); justify-content: center; gap: 20px; margin-bottom: 28px; }
+    .pe-review {
+      background: #fff;
+      border-radius: 16px;
+      padding: 22px;
+      box-shadow: 0 1px 4px rgba(160,80,110,0.08);
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .pe-review-stars { color: #F5B301; letter-spacing: 2px; font-size: 15px; }
+    .pe-review-body { font-size: 14px; color: var(--text-mid, #5C4F57); line-height: 1.65; font-weight: 500; margin: 0; }
+    .pe-review-author { font-size: 13px; font-weight: 800; color: var(--text-dark, #2C2028); margin-top: auto; }
+    .pe-review-author span { font-weight: 600; color: var(--text-light, #9E8E96); }
+
+    /* Bottom CTA band */
+    .pe-cta-band {
+      background: linear-gradient(135deg, var(--rose, #C4748A), var(--rose-deep, #A85D72));
+      color: #fff;
+      text-align: center;
+      padding: 56px 0;
+    }
+    .pe-cta-band p { font-size: clamp(16px, 2.2vw, 20px); font-weight: 700; max-width: 720px; margin: 0 auto 24px; line-height: 1.5; }
+    .pe-cta-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    .pe-cta-band .btn-light { background: #fff; color: var(--rose-dark, #8A4560); }
+    .pe-cta-band .btn-outline-light { background: transparent; color: #fff; border: 2px solid rgba(255,255,255,0.85); }
+    .pe-cta-band .btn-outline-light:hover { background: rgba(255,255,255,0.12); }
+
+    @media (max-width: 768px) {
+      .pe-section { padding: 52px 0; }
+      .pe-how { grid-template-columns: 1fr; gap: 28px; }
+      .pe-included { grid-template-columns: 1fr; }
+      .pe-reviews { grid-template-columns: 1fr; }
+      .pe-occasions { padding: 4px 16px 18px; margin: 0 -16px; scroll-padding-inline: 16px; }
+    }
   </style>
 </head>
 <body>
@@ -332,30 +540,99 @@ function toggleMobileNav(){document.querySelector('.site-header').classList.togg
 document.addEventListener('click',function(e){if(!e.target.closest('.site-header'))document.querySelector('.site-header').classList.remove('nav-open');});
 </script>
 
-<!-- HERO -->
-<section class="faq-hero">
+<!-- 1. HERO -->
+<section class="pe-hero" id="pe-hero">
   <div class="container">
-    <h1 class="faq-hero-title" id="pe-hero-title">Private Events</h1>
-    <p class="faq-hero-sub" id="pe-hero-sub">Create an unforgettable experience for your group</p>
+    <div class="pe-hero-inner">
+      <h1 class="pe-hero-title" id="pe-hero-title">Private Paint &amp; Sip Parties</h1>
+      <p class="pe-hero-sub" id="pe-hero-sub">Private paint and sip events across Coventry, Leamington Spa, Kenilworth, Solihull and Warwickshire — guided by professional artist, all materials included, no experience needed.</p>
+      <a href="#pe-quote" class="btn btn-primary">Get Your Free Quote</a>
+    </div>
   </div>
 </section>
 
-<!-- PAGE CONTENT (from CMS) -->
-<section class="private-events-section">
+<!-- 2. OCCASIONS -->
+<section class="pe-section">
   <div class="container">
-    <div class="private-events-content wysiwyg-content" id="pe-content">
-      <div class="loading-state"><div class="spinner"></div></div>
+    <h2 class="pe-section-title">What are you celebrating?</h2>
+    <p class="pe-section-sub">Pick your occasion and we'll tailor the theme, timings and extras to suit</p>
+    <div class="pe-occasions" id="pe-occasions" role="list"></div>
+  </div>
+</section>
+
+<!-- 3. HOW IT WORKS -->
+<section class="pe-section pe-section-alt">
+  <div class="container">
+    <h2 class="pe-section-title">How it works</h2>
+    <p class="pe-section-sub">Three simple steps to a party your group will be talking about for months</p>
+    <div class="pe-how">
+      <div class="pe-how-step">
+        <div class="pe-how-icon" aria-hidden="true">📝</div>
+        <h3 class="pe-how-title">Tell us about your event</h3>
+        <p class="pe-how-text">Fill in the quick form below</p>
+      </div>
+      <div class="pe-how-step">
+        <div class="pe-how-icon" aria-hidden="true">💌</div>
+        <h3 class="pe-how-title">Get your personalised quote</h3>
+        <p class="pe-how-text">Within 24 hours</p>
+      </div>
+      <div class="pe-how-step">
+        <div class="pe-how-icon" aria-hidden="true">🎨</div>
+        <h3 class="pe-how-title">We handle everything</h3>
+        <p class="pe-how-text">You just turn up and paint</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 4. WHAT'S INCLUDED -->
+<section class="pe-section">
+  <div class="container">
+    <h2 class="pe-section-title">What's included</h2>
+    <p class="pe-section-sub">Everything you need for a brilliant creative session — nothing to bring but your guests</p>
+    <ul class="pe-included">
+      <li><span class="pe-included-icon" aria-hidden="true">🎨</span>Fully guided painting session by professional artist Vina</li>
+      <li><span class="pe-included-icon" aria-hidden="true">🖌</span>All paints, brushes, canvases and materials provided</li>
+      <li><span class="pe-included-icon" aria-hidden="true">✨</span>Bespoke theme chosen just for your group</li>
+      <li><span class="pe-included-icon" aria-hidden="true">📍</span>At your venue, a partner venue or a space of your choice</li>
+      <li><span class="pe-included-icon" aria-hidden="true">👥</span>Groups from 8 to 40+ people</li>
+      <li><span class="pe-included-icon" aria-hidden="true">🗓</span>Flexible dates and times — evenings, afternoons, weekends</li>
+    </ul>
+    <!-- Optional extra content from the admin editor (hidden when empty) -->
+    <div class="private-events-content wysiwyg-content" id="pe-content" style="margin-top:36px"></div>
+  </div>
+</section>
+
+<!-- 5. GALLERY (hidden until photos are uploaded in admin) -->
+<section class="pe-section pe-section-alt" id="pe-gallery-section" style="display:none">
+  <div class="container">
+    <h2 class="pe-section-title">Moments from our private events</h2>
+    <p class="pe-section-sub">A peek at some of the parties we've hosted</p>
+  </div>
+  <div class="pe-gallery" id="pe-gallery" tabindex="0" aria-label="Photo gallery — hover to pause">
+    <div class="pe-gallery-track" id="pe-gallery-track"></div>
+  </div>
+</section>
+
+<!-- 6. TESTIMONIALS (latest published reviews, hidden if none) -->
+<section class="pe-section" id="pe-reviews-section" style="display:none">
+  <div class="container">
+    <h2 class="pe-section-title">What our guests say</h2>
+    <p class="pe-section-sub">Real reviews from people who've painted with us</p>
+    <div class="pe-reviews" id="pe-reviews"></div>
+    <div style="text-align:center">
+      <a href="/reviews" class="btn btn-ghost">Read all our reviews →</a>
     </div>
   </div>
 </section>
 
 <!-- QUOTE FORM -->
-<section class="pe-quote-section">
+<section class="pe-quote-section" id="pe-quote" style="scroll-margin-top:80px">
   <div class="container">
 
     <div class="pe-quote-header">
-      <h2 class="pe-quote-title">Get Your Personalised Quote</h2>
-      <p class="pe-quote-sub">Tell us about your event and we'll put together a tailored proposal — usually within 24 hours</p>
+      <h2 class="pe-quote-title">Get Your Free Quote</h2>
+      <p class="pe-quote-sub">Tell us about your event and we'll put together a tailored proposal. Expect a reply within 24 hours.</p>
     </div>
 
     <!-- Step indicator -->
@@ -383,6 +660,11 @@ document.addEventListener('click',function(e){if(!e.target.closest('.site-header
       <div class="pe-step-panel" id="pe-panel-1">
         <h3 class="pe-step-heading">What kind of event are you planning?</h3>
         <p class="pe-step-hint">Choose an activity and tell us how many people are joining</p>
+
+        <span class="pe-field-label">Occasion <span class="optional">(optional)</span></span>
+        <div class="pe-pills" id="pe-occasion-pills">
+          <!-- injected by JS -->
+        </div>
 
         <span class="pe-field-label">Activity type *</span>
         <div class="pe-pills" id="pe-activity-pills">
@@ -507,6 +789,17 @@ document.addEventListener('click',function(e){if(!e.target.closest('.site-header
   <div class="container social-section-inner">
     <h2 class="social-section-title" id="social-section-title">Social Media</h2>
     <div class="social-links-row" id="social-links-row"></div>
+  </div>
+</section>
+
+<!-- 8. BOTTOM CTA BAND -->
+<section class="pe-cta-band">
+  <div class="container">
+    <p>Not ready to enquire yet? Browse our upcoming public events or get in touch — we're always happy to chat.</p>
+    <div class="pe-cta-actions">
+      <a href="/events" class="btn btn-light">Browse Public Events</a>
+      <a href="/contact" class="btn btn-outline-light">Contact Us</a>
+    </div>
   </div>
 </section>
 

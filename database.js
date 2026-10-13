@@ -162,6 +162,50 @@ try { db.exec("ALTER TABLE bookings ADD COLUMN upsell_name TEXT"); } catch {}
 try { db.exec("ALTER TABLE bookings ADD COLUMN upsell_quantity INTEGER DEFAULT 0"); } catch {}
 try { db.exec("ALTER TABLE bookings ADD COLUMN upsell_price_pence INTEGER DEFAULT 0"); } catch {}
 
+// Migrate: event status. 'active' (public), 'draft' (admin only) or 'private'
+// (unlisted, bookable via direct link). "Expired" is derived from the date.
+// is_active is kept in sync (1 only when status = 'active') so every existing
+// public query that filters on is_active = 1 keeps hiding drafts + privates.
+try {
+  db.exec("ALTER TABLE events ADD COLUMN status TEXT DEFAULT 'active'");
+  db.exec("UPDATE events SET status = CASE WHEN is_active = 1 THEN 'active' ELSE 'draft' END");
+} catch {}
+
+// Migrate: 15-minute ticket hold. A pending booking only reserves seats while
+// hold_expires_at is in the future; afterwards the row stays 'pending' (so
+// admin can see who started but didn't finish) but no longer blocks stock.
+try {
+  db.exec("ALTER TABLE bookings ADD COLUMN hold_expires_at TEXT DEFAULT NULL");
+  // Release every pre-existing pending booking — they were never time-limited.
+  db.exec("UPDATE bookings SET hold_expires_at = created_at WHERE status = 'pending'");
+} catch {}
+
+// Migrate: "How did you hear about us?" + marketing consent snapshot per booking.
+try { db.exec("ALTER TABLE bookings ADD COLUMN heard_about TEXT DEFAULT NULL"); } catch {}
+try { db.exec("ALTER TABLE bookings ADD COLUMN heard_about_other TEXT DEFAULT NULL"); } catch {}
+try { db.exec("ALTER TABLE bookings ADD COLUMN marketing_opt_in INTEGER DEFAULT 0"); } catch {}
+
+// Migrate: current marketing preference on the customer (latest choice wins).
+try { db.exec("ALTER TABLE customers ADD COLUMN marketing_opt_in INTEGER DEFAULT 0"); } catch {}
+try { db.exec("ALTER TABLE customers ADD COLUMN marketing_opt_in_updated_at TEXT DEFAULT NULL"); } catch {}
+
+// GDPR consent log — append-only audit trail of every opt-in / opt-out, with
+// the exact wording shown, where it came from and when.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS marketing_consents (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    customer_id INTEGER,
+    email TEXT NOT NULL,
+    consented INTEGER NOT NULL,
+    consent_text TEXT NOT NULL,
+    source TEXT NOT NULL,
+    booking_id INTEGER,
+    ip_address TEXT,
+    user_agent TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  )
+`);
+
 // Generate slugs for any events that don't have one yet
 function toSlug(title) {
   return title.toLowerCase()
@@ -754,6 +798,8 @@ db.exec(`
 // Migrate private_event_quotes: add quote_type + company_name columns for
 // the Corporate / Team-Building landing page.
 try { db.exec("ALTER TABLE private_event_quotes ADD COLUMN quote_type TEXT DEFAULT 'private'"); } catch {}
+// Occasion picked on the Private Events page (Hen Party, Birthday, …).
+try { db.exec("ALTER TABLE private_event_quotes ADD COLUMN occasion TEXT DEFAULT ''"); } catch {}
 try { db.exec("ALTER TABLE private_event_quotes ADD COLUMN company_name TEXT DEFAULT ''"); } catch {}
 try { db.exec("ALTER TABLE private_event_quotes ADD COLUMN job_title TEXT DEFAULT ''"); } catch {}
 

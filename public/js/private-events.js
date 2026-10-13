@@ -7,6 +7,7 @@
 
 let currentStep = 1;
 let quoteData = {
+  occasion:         '',
   activity_type:    null,
   group_size:       null,
   preferred_date:   '',
@@ -23,8 +24,120 @@ let quoteData = {
 // ─── Init ─────────────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', async () => {
+  renderOccasionTiles();
+  renderOccasionPills();
+  loadReviews();
   await Promise.all([loadFormConfig(), applyDesignSettings()]);
 });
+
+// ─── Occasions ────────────────────────────────────────────────────────────────
+// Tiles with `href` go to another page; the rest pre-select the occasion in
+// the quote form and scroll down to it.
+
+const OCCASIONS = [
+  { emoji: '🎉', title: 'Hen Party',          desc: "Make the bride's last chapter unforgettable" },
+  { emoji: '🎂', title: 'Birthday',           desc: "The birthday they'll actually talk about" },
+  { emoji: '🌸', title: 'Baby Shower',        desc: 'Creative, calm and completely different' },
+  { emoji: '💔', title: 'Divorce Party',      desc: 'New chapter, new canvas' },
+  { emoji: '🎄', title: 'Christmas Party',    desc: 'Festive painting for your whole group' },
+  { emoji: '💑', title: 'Anniversary',        desc: 'Paint your story together' },
+  { emoji: '🧘', title: 'Wellbeing Event',    desc: 'Unwind, create, reset' },
+  { emoji: '🎓', title: 'Graduation',         desc: 'Celebrate the achievement' },
+  { emoji: '👨‍👩‍👧', title: 'Family Get Together', desc: 'From Diwali to reunions, something for everyone' },
+  { emoji: '💼', title: 'Work Night Out',     desc: 'A night out the whole team will enjoy', href: '/corporate-events' },
+  { emoji: '🤝', title: 'Team Building',      desc: 'Creative sessions that bring teams together', href: '/corporate-events' },
+];
+
+function renderOccasionTiles() {
+  const row = document.getElementById('pe-occasions');
+  if (!row) return;
+  row.innerHTML = OCCASIONS.map((o, i) => o.href
+    ? `<a class="pe-occasion" role="listitem" href="${o.href}">
+         <span class="pe-occasion-emoji" aria-hidden="true">${o.emoji}</span>
+         <span class="pe-occasion-title">${escHtml(o.title)}</span>
+         <span class="pe-occasion-desc">${escHtml(o.desc)}</span>
+         <span class="pe-occasion-link">See corporate events →</span>
+       </a>`
+    : `<button type="button" class="pe-occasion" role="listitem" onclick="chooseOccasionTile(${i})">
+         <span class="pe-occasion-emoji" aria-hidden="true">${o.emoji}</span>
+         <span class="pe-occasion-title">${escHtml(o.title)}</span>
+         <span class="pe-occasion-desc">${escHtml(o.desc)}</span>
+       </button>`
+  ).join('');
+}
+
+function renderOccasionPills() {
+  const pills = document.getElementById('pe-occasion-pills');
+  if (!pills) return;
+  const names = OCCASIONS.filter(o => !o.href).map(o => o.title).concat('Something else');
+  pills.innerHTML = names.map(n => `
+    <div class="pe-pill" data-occasion="${escHtml(n)}" onclick="selectOccasion('${escHtml(n)}', this)">${escHtml(n)}</div>`).join('');
+}
+
+function selectOccasion(name, el) {
+  const already = el.classList.contains('selected');
+  document.querySelectorAll('#pe-occasion-pills .pe-pill').forEach(p => p.classList.remove('selected'));
+  // Clicking the selected pill again clears it — the field is optional.
+  if (already) { quoteData.occasion = ''; return; }
+  el.classList.add('selected');
+  quoteData.occasion = name;
+}
+
+function chooseOccasionTile(index) {
+  const name = OCCASIONS[index].title;
+  // Jump back to step 1 if the visitor had already moved on.
+  while (currentStep > 1) peStep(-1);
+  const pill = document.querySelector(`#pe-occasion-pills .pe-pill[data-occasion="${CSS.escape(name)}"]`);
+  if (pill) {
+    document.querySelectorAll('#pe-occasion-pills .pe-pill').forEach(p => p.classList.remove('selected'));
+    pill.classList.add('selected');
+    quoteData.occasion = name;
+  }
+  document.getElementById('pe-quote').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ─── Testimonials (latest published reviews) ─────────────────────────────────
+
+async function loadReviews() {
+  try {
+    const reviews = await fetch('/api/reviews').then(r => r.json());
+    const top = (Array.isArray(reviews) ? reviews : []).filter(r => r.body).slice(0, 3);
+    if (!top.length) return;
+    document.getElementById('pe-reviews').innerHTML = top.map(r => {
+      const rating = Math.max(1, Math.min(5, r.rating || 5));
+      const body = r.body.length > 260 ? r.body.slice(0, 257).trimEnd() + '…' : r.body;
+      return `
+        <figure class="pe-review" style="margin:0">
+          <div class="pe-review-stars" aria-label="${rating} out of 5 stars">${'★'.repeat(rating)}</div>
+          <blockquote class="pe-review-body">“${escHtml(body)}”</blockquote>
+          <figcaption class="pe-review-author">${escHtml(r.author_name)}${r.class_attended ? ` <span>· ${escHtml(r.class_attended)}</span>` : ''}</figcaption>
+        </figure>`;
+    }).join('');
+    document.getElementById('pe-reviews-section').style.display = '';
+  } catch {}
+}
+
+// ─── Hero image + gallery (uploaded in admin → Content → Private Events) ────
+
+function applyPrivateEventsMedia(s) {
+  if (s.pe_hero_image) {
+    const hero = document.getElementById('pe-hero');
+    if (hero) hero.style.backgroundImage = `url("${encodeURI(s.pe_hero_image)}")`;
+  }
+  let images = [];
+  try { images = JSON.parse(s.pe_gallery_images || '[]'); } catch {}
+  images = images.filter(Boolean);
+  if (!images.length) return; // empty slots don't render; whole section stays hidden
+
+  const imgTag = (url, i, dup) => `<img class="pe-gallery-img${dup ? ' pe-gallery-dup' : ''}" src="${escHtml(url)}"
+    alt="${dup ? '' : `Private paint and sip event photo ${i + 1}`}" ${dup ? 'aria-hidden="true"' : ''} loading="lazy">`;
+  // The track holds the photos twice so the CSS marquee can loop seamlessly.
+  document.getElementById('pe-gallery-track').innerHTML =
+    images.map((u, i) => imgTag(u, i, false)).join('') + images.map((u, i) => imgTag(u, i, true)).join('');
+  // ~6s per photo keeps the scroll slow regardless of how many there are.
+  document.getElementById('pe-gallery').style.setProperty('--pe-marquee-duration', `${Math.max(30, images.length * 6)}s`);
+  document.getElementById('pe-gallery-section').style.display = '';
+}
 
 async function loadFormConfig() {
   try {
@@ -328,21 +441,23 @@ async function applyDesignSettings() {
     }
 
     // Private Events page content
-    if (s.private_events_hero_title) {
+    if (s.pe_hero_heading) {
       const el = document.getElementById('pe-hero-title');
-      if (el) el.textContent = s.private_events_hero_title;
+      if (el) el.textContent = s.pe_hero_heading;
     }
-    if (s.private_events_hero_sub) {
+    if (s.pe_hero_subheading) {
       const el = document.getElementById('pe-hero-sub');
-      if (el) el.textContent = s.private_events_hero_sub;
+      if (el) el.textContent = s.pe_hero_subheading;
     }
-    if (s.private_events_content) {
-      const el = document.getElementById('pe-content');
-      if (el) el.innerHTML = s.private_events_content;
-    } else {
-      const el = document.getElementById('pe-content');
-      if (el) el.innerHTML = '';
+    const contentEl = document.getElementById('pe-content');
+    const extra = (s.private_events_content || '').trim();
+    if (contentEl) {
+      // Quill saves an empty editor as <p><br></p> — treat that as empty too.
+      const isEmpty = !extra || extra.replace(/<[^>]*>/g, '').trim() === '';
+      contentEl.innerHTML = isEmpty ? '' : extra;
+      contentEl.style.display = isEmpty ? 'none' : '';
     }
+    applyPrivateEventsMedia(s);
 
     applyFontSettings(s);
     renderSocialSection(s);

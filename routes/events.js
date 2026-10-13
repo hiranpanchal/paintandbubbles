@@ -1,6 +1,18 @@
 const router = require('express').Router();
 const db = require('../database');
 const { requireAdmin, isAdmin } = require('../middleware/auth');
+const { spotsRemainingSql } = require('../services/holds');
+
+const EVENT_STATUSES = ['active', 'draft', 'private'];
+
+// Accept either the new `status` field or the legacy is_active flag, and
+// return the pair to store (is_active mirrors status === 'active').
+function resolveStatus(body, fallback) {
+  let status = fallback;
+  if (EVENT_STATUSES.includes(body.status)) status = body.status;
+  else if (body.is_active !== undefined && body.is_active !== null) status = Number(body.is_active) ? 'active' : 'draft';
+  return { status, is_active: status === 'active' ? 1 : 0 };
+}
 
 function toSlug(title) {
   return title.toLowerCase()
@@ -29,10 +41,8 @@ router.get('/', (req, res) => {
   const showInactive = include_inactive === 'true' && isAdmin(req);
   let query = `
     SELECT e.*,
-      (e.capacity - COALESCE(
-        (SELECT SUM(b.quantity) FROM bookings b WHERE b.event_id = e.id AND b.status IN ('confirmed','pending')),
-        0
-      )) as spots_remaining
+      ${spotsRemainingSql('e')} as spots_remaining,
+      (SELECT COUNT(*) FROM bookings b WHERE b.event_id = e.id) as booking_count
     FROM events e
     WHERE 1=1
   `;
@@ -75,7 +85,8 @@ router.get('/categories', (req, res) => {
   res.json(cats.map(c => c.category));
 });
 
-// GET /api/events/:idOrSlug — public (accepts numeric id or slug)
+// GET /api/events/:idOrSlug — public (accepts numeric id or slug). Drafts are
+// only returned to admin callers (needed by the admin edit / clone forms).
 router.get('/:idOrSlug', (req, res) => {
   const param = req.params.idOrSlug;
   const isNumeric = /^\d+$/.test(param);
@@ -83,12 +94,10 @@ router.get('/:idOrSlug', (req, res) => {
 
   const event = db.prepare(`
     SELECT e.*,
-      (e.capacity - COALESCE(
-        (SELECT SUM(b.quantity) FROM bookings b WHERE b.event_id = e.id AND b.status IN ('confirmed','pending')),
-        0
-      )) as spots_remaining
+      ${spotsRemainingSql('e')} as spots_remaining,
+      (SELECT COUNT(*) FROM bookings b WHERE b.event_id = e.id) as booking_count
     FROM events e
-    WHERE ${whereClause} AND e.is_active = 1
+    WHERE ${whereClause} ${isAdmin(req) ? '' : "AND e.status IN ('active','private')"}
   `).get(param);
 
   if (!event) return res.status(404).json({ error: 'Event not found' });
@@ -111,12 +120,13 @@ router.post('/', requireAdmin, (req, res) => {
     return res.status(400).json({ error: 'Missing required fields' });
   }
   const { upsell_name, upsell_price_pence } = normaliseUpsell(req.body);
+  const { status, is_active } = resolveStatus(req.body, 'active');
 
   const slug = uniqueSlug(title);
   const result = db.prepare(`
-    INSERT INTO events (title, description, category, date, time, duration_minutes, location, capacity, price_pence, image_url, slug, upsell_name, upsell_price_pence)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(title, description || '', category || 'General', date, time, duration_minutes || 120, location, capacity, price_pence, image_url || null, slug, upsell_name, upsell_price_pence);
+    INSERT INTO events (title, description, category, date, time, duration_minutes, location, capacity, price_pence, image_url, slug, upsell_name, upsell_price_pence, status, is_active)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(title, description || '', category || 'General', date, time, duration_minutes || 120, location, capacity, price_pence, image_url || null, slug, upsell_name, upsell_price_pence, status, is_active);
 
   const event = db.prepare('SELECT * FROM events WHERE id = ?').get(result.lastInsertRowid);
   res.status(201).json(event);
@@ -124,7 +134,7 @@ router.post('/', requireAdmin, (req, res) => {
 
 // PUT /api/events/:id — admin only
 router.put('/:id', requireAdmin, (req, res) => {
-  const { title, description, category, date, time, duration_minutes, location, capacity, price_pence, image_url, is_active } = req.body;
+  const { title, description, category, date, time, duration_minutes, location, capacity, price_pence, image_url } = req.body;
 
   const event = db.prepare('SELECT * FROM events WHERE id = ?').get(req.params.id);
   if (!event) return res.status(404).json({ error: 'Event not found' });
@@ -140,11 +150,12 @@ router.put('/:id', requireAdmin, (req, res) => {
   const { upsell_name, upsell_price_pence } = upsellProvided
     ? normaliseUpsell(req.body)
     : { upsell_name: event.upsell_name, upsell_price_pence: event.upsell_price_pence };
+  const { status, is_active } = resolveStatus(req.body, event.status || (event.is_active ? 'active' : 'draft'));
 
   db.prepare(`
     UPDATE events SET
       title = ?, description = ?, category = ?, date = ?, time = ?,
-      duration_minutes = ?, location = ?, capacity = ?, price_pence = ?, image_url = ?, is_active = ?, slug = ?,
+      duration_minutes = ?, location = ?, capacity = ?, price_pence = ?, image_url = ?, is_active = ?, status = ?, slug = ?,
       upsell_name = ?, upsell_price_pence = ?
     WHERE id = ?
   `).run(
@@ -158,7 +169,8 @@ router.put('/:id', requireAdmin, (req, res) => {
     capacity ?? event.capacity,
     price_pence ?? event.price_pence,
     image_url ?? event.image_url,
-    is_active ?? event.is_active,
+    is_active,
+    status,
     slug,
     upsell_name,
     upsell_price_pence,
@@ -168,12 +180,33 @@ router.put('/:id', requireAdmin, (req, res) => {
   res.json(db.prepare('SELECT * FROM events WHERE id = ?').get(req.params.id));
 });
 
-// DELETE /api/events/:id — admin only (soft delete)
+// DELETE /api/events/:id — admin only. Permanently deletes the event whatever
+// its status. If it has bookings, the caller must pass ?force=true (after
+// warning the admin); those bookings, their payments and waitlist rows go too.
 router.delete('/:id', requireAdmin, (req, res) => {
   const event = db.prepare('SELECT id FROM events WHERE id = ?').get(req.params.id);
   if (!event) return res.status(404).json({ error: 'Event not found' });
-  db.prepare('UPDATE events SET is_active = 0 WHERE id = ?').run(req.params.id);
-  res.json({ success: true });
+
+  const { count } = db.prepare('SELECT COUNT(*) as count FROM bookings WHERE event_id = ?').get(req.params.id);
+  if (count > 0 && req.query.force !== 'true') {
+    return res.status(409).json({ error: `This event has ${count} booking(s)`, booking_count: count });
+  }
+
+  try {
+    db.exec('BEGIN');
+    const bookingIds = 'SELECT id FROM bookings WHERE event_id = ?';
+    db.prepare(`DELETE FROM payments WHERE booking_id IN (${bookingIds})`).run(req.params.id);
+    db.prepare(`UPDATE gift_vouchers SET used_booking_id = NULL WHERE used_booking_id IN (${bookingIds})`).run(req.params.id);
+    db.prepare('DELETE FROM bookings WHERE event_id = ?').run(req.params.id);
+    db.prepare('DELETE FROM event_waitlist WHERE event_id = ?').run(req.params.id);
+    db.prepare('DELETE FROM events WHERE id = ?').run(req.params.id);
+    db.exec('COMMIT');
+  } catch (err) {
+    try { db.exec('ROLLBACK'); } catch {}
+    console.error('[DELETE /api/events/:id] failed:', err);
+    return res.status(500).json({ error: 'Failed to delete event' });
+  }
+  res.json({ success: true, deleted_bookings: count });
 });
 
 // GET /api/events/:id/bookings — admin only

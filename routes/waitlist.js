@@ -10,7 +10,7 @@ router.post('/', (req, res) => {
     return res.status(400).json({ error: 'Event, name and email are required' });
   }
 
-  const event = db.prepare('SELECT * FROM events WHERE id = ? AND is_active = 1').get(event_id);
+  const event = db.prepare("SELECT * FROM events WHERE id = ? AND status IN ('active','private')").get(event_id);
   if (!event) return res.status(404).json({ error: 'Event not found' });
 
   // Prevent duplicates
