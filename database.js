@@ -206,6 +206,44 @@ db.exec(`
   )
 `);
 
+// Invoices created by hand in the admin dashboard (paid by bank transfer).
+// `items` is a JSON array of { description, quantity, unit_price_pence }.
+// Status: 'unpaid' | 'paid' | 'void'. "Overdue" is derived from due_date.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS invoices (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    invoice_number TEXT NOT NULL UNIQUE,
+    status TEXT NOT NULL DEFAULT 'unpaid',
+    client_name TEXT NOT NULL,
+    client_company TEXT DEFAULT '',
+    client_email TEXT DEFAULT '',
+    client_phone TEXT DEFAULT '',
+    client_address TEXT DEFAULT '',
+    issue_date TEXT NOT NULL,
+    due_date TEXT NOT NULL,
+    items TEXT NOT NULL DEFAULT '[]',
+    total_pence INTEGER NOT NULL DEFAULT 0,
+    notes TEXT DEFAULT '',
+    quote_id INTEGER,
+    customer_id INTEGER,
+    paid_at TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+  )
+`);
+{
+  const ins = db.prepare('INSERT OR IGNORE INTO site_settings (key, value) VALUES (?, ?)');
+  ins.run('invoice_prefix', 'PB-');
+  ins.run('invoice_next_number', '1');
+  ins.run('invoice_payment_terms_days', '14');
+  ins.run('invoice_business_address', '');
+  ins.run('invoice_business_email', '');
+  ins.run('invoice_bank_account_name', '');
+  ins.run('invoice_bank_sort_code', '');
+  ins.run('invoice_bank_account_number', '');
+  ins.run('invoice_footer_note', 'Thank you for choosing Paint & Bubbles!');
+}
+
 // Generate slugs for any events that don't have one yet
 function toSlug(title) {
   return title.toLowerCase()

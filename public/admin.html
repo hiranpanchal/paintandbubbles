@@ -108,6 +108,10 @@
         Private Quotes
         <span id="pq-badge" class="messages-badge hidden"></span>
       </button>
+      <button class="sidebar-item" id="tab-invoices" onclick="switchTab('invoices')">
+        <svg viewBox="0 0 20 20" fill="none"><path d="M5 2.5h7l3 3V17a.5.5 0 01-.5.5h-9.5A.5.5 0 014.5 17V3a.5.5 0 01.5-.5z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M7.5 8h5M7.5 11h5M7.5 14h3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        Invoices
+      </button>
       <button class="sidebar-item" id="tab-vouchers" onclick="switchTab('vouchers')">
         <svg viewBox="0 0 20 20" fill="none"><path d="M3 7h14a1 1 0 011 1v4a1 1 0 01-1 1H3a1 1 0 01-1-1V8a1 1 0 011-1z" stroke="currentColor" stroke-width="1.5"/><circle cx="10" cy="10" r="1.5" stroke="currentColor" stroke-width="1.5"/><path d="M7 7V5m6 2V5M7 13v2m6-2v2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
         Vouchers
@@ -387,6 +391,41 @@
     </div>
 
     <!-- CATEGORIES TAB -->
+    <!-- INVOICES TAB -->
+    <div class="tab-content hidden" id="content-invoices">
+      <div class="design-tabs-nav content-page-tabs" id="invoices-sub-nav">
+        <button class="design-tab-btn active" onclick="switchInvoicesTab('list')" data-tab="list">Invoices</button>
+        <button class="design-tab-btn" onclick="switchInvoicesTab('settings')" data-tab="settings">Invoice Settings</button>
+      </div>
+      <div id="invoices-subtab-list">
+        <div id="invoice-bank-warning"></div>
+        <div class="stats-grid" id="invoice-stats" style="grid-template-columns:repeat(3,1fr)"></div>
+        <div class="toolbar">
+          <div class="admin-filters">
+            <label class="admin-filter">
+              <span>Status</span>
+              <select id="inv-filter-status" onchange="renderInvoicesTable()">
+                <option value="">All</option>
+                <option value="unpaid">Unpaid</option>
+                <option value="overdue">Overdue</option>
+                <option value="paid">Paid</option>
+                <option value="void">Void</option>
+              </select>
+            </label>
+            <label class="admin-filter">
+              <span>Search</span>
+              <input type="text" id="inv-filter-search" placeholder="Client or invoice no." oninput="renderInvoicesTable()">
+            </label>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="openInvoiceForm()">+ New Invoice</button>
+        </div>
+        <div class="card">
+          <div id="invoices-table"></div>
+        </div>
+      </div>
+      <div id="invoices-subtab-settings" style="display:none"></div>
+    </div>
+
     <div class="tab-content hidden" id="content-categories">
       <div class="toolbar">
         <div></div>

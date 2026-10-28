@@ -472,6 +472,7 @@ app.use('/api/discounts',  require('./routes/discounts'));
 app.use('/api/categories', require('./routes/categories'));
 app.use('/api/waitlist',        require('./routes/waitlist'));
 app.use('/api/private-quotes', require('./routes/private-quotes'));
+app.use('/api/invoices',       require('./routes/invoices'));
 
 // ---- PAGE ROUTES WITH SEO META INJECTION ----
 

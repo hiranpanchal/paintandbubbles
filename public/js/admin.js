@@ -88,7 +88,7 @@ function switchTab(tab) {
   document.getElementById(`content-${tab}`).classList.remove('hidden');
   document.getElementById(`tab-${tab}`).classList.add('active');
 
-  const titles = { overview: 'Overview', analytics: 'Analytics', events: 'Events', bookings: 'Bookings', customers: 'Customers', payments: 'Payments', design: 'Design', faq: 'FAQ', reviews: 'Reviews', users: 'Users', content: 'Content', enquiries: 'Messages', 'private-quotes': 'Private Event Quotes', vouchers: 'Gift Vouchers', discounts: 'Discount Codes' };
+  const titles = { overview: 'Overview', analytics: 'Analytics', events: 'Events', bookings: 'Bookings', customers: 'Customers', payments: 'Payments', design: 'Design', faq: 'FAQ', reviews: 'Reviews', users: 'Users', content: 'Content', enquiries: 'Messages', 'private-quotes': 'Private Event Quotes', invoices: 'Invoices', vouchers: 'Gift Vouchers', discounts: 'Discount Codes' };
   document.getElementById('page-title').textContent = titles[tab] || tab;
 
   // Close sidebar on mobile
@@ -110,6 +110,7 @@ function switchTab(tab) {
   else if (tab === 'content')   loadContentTab();
   else if (tab === 'enquiries')      loadEnquiries();
   else if (tab === 'private-quotes') loadPrivateQuotes();
+  else if (tab === 'invoices')       loadAdminInvoices();
   else if (tab === 'vouchers')       loadAdminVouchers();
   else if (tab === 'discounts')   loadAdminDiscounts();
   else if (tab === 'categories')  loadAdminCategories();
@@ -1737,7 +1738,14 @@ function renderPaymentsTable(payments) {
 
 // ---- MODALS ----
 function openAdminModal(id) { document.getElementById(id).classList.remove('hidden'); document.body.style.overflow = 'hidden'; }
-function closeAdminModal(id) { document.getElementById(id).classList.add('hidden'); document.body.style.overflow = ''; }
+function closeAdminModal(id) {
+  const overlay = document.getElementById(id);
+  overlay.classList.add('hidden');
+  document.body.style.overflow = '';
+  // The invoice form widens the shared generic modal — reset for next use.
+  const box = overlay.querySelector('.modal');
+  if (box) box.style.maxWidth = '';
+}
 
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
@@ -5552,6 +5560,7 @@ async function openPrivateQuote(id) {
             ✉️ Reply to ${escHtml(q.name.split(' ')[0])}
           </a>
           ${q.phone ? `<a href="tel:${escHtml(q.phone)}" class="btn btn-ghost btn-sm">📞 Call</a>` : ''}
+          <button class="btn btn-ghost btn-sm" onclick="closePQModal(); switchTab('invoices'); openInvoiceForm(null, { quoteId: ${q.id} })">🧾 Create invoice</button>
           <button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:none;margin-left:auto"
             onclick="deletePQ(${q.id})">Delete</button>
         </div>
@@ -6884,3 +6893,433 @@ document.addEventListener('click', async (ev) => {
     toast('Failed to update delay', 'error');
   }
 });
+
+// ---- INVOICES ----
+// Hand-made invoices paid by bank transfer. The server assigns sequential
+// numbers and renders the PDF; this tab lists, edits and tracks them.
+let adminInvoices = [];
+let invoiceSettings = {};
+let invoiceFormState = { items: [] };
+
+function switchInvoicesTab(tab) {
+  document.querySelectorAll('#invoices-sub-nav .design-tab-btn').forEach(btn =>
+    btn.classList.toggle('active', btn.dataset.tab === tab));
+  document.getElementById('invoices-subtab-list').style.display = tab === 'list' ? '' : 'none';
+  document.getElementById('invoices-subtab-settings').style.display = tab === 'settings' ? '' : 'none';
+  if (tab === 'settings') renderInvoiceSettings();
+}
+
+async function loadAdminInvoices() {
+  const el = document.getElementById('invoices-table');
+  el.innerHTML = '<div class="loading-state"><div class="spinner"></div></div>';
+  try {
+    [adminInvoices, invoiceSettings] = await Promise.all([
+      apiFetch('/api/invoices'),
+      apiFetch('/api/invoices/settings'),
+    ]);
+    renderInvoiceStats();
+    renderInvoicesTable();
+    const warn = document.getElementById('invoice-bank-warning');
+    warn.innerHTML = invoiceSettings.invoice_bank_account_number ? '' : `
+      <div class="card" style="padding:14px 18px;margin-bottom:16px;background:#FEF3C7;border-color:#FCD34D;font-size:13px;font-weight:600">
+        Add your bank details in <a href="#" onclick="switchInvoicesTab('settings');return false" style="color:var(--rose-dark)">Invoice Settings</a> so customers know where to pay.
+      </div>`;
+  } catch { el.innerHTML = '<div class="empty-state"><p>Failed to load invoices</p></div>'; }
+}
+
+// 'overdue' is derived: unpaid and past its due date.
+function invoiceDisplayStatus(inv) {
+  if (inv.status === 'unpaid' && inv.due_date < new Date().toISOString().slice(0, 10)) return 'overdue';
+  return inv.status;
+}
+
+function invoiceStatusBadge(inv) {
+  return {
+    unpaid:  '<span class="badge badge-amber">Unpaid</span>',
+    overdue: '<span class="badge badge-red">Overdue</span>',
+    paid:    '<span class="badge badge-green">Paid</span>',
+    void:    '<span class="badge badge-gray">Void</span>',
+  }[invoiceDisplayStatus(inv)];
+}
+
+function renderInvoiceStats() {
+  const sum = list => list.reduce((t, i) => t + i.total_pence, 0);
+  const unpaid  = adminInvoices.filter(i => i.status === 'unpaid');
+  const overdue = unpaid.filter(i => invoiceDisplayStatus(i) === 'overdue');
+  const yearStart = `${new Date().getFullYear()}-01-01`;
+  const paidYear = adminInvoices.filter(i => i.status === 'paid' && (i.paid_at || '') >= yearStart);
+  document.getElementById('invoice-stats').innerHTML = `
+    <div class="stat-card"><div class="stat-label">Outstanding</div><div class="stat-value">${formatPrice(sum(unpaid))}</div>
+      <div style="font-size:12px;color:var(--text-light);margin-top:4px">${unpaid.length} unpaid invoice${unpaid.length === 1 ? '' : 's'}</div></div>
+    <div class="stat-card"><div class="stat-label">Overdue</div><div class="stat-value" style="color:${overdue.length ? 'var(--coral)' : 'inherit'}">${formatPrice(sum(overdue))}</div>
+      <div style="font-size:12px;color:var(--text-light);margin-top:4px">${overdue.length} overdue</div></div>
+    <div class="stat-card"><div class="stat-label">Paid this year</div><div class="stat-value">${formatPrice(sum(paidYear))}</div>
+      <div style="font-size:12px;color:var(--text-light);margin-top:4px">${paidYear.length} invoice${paidYear.length === 1 ? '' : 's'}</div></div>`;
+}
+
+function renderInvoicesTable() {
+  const el = document.getElementById('invoices-table');
+  const status = document.getElementById('inv-filter-status').value;
+  const q = document.getElementById('inv-filter-search').value.trim().toLowerCase();
+  const list = adminInvoices.filter(inv =>
+    (!status || invoiceDisplayStatus(inv) === status) &&
+    (!q || [inv.invoice_number, inv.client_name, inv.client_company, inv.client_email].join(' ').toLowerCase().includes(q)));
+  if (!list.length) {
+    el.innerHTML = `<div class="empty-state"><p>${adminInvoices.length ? 'No invoices match these filters.' : 'No invoices yet. Create your first one!'}</p></div>`;
+    return;
+  }
+  el.innerHTML = `
+    <table class="data-table">
+      <thead><tr>
+        <th>Invoice</th><th>Client</th><th class="hide-mobile">Date</th><th>Due</th><th>Amount</th><th>Status</th><th>Actions</th>
+      </tr></thead>
+      <tbody>${list.map(inv => `
+        <tr>
+          <td style="font-family:monospace;font-weight:700;white-space:nowrap">${escHtml(inv.invoice_number)}</td>
+          <td><div style="font-weight:600">${escHtml(inv.client_company || inv.client_name)}</div>
+            ${inv.client_company ? `<div style="font-size:11px;color:var(--text-light)">${escHtml(inv.client_name)}</div>` : ''}</td>
+          <td class="hide-mobile" style="white-space:nowrap">${formatDate(inv.issue_date)}</td>
+          <td style="white-space:nowrap">${formatDate(inv.due_date)}${inv.status === 'paid' && inv.paid_at ? `<br><span style="font-size:11px;color:var(--green)">Paid ${formatDate(inv.paid_at)}</span>` : ''}</td>
+          <td><strong>${formatPrice(inv.total_pence)}</strong></td>
+          <td>${invoiceStatusBadge(inv)}</td>
+          <td><div class="actions">
+            <button class="btn btn-ghost btn-xs" onclick="downloadInvoicePdf(${inv.id})">↓ PDF</button>
+            <button class="btn btn-ghost btn-xs" onclick="openInvoiceForm(${inv.id})">Edit</button>
+            ${inv.status === 'unpaid' ? `<button class="btn btn-ghost btn-xs" style="color:var(--green)" onclick="openMarkInvoicePaid(${inv.id})">Mark paid</button>` : ''}
+            ${inv.status !== 'unpaid' ? `<button class="btn btn-ghost btn-xs" onclick="setInvoiceStatus(${inv.id}, 'unpaid')">Mark unpaid</button>` : ''}
+          </div></td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+}
+
+async function downloadInvoicePdf(id) {
+  const inv = adminInvoices.find(i => i.id === id);
+  try {
+    const res = await fetch(`/api/invoices/${id}/pdf`, { headers: { Authorization: `Bearer ${authToken}` } });
+    if (!res.ok) throw new Error();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(await res.blob());
+    a.download = `Invoice-${(inv?.invoice_number || id).toString().replace(/[^A-Za-z0-9-]/g, '')}.pdf`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
+  } catch { toast('Failed to download PDF', 'error'); }
+}
+
+function addDaysIso(iso, days) {
+  const d = new Date(iso + 'T00:00:00');
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+function todayIso() { return new Date().toISOString().slice(0, 10); }
+
+// opts: { quoteId, duplicateId } to pre-fill a new invoice.
+async function openInvoiceForm(id = null, opts = {}) {
+  const modal = document.getElementById('generic-modal');
+  const body  = document.getElementById('generic-modal-body');
+  body.parentElement.style.maxWidth = '760px';
+  body.innerHTML = '<div class="modal-body" style="padding:60px;text-align:center"><div class="spinner"></div></div>';
+  modal.classList.remove('hidden');
+
+  let inv = null;
+  let quotes = [];
+  let customers = [];
+  try {
+    if (!Object.keys(invoiceSettings).length) invoiceSettings = await apiFetch('/api/invoices/settings');
+    [quotes, customers] = await Promise.all([
+      apiFetch('/api/private-quotes').catch(() => []),
+      apiFetch('/api/customers').catch(() => []),
+    ]);
+    if (id || opts.duplicateId) inv = await apiFetch(`/api/invoices/${id || opts.duplicateId}`);
+  } catch {
+    closeAdminModal('generic-modal');
+    toast('Failed to load invoice', 'error');
+    return;
+  }
+
+  const terms = parseInt(invoiceSettings.invoice_payment_terms_days, 10) || 14;
+  const issue = id ? inv.issue_date : todayIso();
+  invoiceFormState = {
+    id,
+    quote_id: id ? inv.quote_id : null,
+    customer_id: id ? inv.customer_id : null,
+    items: inv ? JSON.parse(inv.items || '[]') : [{ description: '', quantity: 1, unit_price_pence: 0 }],
+  };
+  const v = field => escHtml(inv?.[field] || '');
+
+  body.innerHTML = `
+    <div class="modal-header">
+      <div>
+        <h2>${id ? `Edit invoice ${escHtml(inv.invoice_number)}` : 'New invoice'}</h2>
+        ${id ? '' : '<div style="font-size:12px;color:var(--text-light);margin-top:2px">The invoice number is assigned when you save</div>'}
+      </div>
+      <button class="modal-close" onclick="closeAdminModal('generic-modal')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:24px;max-height:75vh;overflow-y:auto">
+      ${id ? '' : `
+      <div class="form-group">
+        <label>Quick fill from a quote request or customer (optional)</label>
+        <select id="inv-prefill" onchange="prefillInvoice(this.value)">
+          <option value="">— Start blank —</option>
+          ${quotes.length ? `<optgroup label="Quote requests">${quotes.slice(0, 50).map(q =>
+            `<option value="q:${q.id}">#PQ${String(q.id).padStart(5, '0')} — ${escHtml(q.company_name || q.name)} · ${escHtml(q.activity_type)}</option>`).join('')}</optgroup>` : ''}
+          ${customers.length ? `<optgroup label="Customers">${customers.slice(0, 300).map(c =>
+            `<option value="c:${c.id}">${escHtml(c.name)} — ${escHtml(c.email)}</option>`).join('')}</optgroup>` : ''}
+        </select>
+      </div>`}
+      <div class="form-row">
+        <div class="form-group"><label>Client name *</label><input type="text" id="inv-client-name" value="${v('client_name')}"></div>
+        <div class="form-group"><label>Company (optional)</label><input type="text" id="inv-client-company" value="${v('client_company')}"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Email</label><input type="email" id="inv-client-email" value="${v('client_email')}"></div>
+        <div class="form-group"><label>Phone</label><input type="text" id="inv-client-phone" value="${v('client_phone')}"></div>
+      </div>
+      <div class="form-group"><label>Address (optional)</label><textarea id="inv-client-address" rows="2">${v('client_address')}</textarea></div>
+      <div class="form-row">
+        <div class="form-group"><label>Invoice date *</label><input type="date" id="inv-issue-date" value="${issue}"
+          onchange="document.getElementById('inv-due-date').value = addDaysIso(this.value, ${terms})"></div>
+        <div class="form-group"><label>Due date *</label><input type="date" id="inv-due-date" value="${id ? inv.due_date : addDaysIso(issue, terms)}"></div>
+      </div>
+
+      <label style="display:block;font-size:13px;font-weight:700;color:var(--text-mid);margin:6px 0 8px">Line items *</label>
+      <div class="inv-items-head"><span>Description</span><span>Qty</span><span>Unit price (£)</span><span>Amount</span><span></span></div>
+      <div id="inv-items"></div>
+      <button type="button" class="btn btn-ghost btn-sm" onclick="addInvoiceItem()" style="margin-top:4px">+ Add line</button>
+      <div class="inv-total">Total <strong id="inv-total">£0.00</strong></div>
+
+      <div class="form-group"><label>Notes (optional — shown on the invoice)</label>
+        <textarea id="inv-notes" rows="2" placeholder="e.g. 50% deposit paid on 3 Nov — balance due before the event">${v('notes')}</textarea></div>
+      <div style="display:flex;gap:12px;margin-top:8px">
+        <button class="btn btn-ghost btn-full" onclick="closeAdminModal('generic-modal')">Cancel</button>
+        <button class="btn btn-primary btn-full" id="inv-save-btn" onclick="saveInvoice()">${id ? 'Save changes' : 'Create invoice'}</button>
+      </div>
+      ${id ? `
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+        <button class="btn btn-ghost btn-sm" onclick="openInvoiceForm(null, { duplicateId: ${id} })">Duplicate as new invoice</button>
+        ${inv.status !== 'void' ? `<button class="btn btn-ghost btn-sm" onclick="voidInvoice(${id})">Void invoice</button>` : ''}
+        <button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:none;margin-left:auto" onclick="deleteInvoice(${id})">Delete</button>
+      </div>` : ''}
+    </div>`;
+
+  window._invoicePrefillData = { quotes, customers };
+  renderInvoiceItems();
+  if (opts.quoteId) {
+    document.getElementById('inv-prefill').value = `q:${opts.quoteId}`;
+    prefillInvoice(`q:${opts.quoteId}`);
+  }
+}
+
+function prefillInvoice(value) {
+  if (!value) return;
+  const { quotes, customers } = window._invoicePrefillData || { quotes: [], customers: [] };
+  const [kind, rawId] = value.split(':');
+  const set = (elId, val) => { const el = document.getElementById(elId); if (el && val) el.value = val; };
+  if (kind === 'q') {
+    const q = quotes.find(x => x.id === Number(rawId));
+    if (!q) return;
+    set('inv-client-name', q.name);
+    set('inv-client-company', q.company_name);
+    set('inv-client-email', q.email);
+    set('inv-client-phone', q.phone);
+    invoiceFormState.quote_id = q.id;
+    invoiceFormState.customer_id = null;
+    const when = q.preferred_date ? `, ${formatDate(q.preferred_date)}` : '';
+    const what = [q.activity_type, q.occasion].filter(Boolean).join(' — ');
+    invoiceFormState.items = [{ description: `${what} (${q.group_size} people${when})`, quantity: 1, unit_price_pence: 0 }];
+    renderInvoiceItems();
+  } else if (kind === 'c') {
+    const c = customers.find(x => x.id === Number(rawId));
+    if (!c) return;
+    set('inv-client-name', c.name);
+    set('inv-client-email', c.email);
+    set('inv-client-phone', c.phone);
+    invoiceFormState.customer_id = c.id;
+    invoiceFormState.quote_id = null;
+  }
+}
+
+function renderInvoiceItems() {
+  const el = document.getElementById('inv-items');
+  if (!el) return;
+  el.innerHTML = invoiceFormState.items.map((it, i) => `
+    <div class="inv-item-row">
+      <div class="inv-item-desc">
+        <input type="text" placeholder="e.g. Private Sip & Paint — Hen Party" value="${escHtml(it.description)}"
+          oninput="invoiceFormState.items[${i}].description = this.value">
+        ${it.showDetails || it.details ? `
+        <textarea rows="2" placeholder="Extra details for this line — e.g. 7–9pm, includes canvases, aprons & a glass of prosecco"
+          oninput="invoiceFormState.items[${i}].details = this.value">${escHtml(it.details)}</textarea>`
+        : `<button type="button" class="inv-add-details" onclick="showInvoiceItemDetails(${i})">+ Add details</button>`}
+      </div>
+      <input type="number" min="0" step="1" value="${it.quantity}"
+        oninput="invoiceFormState.items[${i}].quantity = parseFloat(this.value) || 0; updateInvoiceTotals()">
+      <input type="number" min="0" step="0.01" value="${it.unit_price_pence ? (it.unit_price_pence / 100).toFixed(2) : ''}" placeholder="0.00"
+        oninput="invoiceFormState.items[${i}].unit_price_pence = Math.round((parseFloat(this.value) || 0) * 100); updateInvoiceTotals()">
+      <span class="inv-item-amount" id="inv-amount-${i}"></span>
+      <button type="button" class="btn btn-xs" style="background:#fee2e2;color:#dc2626;border:none" title="Remove line"
+        onclick="removeInvoiceItem(${i})" ${invoiceFormState.items.length === 1 ? 'disabled' : ''}>✕</button>
+    </div>`).join('');
+  updateInvoiceTotals();
+}
+
+function showInvoiceItemDetails(i) {
+  invoiceFormState.items[i].details = invoiceFormState.items[i].details || '';
+  invoiceFormState.items[i].showDetails = true;
+  renderInvoiceItems();
+  document.querySelectorAll('#inv-items .inv-item-row')[i]?.querySelector('textarea')?.focus();
+}
+
+function updateInvoiceTotals() {
+  let total = 0;
+  invoiceFormState.items.forEach((it, i) => {
+    const amount = Math.round((it.quantity || 0) * (it.unit_price_pence || 0));
+    total += amount;
+    const el = document.getElementById(`inv-amount-${i}`);
+    if (el) el.textContent = formatPrice(amount);
+  });
+  const totalEl = document.getElementById('inv-total');
+  if (totalEl) totalEl.textContent = formatPrice(total);
+}
+
+function addInvoiceItem() {
+  invoiceFormState.items.push({ description: '', quantity: 1, unit_price_pence: 0 });
+  renderInvoiceItems();
+}
+
+function removeInvoiceItem(i) {
+  invoiceFormState.items.splice(i, 1);
+  renderInvoiceItems();
+}
+
+async function saveInvoice() {
+  const get = id => document.getElementById(id).value.trim();
+  const payload = {
+    client_name: get('inv-client-name'),
+    client_company: get('inv-client-company'),
+    client_email: get('inv-client-email'),
+    client_phone: get('inv-client-phone'),
+    client_address: get('inv-client-address'),
+    issue_date: get('inv-issue-date'),
+    due_date: get('inv-due-date'),
+    notes: get('inv-notes'),
+    items: invoiceFormState.items
+      .filter(it => it.description.trim())
+      .map(({ description, details, quantity, unit_price_pence }) => ({ description, details: details || '', quantity, unit_price_pence })),
+    quote_id: invoiceFormState.quote_id,
+    customer_id: invoiceFormState.customer_id,
+  };
+  if (!payload.client_name) { toast('Client name is required', 'error'); return; }
+  if (!payload.items.length) { toast('Add at least one line item with a description', 'error'); return; }
+
+  const btn = document.getElementById('inv-save-btn');
+  btn.disabled = true;
+  try {
+    const id = invoiceFormState.id;
+    const saved = await apiFetch(id ? `/api/invoices/${id}` : '/api/invoices', {
+      method: id ? 'PUT' : 'POST', body: JSON.stringify(payload),
+    });
+    closeAdminModal('generic-modal');
+    toast(id ? 'Invoice updated' : `Invoice ${saved.invoice_number} created`, 'success');
+    loadAdminInvoices();
+  } catch (err) {
+    toast(err.message || 'Failed to save invoice', 'error');
+    btn.disabled = false;
+  }
+}
+
+function openMarkInvoicePaid(id) {
+  const inv = adminInvoices.find(i => i.id === id);
+  const body = document.getElementById('generic-modal-body');
+  body.innerHTML = `
+    <div class="modal-header"><h2>Mark ${escHtml(inv.invoice_number)} as paid</h2>
+      <button class="modal-close" onclick="closeAdminModal('generic-modal')">✕</button></div>
+    <div class="modal-body" style="padding:24px">
+      <p style="margin:0 0 16px;color:var(--text-mid);font-size:14px">${escHtml(inv.client_company || inv.client_name)} · <strong>${formatPrice(inv.total_pence)}</strong></p>
+      <div class="form-group"><label>Date payment received</label><input type="date" id="inv-paid-date" value="${todayIso()}"></div>
+      <div style="display:flex;gap:12px;margin-top:8px">
+        <button class="btn btn-ghost btn-full" onclick="closeAdminModal('generic-modal')">Cancel</button>
+        <button class="btn btn-primary btn-full" onclick="setInvoiceStatus(${id}, 'paid', document.getElementById('inv-paid-date').value)">Mark as paid</button>
+      </div>
+    </div>`;
+  document.getElementById('generic-modal').classList.remove('hidden');
+}
+
+async function setInvoiceStatus(id, status, paidAt) {
+  try {
+    await apiFetch(`/api/invoices/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status, paid_at: paidAt }) });
+    closeAdminModal('generic-modal');
+    toast(status === 'paid' ? 'Marked as paid' : status === 'void' ? 'Invoice voided' : 'Marked as unpaid', 'success');
+    loadAdminInvoices();
+  } catch (err) { toast(err.message || 'Failed to update invoice', 'error'); }
+}
+
+function voidInvoice(id) {
+  const inv = adminInvoices.find(i => i.id === id);
+  if (!confirm(`Void ${inv.invoice_number}? It stays in your records marked VOID, but no longer counts as owed.`)) return;
+  setInvoiceStatus(id, 'void');
+}
+
+async function deleteInvoice(id) {
+  const inv = adminInvoices.find(i => i.id === id);
+  if (!confirm(`Permanently delete ${inv.invoice_number}? This can't be undone.\n\nTip: "Void" keeps a record of it instead.`)) return;
+  try {
+    await apiFetch(`/api/invoices/${id}`, { method: 'DELETE' });
+    closeAdminModal('generic-modal');
+    toast('Invoice deleted', 'success');
+    loadAdminInvoices();
+  } catch (err) { toast(err.message || 'Failed to delete invoice', 'error'); }
+}
+
+async function renderInvoiceSettings() {
+  const el = document.getElementById('invoices-subtab-settings');
+  el.innerHTML = '<div class="loading-state"><div class="spinner"></div></div>';
+  try { invoiceSettings = await apiFetch('/api/invoices/settings'); }
+  catch { el.innerHTML = '<div class="empty-state"><p>Failed to load settings</p></div>'; return; }
+  const v = k => escHtml(invoiceSettings[k] || '');
+  el.innerHTML = `
+    <div class="design-centred-wrap">
+      <div class="design-card">
+        <div class="design-card-header"><h3 class="design-card-title">Your business details</h3>
+          <span class="design-hint">Shown in the "From" section. Your logo and business name come from Design / SEO settings.</span></div>
+        <div class="design-card-body">
+          <div class="form-group"><label>Business address</label><textarea id="invs-invoice_business_address" rows="3">${v('invoice_business_address')}</textarea></div>
+          <div class="form-group"><label>Email shown on invoices</label><input type="email" id="invs-invoice_business_email" value="${v('invoice_business_email')}"></div>
+        </div>
+      </div>
+      <div class="design-card">
+        <div class="design-card-header"><h3 class="design-card-title">Bank details for payment</h3></div>
+        <div class="design-card-body">
+          <div class="form-group"><label>Account name</label><input type="text" id="invs-invoice_bank_account_name" value="${v('invoice_bank_account_name')}"></div>
+          <div class="form-row">
+            <div class="form-group"><label>Sort code</label><input type="text" id="invs-invoice_bank_sort_code" value="${v('invoice_bank_sort_code')}" placeholder="00-00-00"></div>
+            <div class="form-group"><label>Account number</label><input type="text" id="invs-invoice_bank_account_number" value="${v('invoice_bank_account_number')}" placeholder="12345678"></div>
+          </div>
+          <p style="margin:0;font-size:12px;color:var(--text-light)">The invoice number is printed as the payment reference.</p>
+        </div>
+      </div>
+      <div class="design-card">
+        <div class="design-card-header"><h3 class="design-card-title">Numbering &amp; terms</h3></div>
+        <div class="design-card-body">
+          <div class="form-row">
+            <div class="form-group"><label>Number prefix</label><input type="text" id="invs-invoice_prefix" value="${v('invoice_prefix')}" placeholder="PB-"></div>
+            <div class="form-group"><label>Next invoice number</label><input type="number" min="1" id="invs-invoice_next_number" value="${v('invoice_next_number')}"></div>
+            <div class="form-group"><label>Payment terms (days)</label><input type="number" min="0" id="invs-invoice_payment_terms_days" value="${v('invoice_payment_terms_days')}"></div>
+          </div>
+          <div class="form-group"><label>Footer message</label><input type="text" id="invs-invoice_footer_note" value="${v('invoice_footer_note')}"></div>
+        </div>
+      </div>
+      <div class="design-save-bar"><button class="btn btn-primary" onclick="saveInvoiceSettings()">Save Invoice Settings</button></div>
+    </div>`;
+}
+
+async function saveInvoiceSettings() {
+  const payload = {};
+  document.querySelectorAll('[id^="invs-"]').forEach(el => { payload[el.id.slice(5)] = el.value; });
+  try {
+    invoiceSettings = await apiFetch('/api/invoices/settings', { method: 'PUT', body: JSON.stringify(payload) });
+    toast('Invoice settings saved', 'success');
+    loadAdminInvoices();
+  } catch (err) { toast(err.message || 'Failed to save', 'error'); }
+}
