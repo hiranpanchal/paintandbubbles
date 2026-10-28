@@ -6927,34 +6927,45 @@ async function loadAdminInvoices() {
   } catch { el.innerHTML = '<div class="empty-state"><p>Failed to load invoices</p></div>'; }
 }
 
-// 'overdue' is derived: unpaid and past its due date.
+// Display status is derived from the stored status plus payments and dates:
+// overdue = money still owed past the due date; part = some paid, not overdue.
 function invoiceDisplayStatus(inv) {
-  if (inv.status === 'unpaid' && inv.due_date < new Date().toISOString().slice(0, 10)) return 'overdue';
-  return inv.status;
+  if (inv.status !== 'unpaid') return inv.status;
+  if (inv.due_date < todayIso()) return 'overdue';
+  return inv.amount_paid_pence > 0 ? 'part' : 'unpaid';
 }
 
 function invoiceStatusBadge(inv) {
-  return {
+  const badge = {
     unpaid:  '<span class="badge badge-amber">Unpaid</span>',
+    part:    '<span class="badge badge-blue" style="white-space:nowrap">Part paid</span>',
     overdue: '<span class="badge badge-red">Overdue</span>',
     paid:    '<span class="badge badge-green">Paid</span>',
     void:    '<span class="badge badge-gray">Void</span>',
   }[invoiceDisplayStatus(inv)];
+  const partNote = inv.status === 'unpaid' && inv.amount_paid_pence > 0
+    ? `<div style="font-size:11px;color:var(--text-light);margin-top:3px;white-space:nowrap">${formatPrice(inv.amount_paid_pence)} paid</div>` : '';
+  return badge + partNote;
 }
 
 function renderInvoiceStats() {
-  const sum = list => list.reduce((t, i) => t + i.total_pence, 0);
-  const unpaid  = adminInvoices.filter(i => i.status === 'unpaid');
-  const overdue = unpaid.filter(i => invoiceDisplayStatus(i) === 'overdue');
+  const sumBalance = list => list.reduce((t, i) => t + i.balance_pence, 0);
+  const open    = adminInvoices.filter(i => i.status === 'unpaid');
+  const overdue = open.filter(i => invoiceDisplayStatus(i) === 'overdue');
+  // Money actually received this year, including deposits on unpaid invoices.
   const yearStart = `${new Date().getFullYear()}-01-01`;
-  const paidYear = adminInvoices.filter(i => i.status === 'paid' && (i.paid_at || '') >= yearStart);
+  const yearPayments = adminInvoices
+    .filter(i => i.status !== 'void')
+    .flatMap(i => i.payments || [])
+    .filter(p => p.paid_on >= yearStart);
+  const received = yearPayments.reduce((t, p) => t + p.amount_pence, 0);
   document.getElementById('invoice-stats').innerHTML = `
-    <div class="stat-card"><div class="stat-label">Outstanding</div><div class="stat-value">${formatPrice(sum(unpaid))}</div>
-      <div style="font-size:12px;color:var(--text-light);margin-top:4px">${unpaid.length} unpaid invoice${unpaid.length === 1 ? '' : 's'}</div></div>
-    <div class="stat-card"><div class="stat-label">Overdue</div><div class="stat-value" style="color:${overdue.length ? 'var(--coral)' : 'inherit'}">${formatPrice(sum(overdue))}</div>
+    <div class="stat-card"><div class="stat-label">Outstanding</div><div class="stat-value">${formatPrice(sumBalance(open))}</div>
+      <div style="font-size:12px;color:var(--text-light);margin-top:4px">${open.length} invoice${open.length === 1 ? '' : 's'} awaiting payment</div></div>
+    <div class="stat-card"><div class="stat-label">Overdue</div><div class="stat-value" style="color:${overdue.length ? 'var(--coral)' : 'inherit'}">${formatPrice(sumBalance(overdue))}</div>
       <div style="font-size:12px;color:var(--text-light);margin-top:4px">${overdue.length} overdue</div></div>
-    <div class="stat-card"><div class="stat-label">Paid this year</div><div class="stat-value">${formatPrice(sum(paidYear))}</div>
-      <div style="font-size:12px;color:var(--text-light);margin-top:4px">${paidYear.length} invoice${paidYear.length === 1 ? '' : 's'}</div></div>`;
+    <div class="stat-card"><div class="stat-label">Received this year</div><div class="stat-value">${formatPrice(received)}</div>
+      <div style="font-size:12px;color:var(--text-light);margin-top:4px">${yearPayments.length} payment${yearPayments.length === 1 ? '' : 's'}</div></div>`;
 }
 
 function renderInvoicesTable() {
@@ -6980,13 +6991,14 @@ function renderInvoicesTable() {
             ${inv.client_company ? `<div style="font-size:11px;color:var(--text-light)">${escHtml(inv.client_name)}</div>` : ''}</td>
           <td class="hide-mobile" style="white-space:nowrap">${formatDate(inv.issue_date)}</td>
           <td style="white-space:nowrap">${formatDate(inv.due_date)}${inv.status === 'paid' && inv.paid_at ? `<br><span style="font-size:11px;color:var(--green)">Paid ${formatDate(inv.paid_at)}</span>` : ''}</td>
-          <td><strong>${formatPrice(inv.total_pence)}</strong></td>
+          <td style="white-space:nowrap"><strong>${formatPrice(inv.total_pence)}</strong>
+            ${inv.status === 'unpaid' && inv.amount_paid_pence > 0 ? `<div style="font-size:11px;color:var(--coral);font-weight:700">${formatPrice(inv.balance_pence)} due</div>` : ''}</td>
           <td>${invoiceStatusBadge(inv)}</td>
           <td><div class="actions">
             <button class="btn btn-ghost btn-xs" onclick="downloadInvoicePdf(${inv.id})">↓ PDF</button>
             <button class="btn btn-ghost btn-xs" onclick="openInvoiceForm(${inv.id})">Edit</button>
-            ${inv.status === 'unpaid' ? `<button class="btn btn-ghost btn-xs" style="color:var(--green)" onclick="openMarkInvoicePaid(${inv.id})">Mark paid</button>` : ''}
-            ${inv.status !== 'unpaid' ? `<button class="btn btn-ghost btn-xs" onclick="setInvoiceStatus(${inv.id}, 'unpaid')">Mark unpaid</button>` : ''}
+            ${inv.status !== 'void' ? `<button class="btn btn-ghost btn-xs" style="color:var(--green)" onclick="openInvoicePayments(${inv.id})">${inv.status === 'paid' ? 'Payments' : '£ Record payment'}</button>` : ''}
+            ${inv.status === 'void' ? `<button class="btn btn-ghost btn-xs" onclick="setInvoiceStatus(${inv.id}, 'unpaid')">Restore</button>` : ''}
           </div></td>
         </tr>`).join('')}
       </tbody>
@@ -7229,28 +7241,93 @@ async function saveInvoice() {
   }
 }
 
-function openMarkInvoicePaid(id) {
-  const inv = adminInvoices.find(i => i.id === id);
-  const body = document.getElementById('generic-modal-body');
+// Payments modal: what's been received so far, plus a form to record more.
+async function openInvoicePayments(id) {
+  const modal = document.getElementById('generic-modal');
+  const body  = document.getElementById('generic-modal-body');
+  body.parentElement.style.maxWidth = '560px';
+  let inv;
+  try { inv = await apiFetch(`/api/invoices/${id}`); }
+  catch { toast('Failed to load invoice', 'error'); return; }
+
+  const rows = inv.payments.map(p => `
+    <div class="inv-payment-row">
+      <div><strong>${formatPrice(p.amount_pence)}</strong> · ${formatDate(p.paid_on)}
+        ${p.note ? `<div style="font-size:12px;color:var(--text-light)">${escHtml(p.note)}</div>` : ''}</div>
+      <button class="btn btn-xs" style="background:#fee2e2;color:#dc2626;border:none" title="Remove this payment"
+        onclick="removeInvoicePayment(${id}, ${p.id})">Remove</button>
+    </div>`).join('');
+
   body.innerHTML = `
-    <div class="modal-header"><h2>Mark ${escHtml(inv.invoice_number)} as paid</h2>
-      <button class="modal-close" onclick="closeAdminModal('generic-modal')">✕</button></div>
+    <div class="modal-header">
+      <div><h2>Payments — ${escHtml(inv.invoice_number)}</h2>
+        <div style="font-size:13px;color:var(--text-mid);margin-top:2px">${escHtml(inv.client_company || inv.client_name)}</div></div>
+      <button class="modal-close" onclick="closeAdminModal('generic-modal')">✕</button>
+    </div>
     <div class="modal-body" style="padding:24px">
-      <p style="margin:0 0 16px;color:var(--text-mid);font-size:14px">${escHtml(inv.client_company || inv.client_name)} · <strong>${formatPrice(inv.total_pence)}</strong></p>
-      <div class="form-group"><label>Date payment received</label><input type="date" id="inv-paid-date" value="${todayIso()}"></div>
-      <div style="display:flex;gap:12px;margin-top:8px">
-        <button class="btn btn-ghost btn-full" onclick="closeAdminModal('generic-modal')">Cancel</button>
-        <button class="btn btn-primary btn-full" onclick="setInvoiceStatus(${id}, 'paid', document.getElementById('inv-paid-date').value)">Mark as paid</button>
+      <div class="inv-pay-summary">
+        <div><span>Invoice total</span><strong>${formatPrice(inv.total_pence)}</strong></div>
+        <div><span>Paid so far</span><strong style="color:var(--green)">${formatPrice(inv.amount_paid_pence)}</strong></div>
+        <div><span>Balance due</span><strong style="color:${inv.balance_pence ? 'var(--coral)' : 'var(--green)'}">${formatPrice(inv.balance_pence)}</strong></div>
       </div>
+      ${rows ? `<div style="margin-bottom:20px">${rows}</div>` : ''}
+      ${inv.balance_pence > 0 ? `
+      <div style="font-size:13px;font-weight:700;color:var(--text-dark);margin-bottom:10px">Record a payment</div>
+      <div class="form-row">
+        <div class="form-group"><label>Amount received (£)</label>
+          <input type="number" id="inv-pay-amount" min="0.01" step="0.01" max="${(inv.balance_pence / 100).toFixed(2)}" value="${(inv.balance_pence / 100).toFixed(2)}"></div>
+        <div class="form-group"><label>Date received</label><input type="date" id="inv-pay-date" value="${todayIso()}"></div>
+      </div>
+      <div class="form-group"><label>Note (optional — shown on the invoice)</label>
+        <input type="text" id="inv-pay-note" maxlength="200" placeholder="e.g. Deposit"></div>
+      <div style="display:flex;gap:12px;margin-top:8px">
+        <button class="btn btn-ghost btn-full" onclick="closeAdminModal('generic-modal')">Close</button>
+        <button class="btn btn-primary btn-full" id="inv-pay-btn" onclick="recordInvoicePayment(${id})">Record payment</button>
+      </div>` : `
+      <p style="margin:0 0 16px;font-size:14px;color:var(--green);font-weight:700">✓ Paid in full</p>
+      <button class="btn btn-ghost btn-full" onclick="closeAdminModal('generic-modal')">Close</button>`}
     </div>`;
-  document.getElementById('generic-modal').classList.remove('hidden');
+  modal.classList.remove('hidden');
 }
 
-async function setInvoiceStatus(id, status, paidAt) {
+async function recordInvoicePayment(id) {
+  const amount = parseFloat(document.getElementById('inv-pay-amount').value);
+  if (!(amount > 0)) { toast('Enter the amount received', 'error'); return; }
+  const btn = document.getElementById('inv-pay-btn');
+  btn.disabled = true;
   try {
-    await apiFetch(`/api/invoices/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status, paid_at: paidAt }) });
+    const inv = await apiFetch(`/api/invoices/${id}/payments`, {
+      method: 'POST',
+      body: JSON.stringify({
+        amount_pence: Math.round(amount * 100),
+        paid_on: document.getElementById('inv-pay-date').value,
+        note: document.getElementById('inv-pay-note').value,
+      }),
+    });
+    toast(inv.balance_pence ? `Payment recorded — ${formatPrice(inv.balance_pence)} still due` : 'Payment recorded — invoice paid in full', 'success');
+    loadAdminInvoices();
+    openInvoicePayments(id);
+  } catch (err) {
+    toast(err.message || 'Failed to record payment', 'error');
+    btn.disabled = false;
+  }
+}
+
+async function removeInvoicePayment(id, paymentId) {
+  if (!confirm('Remove this payment? The balance due will go back up.')) return;
+  try {
+    await apiFetch(`/api/invoices/${id}/payments/${paymentId}`, { method: 'DELETE' });
+    toast('Payment removed', 'success');
+    loadAdminInvoices();
+    openInvoicePayments(id);
+  } catch (err) { toast(err.message || 'Failed to remove payment', 'error'); }
+}
+
+async function setInvoiceStatus(id, status) {
+  try {
+    await apiFetch(`/api/invoices/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) });
     closeAdminModal('generic-modal');
-    toast(status === 'paid' ? 'Marked as paid' : status === 'void' ? 'Invoice voided' : 'Marked as unpaid', 'success');
+    toast(status === 'void' ? 'Invoice voided' : 'Invoice restored', 'success');
     loadAdminInvoices();
   } catch (err) { toast(err.message || 'Failed to update invoice', 'error'); }
 }

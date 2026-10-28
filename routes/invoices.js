@@ -49,9 +49,37 @@ const clientFields = body => [
   String(body.client_address || '').trim(),
 ];
 
+const PAID_SQL = '(SELECT COALESCE(SUM(p.amount_pence), 0) FROM invoice_payments p WHERE p.invoice_id = i.id)';
+
+// Invoice row plus its payments, amount paid and balance.
+function loadInvoice(id) {
+  const invoice = db.prepare(`SELECT i.*, ${PAID_SQL} AS amount_paid_pence FROM invoices i WHERE i.id = ?`).get(id);
+  if (!invoice) return null;
+  invoice.payments = db.prepare('SELECT * FROM invoice_payments WHERE invoice_id = ? ORDER BY paid_on, id').all(id);
+  invoice.balance_pence = Math.max(0, invoice.total_pence - invoice.amount_paid_pence);
+  return invoice;
+}
+
+// Work out paid / unpaid from the payments recorded (void is left alone).
+// Fully paid → 'paid' with paid_at = date of the last payment.
+function syncInvoiceStatus(id) {
+  const inv = loadInvoice(id);
+  if (!inv || inv.status === 'void') return;
+  const fullyPaid = inv.total_pence > 0 && inv.amount_paid_pence >= inv.total_pence;
+  const lastPaidOn = inv.payments.length ? inv.payments[inv.payments.length - 1].paid_on : null;
+  db.prepare("UPDATE invoices SET status = ?, paid_at = ?, updated_at = datetime('now') WHERE id = ?")
+    .run(fullyPaid ? 'paid' : 'unpaid', fullyPaid ? lastPaidOn : null, id);
+}
+
 // GET /api/invoices — list
 router.get('/', requireAdmin, (req, res) => {
-  res.json(db.prepare('SELECT * FROM invoices ORDER BY issue_date DESC, id DESC').all());
+  const rows = db.prepare(`SELECT i.*, ${PAID_SQL} AS amount_paid_pence FROM invoices i ORDER BY i.issue_date DESC, i.id DESC`).all();
+  const payments = db.prepare('SELECT * FROM invoice_payments ORDER BY paid_on, id').all();
+  rows.forEach(r => {
+    r.balance_pence = Math.max(0, r.total_pence - r.amount_paid_pence);
+    r.payments = payments.filter(p => p.invoice_id === r.id);
+  });
+  res.json(rows);
 });
 
 // GET /api/invoices/settings — business + bank details shown on invoices
@@ -73,7 +101,7 @@ router.put('/settings', requireAdmin, (req, res) => {
 
 // GET /api/invoices/:id
 router.get('/:id', requireAdmin, (req, res) => {
-  const invoice = db.prepare('SELECT * FROM invoices WHERE id = ?').get(req.params.id);
+  const invoice = loadInvoice(req.params.id);
   if (!invoice) return res.status(404).json({ error: 'Invoice not found' });
   res.json(invoice);
 });
@@ -103,7 +131,7 @@ router.post('/', requireAdmin, (req, res) => {
            req.body.quote_id || null, req.body.customer_id || null);
     db.prepare("UPDATE site_settings SET value = ? WHERE key = 'invoice_next_number'").run(String(next + 1));
     db.exec('COMMIT');
-    res.status(201).json(db.prepare('SELECT * FROM invoices WHERE id = ?').get(result.lastInsertRowid));
+    res.status(201).json(loadInvoice(result.lastInsertRowid));
   } catch (err) {
     try { db.exec('ROLLBACK'); } catch {}
     console.error('[POST /api/invoices] failed:', err);
@@ -126,25 +154,49 @@ router.put('/:id', requireAdmin, (req, res) => {
     WHERE id = ?
   `).run(...clientFields(req.body), req.body.issue_date, req.body.due_date,
          JSON.stringify(items), total, String(req.body.notes || '').trim(), req.params.id);
-  res.json(db.prepare('SELECT * FROM invoices WHERE id = ?').get(req.params.id));
+  syncInvoiceStatus(req.params.id); // the total may have changed
+  res.json(loadInvoice(req.params.id));
 });
 
-// PATCH /api/invoices/:id/status — mark paid / unpaid / void
+// PATCH /api/invoices/:id/status — void, or restore a voided invoice
+// ('unpaid' restores; paid / unpaid then follows the recorded payments).
 router.patch('/:id/status', requireAdmin, (req, res) => {
-  const { status, paid_at } = req.body;
-  if (!['unpaid', 'paid', 'void'].includes(status)) return res.status(400).json({ error: 'Invalid status' });
-  const invoice = db.prepare('SELECT id FROM invoices WHERE id = ?').get(req.params.id);
+  const { status } = req.body;
+  if (!['unpaid', 'void'].includes(status)) return res.status(400).json({ error: 'Invalid status' });
+  if (!loadInvoice(req.params.id)) return res.status(404).json({ error: 'Invoice not found' });
+  db.prepare("UPDATE invoices SET status = ?, updated_at = datetime('now') WHERE id = ?").run(status, req.params.id);
+  syncInvoiceStatus(req.params.id);
+  res.json(loadInvoice(req.params.id));
+});
+
+// POST /api/invoices/:id/payments — record a payment received
+router.post('/:id/payments', requireAdmin, (req, res) => {
+  const invoice = loadInvoice(req.params.id);
   if (!invoice) return res.status(404).json({ error: 'Invoice not found' });
-  const paidAt = status === 'paid'
-    ? (/^\d{4}-\d{2}-\d{2}$/.test(paid_at || '') ? paid_at : new Date().toISOString().slice(0, 10))
-    : null;
-  db.prepare("UPDATE invoices SET status = ?, paid_at = ?, updated_at = datetime('now') WHERE id = ?")
-    .run(status, paidAt, req.params.id);
-  res.json(db.prepare('SELECT * FROM invoices WHERE id = ?').get(req.params.id));
+  if (invoice.status === 'void') return res.status(400).json({ error: 'Can\'t record a payment on a void invoice' });
+  const amount = Math.round(Number(req.body.amount_pence) || 0);
+  if (amount <= 0) return res.status(400).json({ error: 'Enter the amount received' });
+  if (amount > invoice.balance_pence) {
+    return res.status(400).json({ error: `That's more than the balance due (£${(invoice.balance_pence / 100).toFixed(2)})` });
+  }
+  const paidOn = /^\d{4}-\d{2}-\d{2}$/.test(req.body.paid_on || '') ? req.body.paid_on : new Date().toISOString().slice(0, 10);
+  db.prepare('INSERT INTO invoice_payments (invoice_id, amount_pence, paid_on, note) VALUES (?, ?, ?, ?)')
+    .run(req.params.id, amount, paidOn, String(req.body.note || '').trim().slice(0, 200));
+  syncInvoiceStatus(req.params.id);
+  res.status(201).json(loadInvoice(req.params.id));
+});
+
+// DELETE /api/invoices/:id/payments/:paymentId — remove a payment recorded by mistake
+router.delete('/:id/payments/:paymentId', requireAdmin, (req, res) => {
+  const result = db.prepare('DELETE FROM invoice_payments WHERE id = ? AND invoice_id = ?').run(req.params.paymentId, req.params.id);
+  if (!result.changes) return res.status(404).json({ error: 'Payment not found' });
+  syncInvoiceStatus(req.params.id);
+  res.json(loadInvoice(req.params.id));
 });
 
 // DELETE /api/invoices/:id
 router.delete('/:id', requireAdmin, (req, res) => {
+  db.prepare('DELETE FROM invoice_payments WHERE invoice_id = ?').run(req.params.id);
   const result = db.prepare('DELETE FROM invoices WHERE id = ?').run(req.params.id);
   if (!result.changes) return res.status(404).json({ error: 'Invoice not found' });
   res.json({ success: true });
@@ -152,7 +204,7 @@ router.delete('/:id', requireAdmin, (req, res) => {
 
 // GET /api/invoices/:id/pdf — download as PDF
 router.get('/:id/pdf', requireAdmin, (req, res) => {
-  const invoice = db.prepare('SELECT * FROM invoices WHERE id = ?').get(req.params.id);
+  const invoice = loadInvoice(req.params.id);
   if (!invoice) return res.status(404).json({ error: 'Invoice not found' });
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', `attachment; filename="Invoice-${invoice.invoice_number.replace(/[^A-Za-z0-9-]/g, '')}.pdf"`);

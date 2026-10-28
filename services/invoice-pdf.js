@@ -15,6 +15,8 @@ const ukDate = iso => iso
   ? new Date(iso + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
   : '';
 
+const shortDate = iso => new Date(iso + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+
 // Resolve the site logo to a local file in the uploads folder.
 // Returns { file, type: 'svg' | 'raster' } or null.
 function localLogo(logoUrl) {
@@ -86,9 +88,13 @@ function buildInvoicePdf(invoice, settings, out) {
   }
   doc.font('Helvetica-Bold').fontSize(26).fillColor(DARK).text('INVOICE', left, 50, { width, align: 'right' });
   doc.font('Helvetica').fontSize(11).fillColor(MID).text(invoice.invoice_number, left, 82, { width, align: 'right' });
-  if (invoice.status === 'paid' || invoice.status === 'void') {
-    doc.font('Helvetica-Bold').fontSize(12).fillColor(invoice.status === 'paid' ? '#059669' : '#9B2335')
-      .text(invoice.status === 'paid' ? 'PAID' : 'VOID', left, 98, { width, align: 'right' });
+  const payments = invoice.payments || [];
+  const partPaid = invoice.status === 'unpaid' && payments.length > 0;
+  const stamp = invoice.status === 'paid' ? ['PAID', '#059669']
+    : invoice.status === 'void' ? ['VOID', '#9B2335']
+    : partPaid ? ['PART PAID', '#1E40AF'] : null;
+  if (stamp) {
+    doc.font('Helvetica-Bold').fontSize(12).fillColor(stamp[1]).text(stamp[0], left, 98, { width, align: 'right' });
   }
 
   // ── From / Bill to / Dates ──
@@ -157,12 +163,34 @@ function buildInvoicePdf(invoice, settings, out) {
     doc.moveTo(left, y - 5).lineTo(right, y - 5).strokeColor(BORDER).lineWidth(0.8).stroke();
   }
 
-  // ── Total ──
+  // ── Totals: invoice total, each payment received, then the balance ──
+  const boxX = left + width * 0.55;
+  const boxW = width * 0.45;
   y += 6;
-  doc.rect(left + width * 0.55, y, width * 0.45, 34).fill(ROSE);
-  doc.font('Helvetica-Bold').fontSize(11).fillColor('#ffffff')
-    .text(invoice.status === 'paid' ? 'Total paid' : 'Total due', left + width * 0.55 + 14, y + 11);
-  doc.fontSize(14).text(money(invoice.total_pence), left + width * 0.55, y + 9, { width: width * 0.45 - 14, align: 'right' });
+  // A single payment for the whole amount needs no breakdown — "Total paid" says it.
+  const showLedger = payments.length > 0 && !(invoice.status === 'paid' && payments.length === 1);
+  if (showLedger) {
+    if (y + 40 + payments.length * 18 > doc.page.height - 200) { doc.addPage(); y = 60; }
+    const line = (label, value, bold) => {
+      doc.font(bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(10).fillColor(bold ? DARK : MID);
+      const h = doc.heightOfString(label, { width: boxW * 0.6 });
+      doc.text(label, boxX + 14, y, { width: boxW * 0.6 });
+      doc.text(value, boxX, y, { width: boxW - 14, align: 'right' });
+      y += Math.max(18, h + 5);
+    };
+    line('Invoice total', money(invoice.total_pence), true);
+    for (const p of payments) {
+      line(`${p.note || 'Payment received'} · ${shortDate(p.paid_on)}`, `-${money(p.amount_pence)}`);
+    }
+    y += 6;
+  }
+  const paidTotal = payments.reduce((t, p) => t + p.amount_pence, 0);
+  const [boxLabel, boxAmount] = invoice.status === 'paid' ? ['Total paid', invoice.total_pence]
+    : payments.length ? ['Balance due', Math.max(0, invoice.total_pence - paidTotal)]
+    : ['Total due', invoice.total_pence];
+  doc.rect(boxX, y, boxW, 34).fill(ROSE);
+  doc.font('Helvetica-Bold').fontSize(11).fillColor('#ffffff').text(boxLabel, boxX + 14, y + 11);
+  doc.fontSize(14).text(money(boxAmount), boxX, y + 9, { width: boxW - 14, align: 'right' });
   y += 56;
 
   // ── Payment details (bank transfer) ──

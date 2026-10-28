@@ -231,6 +231,28 @@ db.exec(`
     updated_at TEXT DEFAULT (datetime('now'))
   )
 `);
+// Payments received against an invoice (deposits, part payments, balance).
+// The invoice's status is recalculated from these whenever they change.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS invoice_payments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    invoice_id INTEGER NOT NULL,
+    amount_pence INTEGER NOT NULL,
+    paid_on TEXT NOT NULL,
+    note TEXT DEFAULT '',
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (invoice_id) REFERENCES invoices(id) ON DELETE CASCADE
+  )
+`);
+// Invoices marked "paid" before payments were tracked get one payment for the
+// full amount, so totals and balances stay correct.
+db.exec(`
+  INSERT INTO invoice_payments (invoice_id, amount_pence, paid_on, note)
+  SELECT i.id, i.total_pence, COALESCE(i.paid_at, i.issue_date), ''
+  FROM invoices i
+  WHERE i.status = 'paid'
+    AND NOT EXISTS (SELECT 1 FROM invoice_payments p WHERE p.invoice_id = i.id)
+`);
 {
   const ins = db.prepare('INSERT OR IGNORE INTO site_settings (key, value) VALUES (?, ?)');
   ins.run('invoice_prefix', 'PB-');
