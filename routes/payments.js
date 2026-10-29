@@ -1,7 +1,7 @@
 const router = require('express').Router();
-const https  = require('https');
 const db     = require('../database');
 const { requireAdmin } = require('../middleware/auth');
+const { sumupRequest, ensureSumupCustomer, createCheckout, bookingReference, customerReference } = require('../services/sumup');
 const { sendBookingConfirmation, sendAdminBookingNotification, sendGiftVoucher, sendAdminVoucherNotification } = require('../services/email');
 const { ensureHold } = require('../services/holds');
 
@@ -25,35 +25,6 @@ function getStripe() {
   const key = getSetting('stripe_secret_key', 'STRIPE_SECRET_KEY');
   if (!key) return null;
   try { return require('stripe')(key); } catch { return null; }
-}
-
-// Simple HTTPS POST/GET helper for SumUp REST API
-function sumupRequest(method, path, body, apiKey) {
-  return new Promise((resolve, reject) => {
-    const data = body ? JSON.stringify(body) : null;
-    const opts = {
-      hostname: 'api.sumup.com',
-      path,
-      method,
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-        ...(data ? { 'Content-Length': Buffer.byteLength(data) } : {})
-      }
-    };
-    const req = https.request(opts, res => {
-      let raw = '';
-      res.on('data', c => raw += c);
-      res.on('end', () => {
-        try { resolve({ status: res.statusCode, body: JSON.parse(raw) }); }
-        catch { resolve({ status: res.statusCode, body: raw }); }
-      });
-    });
-    req.on('error', reject);
-    if (data) req.write(data);
-    req.end();
-  });
 }
 
 // GET /api/payments/config — public, tells frontend which providers are active
@@ -149,7 +120,7 @@ router.post('/sumup-checkout', async (req, res) => {
   if (!booking_id) return res.status(400).json({ error: 'booking_id required' });
 
   const booking = db.prepare(`
-    SELECT b.*, c.email as customer_email, e.title as event_title
+    SELECT b.*, c.name as customer_name, c.email as customer_email, c.phone as customer_phone, e.title as event_title
     FROM bookings b
     JOIN customers c ON b.customer_id = c.id
     JOIN events e ON b.event_id = e.id
@@ -191,13 +162,23 @@ router.post('/sumup-checkout', async (req, res) => {
   }
 
   try {
-    const result = await sumupRequest('POST', '/v0.1/checkouts', {
-      checkout_reference: `PB-${booking_id}-${Date.now()}`,
+    // Reference = booking number (PB00042) and the customer attached, so each
+    // SumUp payment can be matched straight back to the booking in admin.
+    const customerId = await ensureSumupCustomer(apiKey, {
+      customerId: customerReference(booking.customer_id),
+      name: booking.customer_name,
+      email: booking.customer_email,
+      phone: booking.customer_phone,
+    });
+    const ref = bookingReference(booking_id);
+    const result = await createCheckout(apiKey, {
+      reference: ref,
+      customerId,
       amount: parseFloat((amount / 100).toFixed(2)),
       currency: 'GBP',
       merchant_code: merchantCode,
-      description: `Paint & Bubbles — ${booking.event_title}`
-    }, apiKey);
+      description: `${ref} · ${booking.customer_name} (${booking.customer_email}) · ${booking.event_title}`.slice(0, 255)
+    });
 
     if (result.status !== 200 && result.status !== 201) {
       return res.status(500).json({ error: result.body?.message || 'SumUp checkout creation failed' });

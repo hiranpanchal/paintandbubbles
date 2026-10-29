@@ -1,7 +1,7 @@
 const router = require('express').Router();
-const https  = require('https');
 const db     = require('../database');
 const { requireAdmin } = require('../middleware/auth');
+const { sumupRequest, ensureSumupCustomer, createCheckout, customerReference } = require('../services/sumup');
 
 // Read a setting from the DB, falling back to an env var
 function getSetting(dbKey, envKey) {
@@ -16,35 +16,6 @@ function getStripe() {
   const key = getSetting('stripe_secret_key', 'STRIPE_SECRET_KEY');
   if (!key) return null;
   try { return require('stripe')(key); } catch { return null; }
-}
-
-// Simple HTTPS POST/GET helper for SumUp REST API
-function sumupRequest(method, path, body, apiKey) {
-  return new Promise((resolve, reject) => {
-    const data = body ? JSON.stringify(body) : null;
-    const opts = {
-      hostname: 'api.sumup.com',
-      path,
-      method,
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-        ...(data ? { 'Content-Length': Buffer.byteLength(data) } : {})
-      }
-    };
-    const req = https.request(opts, res => {
-      let raw = '';
-      res.on('data', c => raw += c);
-      res.on('end', () => {
-        try { resolve({ status: res.statusCode, body: JSON.parse(raw) }); }
-        catch { resolve({ status: res.statusCode, body: raw }); }
-      });
-    });
-    req.on('error', reject);
-    if (data) req.write(data);
-    req.end();
-  });
 }
 
 function generateVoucherCode() {
@@ -104,13 +75,25 @@ router.post('/purchase', async (req, res) => {
     const merchantCode = getSetting('sumup_merchant_code', 'SUMUP_MERCHANT_CODE');
     if (!apiKey || !merchantCode) return res.status(500).json({ error: 'SumUp is not configured' });
     try {
-      const result2 = await sumupRequest('POST', '/v0.1/checkouts', {
-        checkout_reference: `PBV-${voucherId}-${Date.now()}`,
+      // Reference = voucher code (as shown in admin), with the buyer attached.
+      // Link to their customer record if they've booked with us before.
+      const existingCustomer = db.prepare('SELECT id, phone FROM customers WHERE lower(email) = lower(?)').get(purchaser_email.trim());
+      const customerId = existingCustomer
+        ? await ensureSumupCustomer(apiKey, {
+            customerId: customerReference(existingCustomer.id),
+            name: purchaser_name.trim(),
+            email: purchaser_email.trim(),
+            phone: existingCustomer.phone,
+          })
+        : null;
+      const result2 = await createCheckout(apiKey, {
+        reference: code,
+        customerId,
         amount: parseFloat((amount_pence / 100).toFixed(2)),
         currency: 'GBP',
         merchant_code: merchantCode,
-        description: `Paint & Bubbles Gift Voucher — ${code}`
-      }, apiKey);
+        description: `Gift voucher ${code} · ${purchaser_name.trim()} (${purchaser_email.trim()})`.slice(0, 255)
+      });
       if (result2.status !== 200 && result2.status !== 201) {
         return res.status(500).json({ error: result2.body?.message || 'SumUp checkout creation failed' });
       }
